@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 04:00 EST — feat/lab-parity-2: full build installed + device-tested (branch, awaiting the user)
+
+- **Build:** 05036caa (all 8 areas + merge fixes), CI 43577134770 green ×4; `/sdcard/Download/Bannerlator-lab-parity-2-05036caa-pubg.apk` sha256 616995b4… (host = device, cert a40da80a), installed 03:56:19 EST.
+- **Seen working (touch, landscape + portrait, crash buffer empty):** Lab Manage Wrappers (tabs, update badge, Reset all); container card details; "What is all this?" glossary; audio fine-tune page; Translator downloads › Box64EC Lab download window (community switch, sources, install from file); in-game menu (AIO Vulkan): Screen, Performance, Effects, Controls chips, Tools + Task Manager tiles, Performance dashboard pop-up, Exit confirm. Pass-1 items on 8fc677b5 listed in the 03:55 entry.
+- **Found:** audio fine-tune shows its button hints twice (own + the editor's behind it); the Box64EC version row has no download line (downloads live under Advanced › More › Performance › Translator downloads); Back pressed past the Lab file picker's root leaves the app.
+- **Not tried on the device:** VEGAS editor, Turnip/VEGAS downloads, save backup/restore, community upload/apply, add games, EA/Ubisoft/pre-flight pop-ups, Linux sessions, store page skins, Lab light look, controller-only navigation.
+- **Restored after tests:** AIO.desktop (md5 d7398638), Show game stores on, Lab orientation Auto. Not merged; the user decides.
+
 ## 2026-11-14 03:55 EST — feat/lab-parity-2: device pass 1 (8fc677b5), in-game menu launch next (branch)
 
 - **Seen working on the Pocket FIT (8fc677b5, no crash):** Lab Settings › Updates page (the original Classic-jump bug), Storage and folders, Root controls and heat safety, new Settings rows (download engines, Steam connection tests, Steam library locations, MIDI banks); Appearance › Show game stores off/on (Stores leaves the side menu; restored on); Tools › Lab file manager + folder listing, Lab Log Manager + Lab log viewer; Save Manager › Settings in landscape scrolls to the last switch (Shuvam's bug); Contents › Linux runtime + Installed (Install GPU driver warning + Browse/Pick via system, Wayland/Linux zip rows), Lab file picker; Controls › Assign + Device; game menu › Community configs page, Properties pop-up; game settings info lines (exe, SD card, container) + Direct XInput row. Wrappers still Classic in this build (containers merge not in it).

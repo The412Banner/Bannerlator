@@ -30,13 +30,14 @@ import com.winlator.star.ui.deck.xmbCardLine
 import com.winlator.star.ui.deck.xmbGlassCard
 import com.winlator.star.ui.deck.xmbInner
 import com.winlator.star.ui.deck.xmbOnGlass
+import com.winlator.star.ui.deck.deckShape
 
 /** The Epic **Profile** tab, fed by one [EpicUserData] fetch. No Friends tab: the roster is empty for
  *  most accounts, so the count and a short list live here instead. */
 
 @Composable
 private fun EpicFriendRow(f: EpicUserData.Friend, modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = deckShape(10.dp)
     Row(
         modifier = modifier
             .steamFocusRing(shape)
@@ -85,12 +86,12 @@ fun EpicProfileTab(
     val identity: @Composable () -> Unit = {
         // XMB: the whole card is one stop of the D-pad; A enters its two buttons, B comes back to the card.
         val group = rememberXmbFocusGroup()
-        XmbGroupItem(group, RoundedCornerShape(12.dp), Modifier.fillMaxWidth()) {
+        XmbGroupItem(group, deckShape(12.dp), Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .xmbGlassCard(RoundedCornerShape(12.dp), xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
-                    .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), RoundedCornerShape(12.dp))
+                    .xmbGlassCard(deckShape(12.dp), xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+                    .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), deckShape(12.dp))
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {

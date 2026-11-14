@@ -5,6 +5,7 @@ import com.winlator.star.ui.simple.L
 import com.winlator.star.ui.simple.labTile
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.horizontalScroll
 import com.winlator.star.ui.simple.keepInViewWhen
 import com.winlator.star.ui.simple.simpleTap
@@ -39,6 +40,9 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudDownload
@@ -130,6 +134,8 @@ class SteamSaveManagerActivity : ComponentActivity() {
     companion object {
         /** appId to scroll to / highlight when opened from a per-game menu (0 = no focus). */
         const val EXTRA_FOCUS_APP_ID = "focus_app_id"
+        /** Opened from Lab: the Lab-skinned Save Manager over the Lab wallpaper. */
+        const val EXTRA_LAB = "lab"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -140,9 +146,13 @@ class SteamSaveManagerActivity : ComponentActivity() {
         // requested orientation. The game's XServerDisplayActivity is deliberately NOT touched.
         com.winlator.star.core.AppOrientation.apply(this)
         val focusAppId = intent.getIntExtra(EXTRA_FOCUS_APP_ID, 0)
+        val lab = intent.getBooleanExtra(EXTRA_LAB, false)
         setContent {
             WinlatorTheme {
-                SaveManagerScreen(
+                if (lab) Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                    com.winlator.star.ui.simple.LabWallpaper()
+                    SaveManagerScreen(focusAppId = focusAppId, onBack = { finish() }, lab = true)
+                } else SaveManagerScreen(
                     focusAppId = focusAppId,
                     onBack = { finish() },
                 )
@@ -606,7 +616,8 @@ private fun SaveManagerScreenBody(
                     val canSyncAll = signedIn &&
                         steamStatus != SteamRepository.SteamStatus.OFFLINE &&
                         steamStatus != SteamRepository.SteamStatus.SIGNED_OUT
-                    Row(
+                    if (lab) LabSyncStrip(needSync, canSyncAll, syncAllRunning, syncAllProgress) { runSyncAll() }
+                    else Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -758,6 +769,47 @@ private fun SaveManagerScreenBody(
 // behavior). Now an inline rail section (was a cog dialog). State seeds from the shared
 // "save_manager_prefs". Turning a toggle OFF is gated behind a warning confirm (write only on
 // Continue; Cancel leaves it ON); turning ON writes through then shows a brief info dialog.
+/**
+ * Lab: the "N games need syncing" strip as a Lab card (the error colour's bar at its left edge) with Sync now as a Lab
+ * button the controller can reach; "Syncing i/N…" with a spinner while a bulk sync runs. Same action as Classic's strip.
+ */
+@Composable
+private fun LabSyncStrip(needSync: Int, canSyncAll: Boolean, running: Boolean, progress: Pair<Int, Int>, onSync: () -> Unit) {
+    val err = MaterialTheme.colorScheme.error
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .background(err.copy(alpha = 0.12f), com.winlator.star.ui.simple.SimpleShape)
+            .border(1.dp, err.copy(alpha = 0.45f), com.winlator.star.ui.simple.SimpleShape)
+            .drawBehind { drawRect(err, size = androidx.compose.ui.geometry.Size(3.dp.toPx(), size.height)) }
+            .padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+    ) {
+        Icon(Icons.Filled.Warning, contentDescription = null, tint = err, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(10.dp))
+        Text(
+            if (needSync == 1) L("1 game needs syncing") else L("%1\$s games need syncing", needSync),
+            color = com.winlator.star.ui.simple.SimpleStrong, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(8.dp))
+        when {
+            running -> Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+                CircularProgressIndicator(modifier = Modifier.size(14.dp), color = MaterialTheme.colorScheme.primary, strokeWidth = 2.dp)
+                Spacer(Modifier.width(8.dp))
+                Text(L("Syncing %1\$s/%2\$s…", progress.first, progress.second), color = com.winlator.star.ui.simple.SimpleMuted, fontSize = 13.sp)
+            }
+            canSyncAll -> com.winlator.star.ui.simple.LabButton(L("Sync now"), primary = true, icon = Icons.Filled.Sync, onClick = onSync)
+            // Offline or signed out: shown, not offered (as Classic's disabled button).
+            else -> Text(
+                L("Sync now"), color = com.winlator.star.ui.simple.SimpleDim, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            )
+        }
+    }
+}
+
 /** Lab's Save Manager tabs, in the rail's order: (selectedTab value, label, icon). */
 private val LAB_SAVE_TABS = listOf(
     Triple(0, "Steam", Icons.Filled.VideogameAsset),
@@ -817,7 +869,8 @@ private fun SaveManagerSettingsSection(modifier: Modifier = Modifier) {
     // A pending toggle interaction rendered over the section (null = none).
     var pendingToggle by remember { mutableStateOf<TogglePrompt?>(null) }
 
-    Column(modifier = modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
+    // Scrolls: the eight switches don't fit a landscape screen (the last ones spilled out under the panel).
+    Column(modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp)) {
         SettingsToggleRow(
             title = "Steam games: auto-collect on exit",
             subtitle = "Snapshot Steam-library saves to your local Library when a game exits.",

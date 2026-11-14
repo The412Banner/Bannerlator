@@ -705,6 +705,18 @@ internal object GraphicsRows {
             visible = { env, values -> bcnLayerSettings(env, values) }),
         gdcToggle("graphics.gdc.bcnDebugLog", "bcnDebugLog", L("BCn layer"), L("BCn layer debug log"), EXPERT,
             visible = { env, values -> bcnLayerSettings(env, values) }),
+        // "BCn layer: Fast" (BcnFastLayer.KEY=FAST, absent otherwise): Fcharan's faster build, Mali only, where the layer runs.
+        // Lab only (the Classic driver config dialog has it; the Deck and XMB editors keep their rows as they were).
+        packedRow(
+            DRIVER_CFG, "graphics.gdc.bcnLayerFast", com.winlator.star.core.BcnFastLayer.KEY, L("BCn layer"), L("Faster BCn layer (Fcharan build)"), EXPERT, toggle(),
+            decode = { _, r -> if (r == com.winlator.star.core.BcnFastLayer.FAST) "1" else "0" },
+            encode = { v, _ -> if (v == "1") com.winlator.star.core.BcnFastLayer.FAST else null },
+            hint = L("Mali GPUs only; nothing changes on other GPUs."),
+            visible = { env, values ->
+                com.winlator.star.ui.theme.AppThemeState.simpleLook && x11(env, values) && MaliPanvk.isMaliGpu() &&
+                    (bcnLayerSettings(env, values) || (!bcnLayerDriver(values) && values(ID_BCN_TYPE) == "compute" && values(ID_BCN) in setOf("auto", "full")))
+            },
+        ),
         gdcToggle("graphics.gdc.compatUseGamenative", "compatUseGamenative", L("BCn layer"), L("Use the GameNative engine (DirectX 12)"), EXPERT,
             hint = L("Needs a Valhall Mali GPU."),
             visible = { env, values -> bcnLayerSettings(env, values) && values(ID_GFX_DRIVER) == "wrapper-compat-bcn" }),
@@ -1393,6 +1405,11 @@ private fun ActionRow(action: DeckGraphicsState.Action) {
 /** The download sheets, the wrapper manager and the VEGAS config editor the page's actions open. */
 @Composable
 internal fun DeckGraphicsDialogs(state: DeckGraphicsState) {
+    // Lab draws its own pickers, wrapper manager and VEGAS config editor on the same state.
+    if (com.winlator.star.ui.theme.AppThemeState.simpleLook) {
+        com.winlator.star.ui.simple.LabGraphicsDialogs(state)
+        return
+    }
     val env = state.env
     val source = state.source
     state.sheet?.let { type ->

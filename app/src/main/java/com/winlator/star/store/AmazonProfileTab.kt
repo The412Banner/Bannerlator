@@ -31,6 +31,7 @@ import com.winlator.star.ui.deck.xmbGlassCard
 import com.winlator.star.ui.deck.xmbInner
 import com.winlator.star.store.download.StoreSection
 import com.winlator.star.store.download.StoreStatusText
+import com.winlator.star.ui.deck.deckShape
 
 /** The Amazon **Profile** tab: identity (best-effort name), session, library counts, web links. */
 @Composable
@@ -51,12 +52,12 @@ fun AmazonProfileTab(
     val identity: @Composable () -> Unit = {
         // XMB: the whole card is one stop of the D-pad; A enters its two buttons, B comes back to the card.
         val group = rememberXmbFocusGroup()
-        XmbGroupItem(group, RoundedCornerShape(12.dp), Modifier.fillMaxWidth()) {
+        XmbGroupItem(group, deckShape(12.dp), Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .xmbGlassCard(RoundedCornerShape(12.dp), xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
-                    .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), RoundedCornerShape(12.dp))
+                    .xmbGlassCard(deckShape(12.dp), xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+                    .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), deckShape(12.dp))
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {

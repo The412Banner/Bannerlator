@@ -21,11 +21,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import com.winlator.star.ui.theme.LabButton as Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.winlator.star.ui.theme.LabTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.Color as ComposeColor
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import com.winlator.star.ui.theme.WinlatorTheme
+import com.winlator.star.ui.deck.deckShape
 
 class QrLoginActivity : ComponentActivity(), SteamQrAuthManager.QrAuthListener {
 
@@ -243,7 +244,7 @@ private fun QrLoginScreen(
         // QR code card \u2014 deliberately white regardless of theme; scanners need the contrast.
         Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
+                .clip(deckShape(12.dp))
                 .background(ComposeColor.White)
                 .padding(12.dp),
             contentAlignment = Alignment.Center,
@@ -296,7 +297,7 @@ private fun QrLoginScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
+                .clip(deckShape(8.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .padding(12.dp),
         ) {
@@ -315,7 +316,7 @@ private fun QrLoginScreen(
             Button(
                 onClick = onRetry,
                 modifier = Modifier.fillMaxWidth().height(48.dp),
-                shape = RoundedCornerShape(8.dp),
+                shape = deckShape(8.dp),
             ) { Text("Retry") }
             Spacer(Modifier.height(8.dp))
         }

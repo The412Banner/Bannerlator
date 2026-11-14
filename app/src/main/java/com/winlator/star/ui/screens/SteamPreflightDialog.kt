@@ -342,6 +342,23 @@ fun SteamPreflightDialog(
         onHelp = { toggleHelp(caption.help) },
     )
 
+    // Lab: a Lab panel with the same photo, the live step list and the fail card's choices as Lab buttons (same state, same handlers).
+    if (com.winlator.star.ui.theme.AppThemeState.simpleLook) {
+        val appSteam = request.clientPackage == SteamSessionManager.ClientPackage.APP_STEAM
+        LabPreflight(
+            title = title,
+            gameName = shortcut.name,
+            clientLabel = if (appSteam) "Headless Steam" else "SteamLite",
+            show = show,
+            rows = preflightRows(states, launching, appSteam, shortcut.name),
+            fail = fail,
+            help = helpText,
+            onHelp = { toggleHelp(titleHelp) },
+            onDismiss = onDismiss,
+        )
+        return
+    }
+
     // The XMB interface: an XMB dialog with the photo, the live step list and the fail card inline (same state, same handlers).
     if (xmb) {
         val appSteam = request.clientPackage == SteamSessionManager.ClientPackage.APP_STEAM
@@ -903,6 +920,105 @@ private fun PreflightHelpTip(text: String, onDismiss: () -> Unit) {
             .padding(horizontal = 10.dp, vertical = 8.dp),
     ) {
         Text(text, style = MaterialTheme.typography.bodySmall, color = cs.onSurface)
+    }
+}
+
+// ── Lab: the pre-flight as a Lab panel (photo + live caption, step list, fail card, its choices as Lab buttons) ──
+
+/**
+ * "Getting Steam ready" for Lab: the photo strip beside (landscape) or over (portrait) the step list, the open help text,
+ * then the fail card when a step stopped the pre-flight. Its choices, Help and Cancel are the panel's buttons; the
+ * recommended choice takes the controller focus when it appears. B is Cancel.
+ */
+@Composable
+private fun LabPreflight(
+    title: String,
+    gameName: String,
+    clientLabel: String,
+    show: SlideShow,
+    rows: List<PreflightRow>,
+    fail: FailCardModel?,
+    help: String?,
+    onHelp: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val recommended = remember { androidx.compose.ui.focus.FocusRequester() }
+    val actions = fail?.actions.orEmpty().sortedByDescending { it.primary }
+    LaunchedEffect(fail?.title) {
+        if (fail == null || actions.isEmpty()) return@LaunchedEffect
+        delay(120)
+        runCatching { recommended.requestFocus() }
+    }
+    com.winlator.star.ui.simple.LabPanelDialog(
+        title = title,
+        onDismiss = onDismiss,
+        wide = landscape,
+        // Modal as Classic's: a tap outside does nothing; B is Cancel.
+        dismissOnOutside = false,
+        buttons = actions.mapIndexed { i, a ->
+            com.winlator.star.ui.simple.LabDialogButton(a.label, a.onClick, primary = a.primary, requester = if (i == 0) recommended else null)
+        } + listOf(
+            com.winlator.star.ui.simple.LabDialogButton(com.winlator.star.ui.simple.L("Help"), onHelp),
+            com.winlator.star.ui.simple.LabDialogButton(com.winlator.star.ui.simple.L("Cancel"), onDismiss),
+        ),
+    ) {
+        Text(
+            gameName + " · " + com.winlator.star.ui.simple.L("Getting Steam ready · %1\$s", clientLabel),
+            color = com.winlator.star.ui.simple.SimpleMuted, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
+        )
+        if (landscape) {
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                SlideStrip(show, photoBias = -0.5f, modifier = Modifier.width(280.dp).height(200.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) { rows.forEach { LabPreflightRow(it, if (it.id == PreflightRowId.CLIENT) show.progress else null) } }
+            }
+        } else {
+            SlideStrip(show, photoBias = -0.4f, modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp).aspectRatio(16f / 8.2f))
+            rows.forEach { LabPreflightRow(it, if (it.id == PreflightRowId.CLIENT) show.progress else null) }
+        }
+        help?.let { com.winlator.star.ui.simple.LabDialogText(it, muted = true) }
+        fail?.let { card ->
+            val edge = if (card.red) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+            Column(
+                Modifier.fillMaxWidth()
+                    .background(edge.copy(alpha = 0.10f), com.winlator.star.ui.simple.SimpleShape)
+                    .border(1.dp, edge.copy(alpha = 0.45f), com.winlator.star.ui.simple.SimpleShape)
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(card.title, color = com.winlator.star.ui.simple.SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(card.body, color = com.winlator.star.ui.simple.SimpleMuted, fontSize = 13.sp)
+            }
+        }
+    }
+}
+
+/** One step of the Lab pre-flight: its mark, its name and what it reported. */
+@Composable
+private fun LabPreflightRow(row: PreflightRow, progress: Float?) {
+    val cs = MaterialTheme.colorScheme
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+            .then(if (row.current) Modifier.background(cs.primary.copy(alpha = 0.14f), com.winlator.star.ui.simple.SimpleShape) else Modifier)
+            .padding(horizontal = 8.dp, vertical = 5.dp),
+    ) {
+        Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
+            when (row.mark) {
+                PreflightMark.RUNNING -> CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = cs.primary)
+                PreflightMark.DONE -> Text("✓", color = OkGreen, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                PreflightMark.NOTICE -> Text("✓", color = NoticeAmber, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                PreflightMark.SKIPPED -> Text("–", color = com.winlator.star.ui.simple.SimpleDim, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                PreflightMark.WARN -> Text("!", color = cs.error, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                PreflightMark.PENDING -> Text("·", color = com.winlator.star.ui.simple.SimpleDim, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+        }
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(row.name, color = com.winlator.star.ui.simple.SimpleStrong, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1)
+            if (row.detail.isNotBlank()) Text(row.detail, color = com.winlator.star.ui.simple.SimpleMuted, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (progress != null) com.winlator.star.ui.simple.LabBar(progress.coerceIn(0f, 1f), Modifier.fillMaxWidth().padding(top = 3.dp))
+        }
     }
 }
 

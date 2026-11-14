@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.SdCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -40,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -54,6 +59,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import com.winlator.star.container.Shortcut
+import com.winlator.star.core.WinePath
 import com.winlator.star.ui.deck.DeckRoutes
 import com.winlator.star.ui.deck.SoraFamily
 import java.io.File
@@ -433,9 +439,12 @@ internal fun labCardMin(style: String, size: String): Dp = when (style) {
     else -> when (size) { "s" -> 100.dp; "l" -> 190.dp; else -> 140.dp }
 }
 
-/** A card's name over the bottom of its picture, with [line] (its container) and the Linux runtime's state under it. */
+/**
+ * A card's name over the bottom of its picture, with [line] (its container) and the Linux runtime's state under it, and
+ * the game's setup [chips] (the Library's cards; at most two lines of them).
+ */
 @Composable
-private fun BoxScope.LabCaption(s: Shortcut, line: String?, nameLines: Int = 2) {
+private fun BoxScope.LabCaption(s: Shortcut, line: String?, nameLines: Int = 2, chips: List<String> = emptyList()) {
     Column(
         Modifier.align(Alignment.BottomStart).fillMaxWidth()
             .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.72f))))
@@ -444,27 +453,64 @@ private fun BoxScope.LabCaption(s: Shortcut, line: String?, nameLines: Int = 2) 
         Text(LabTitles.of(s), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = nameLines, overflow = TextOverflow.Ellipsis, lineHeight = 15.sp)
         if (line != null) Text(line, color = Color.White.copy(alpha = 0.7f), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         LabRuntimeStatus(s)
+        if (chips.isNotEmpty()) LabCardChips(chips, Color.White, Color.White.copy(alpha = 0.16f), Modifier.padding(top = 4.dp))
     }
 }
 
-/** A game's wide cover (its pick, Steam's header, else the cover cropped), with its name (and [line]) over the bottom when [title]. */
+/** The setup chips of a Library card: small ones, wrapping onto a second line, the rest cut off. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun LabWideCard(s: Shortcut, modifier: Modifier, title: Boolean, line: String? = null) {
+private fun LabCardChips(chips: List<String>, ink: Color, fill: Color, modifier: Modifier = Modifier) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+        modifier = modifier.fillMaxWidth().heightIn(max = 33.dp).clipToBounds(),
+    ) {
+        chips.forEach { c ->
+            Text(
+                c, color = ink.copy(alpha = 0.9f), fontSize = 9.sp, lineHeight = 11.sp, maxLines = 1, softWrap = false,
+                modifier = Modifier.background(fill, SimpleChipShape).padding(horizontal = 5.dp, vertical = 2.dp),
+            )
+        }
+    }
+}
+
+/**
+ * The game's setup for its Library card, read off the main thread: the chips Home shows (driver, DXVK, renderer,
+ * frame generation, VKD3D, x86 backend — Classic's list card values), without the container the card already names.
+ * None on small cards.
+ */
+@Composable
+private fun rememberCardChips(s: Shortcut): List<String> {
+    if (LabArt.cardSize == "s") return emptyList()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val tick = LabArt.tick
+    val chips by androidx.compose.runtime.produceState(emptyList<String>(), s.file.path, tick) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching { labSetupChips(context, s) }.getOrDefault(emptyList())
+        }.filter { it != s.container?.name }
+    }
+    return chips
+}
+
+/** A game's wide cover (its pick, Steam's header, else the cover cropped), with its name (and [line], [chips]) over the bottom when [title]. */
+@Composable
+internal fun LabWideCard(s: Shortcut, modifier: Modifier, title: Boolean, line: String? = null, chips: List<String> = emptyList()) {
     val tick = LabArt.tick
     val pics = remember(s.file.path, tick) { LabArt.models(s, "wide").map { LabArt.Pic(it) } }
     Box(modifier.clip(SimpleShape).background(Color(0xFF20242E))) {
         LabPicture(pics, Modifier.fillMaxSize(), onNone = { SimpleCover(s, Modifier.fillMaxSize(), title = false) })
         // A wide card is short: with the container line the name keeps to one.
-        if (title) LabCaption(s, line, nameLines = if (line != null) 1 else 2)
+        if (title) LabCaption(s, line, nameLines = if (line != null || chips.isNotEmpty()) 1 else 2, chips = chips)
     }
 }
 
-/** A game's cover (Simple's) with its name and [line] over the bottom. */
+/** A game's cover (Simple's) with its name and [line] (and [chips]) over the bottom. */
 @Composable
-internal fun LabCoverCard(s: Shortcut, modifier: Modifier, line: String?) {
+internal fun LabCoverCard(s: Shortcut, modifier: Modifier, line: String?, chips: List<String> = emptyList()) {
     Box(modifier.clip(SimpleShape)) {
         SimpleCover(s, Modifier.fillMaxSize(), title = false)
-        LabCaption(s, line)
+        LabCaption(s, line, chips = chips)
     }
 }
 
@@ -499,6 +545,9 @@ internal fun LabBadged(s: Shortcut, modifier: Modifier, picked: Boolean? = null,
         // Two pills (EPIC + EOS, STEAM + EA) need about 80 dp, more beside the selection mark.
         val compact = maxWidth < 84.dp || (picked != null && maxWidth < 120.dp)
         Box(Modifier.align(Alignment.TopStart).padding(6.dp)) { LabStoreBadges(s, compact) }
+        // On a removable drive (an SD card, USB): Classic's SD mark, top right (under the pick mark while picking).
+        val sd = remember(s.file.path) { runCatching { WinePath.isOnRemovableStorage(s.container, s.path) }.getOrDefault(false) }
+        if (sd) LabSdBadge(Modifier.align(Alignment.TopEnd).padding(end = 6.dp, top = if (picked != null) 36.dp else 6.dp))
         if (picked != null) {
             Box(
                 contentAlignment = Alignment.Center,
@@ -507,6 +556,19 @@ internal fun LabBadged(s: Shortcut, modifier: Modifier, picked: Boolean? = null,
                     .border(1.5.dp, Color.White.copy(alpha = 0.8f), CircleShape),
             ) { if (picked) Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp)) }
         }
+    }
+}
+
+/** The SD mark of a game on a removable drive. */
+@Composable
+private fun LabSdBadge(modifier: Modifier) {
+    androidx.compose.foundation.layout.Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.background(Color.Black.copy(alpha = 0.6f), SimpleShape).padding(horizontal = 5.dp, vertical = 2.dp),
+    ) {
+        Icon(Icons.Filled.SdCard, contentDescription = L("On SD card"), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(11.dp))
+        androidx.compose.foundation.layout.Spacer(Modifier.size(3.dp))
+        Text("SD", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -534,27 +596,32 @@ private fun LabStoreBadges(s: Shortcut, compact: Boolean) {
     )
 }
 
-/** An icon card: the icon and the name (and [line]) under it, with the store pills over the icon when [badges]. */
+/** An icon card: the icon and the name (and [line], [chips]) under it, with the store pills over the icon when [badges]. */
 @Composable
-internal fun LabIconCard(s: Shortcut, modifier: Modifier, iconModifier: Modifier, badges: Boolean = false, line: String? = null, picked: Boolean? = null) {
+internal fun LabIconCard(s: Shortcut, modifier: Modifier, iconModifier: Modifier, badges: Boolean = false, line: String? = null, picked: Boolean? = null, chips: List<String> = emptyList()) {
     Column(modifier.padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (badges) LabBadged(s, iconModifier, picked) { LabIcon(s, it) } else LabIcon(s, iconModifier)
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(LabTitles.of(s), color = SimpleInk, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 14.sp)
             if (line != null) Text(line, color = SimpleMuted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
             LabRuntimeStatus(s, color = SimpleMuted)
+            if (chips.isNotEmpty()) LabCardChips(chips, SimpleInk, SimpleCard, Modifier.padding(top = 3.dp))
         }
     }
 }
 
-/** A Library grid card in the chosen style, with [line] (its container) under the name; [picked] as on [LabBadged]. */
+/**
+ * A Library grid card in the chosen style, with [line] (its container) and the game's setup chips (as Classic's list
+ * card shows them) under the name; [picked] as on [LabBadged].
+ */
 @Composable
 internal fun LabGridCard(s: Shortcut, modifier: Modifier, line: String? = null, picked: Boolean? = null) {
+    val chips = rememberCardChips(s)
     when (LabArt.cards) {
-        LabArt.WIDE -> LabBadged(s, modifier.aspectRatio(460f / 215f), picked) { LabWideCard(s, it, title = true, line = line) }
+        LabArt.WIDE -> LabBadged(s, modifier.aspectRatio(460f / 215f), picked) { LabWideCard(s, it, title = true, line = line, chips = chips) }
         // Small icons have no room for a second line.
-        LabArt.ICONS -> LabIconCard(s, modifier, Modifier.fillMaxWidth().aspectRatio(1f), badges = true, line = line.takeIf { LabArt.cardSize != "s" }, picked = picked)
-        else -> LabBadged(s, modifier.aspectRatio(3f / 4f), picked) { LabCoverCard(s, it, line) }
+        LabArt.ICONS -> LabIconCard(s, modifier, Modifier.fillMaxWidth().aspectRatio(1f), badges = true, line = line.takeIf { LabArt.cardSize != "s" }, picked = picked, chips = chips)
+        else -> LabBadged(s, modifier.aspectRatio(3f / 4f), picked) { LabCoverCard(s, it, line, chips = chips) }
     }
 }
 

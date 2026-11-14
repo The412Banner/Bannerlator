@@ -925,9 +925,9 @@ internal fun SimplePicker(
                 }
             }
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                SimpleGlyph("A"); Spacer(Modifier.width(4.dp)); Text("Pick", color = SimpleMuted, fontSize = 12.sp)
-                Spacer(Modifier.width(14.dp))
-                SimpleGlyph("B"); Spacer(Modifier.width(4.dp)); Text("Close", color = SimpleMuted, fontSize = 12.sp)
+                com.winlator.star.ui.simple.LabHint("A", "Pick")
+                Spacer(Modifier.width(8.dp))
+                com.winlator.star.ui.simple.LabHint("B", "Close")
             }
         }
     }

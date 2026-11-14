@@ -40,7 +40,21 @@ fun XServerDialogHost() {
     val menuOpen by state.menuOpen.collectAsState()
     val fgResetPaused by state.fgResetPaused.collectAsState()
     val achievementPills by state.achievementPills.collectAsState()
-    when (activeDialog) {
+    // Lab draws the pop-ups its in-game menu opens in its own style; every other look keeps the Classic dialogs.
+    val lab = com.winlator.star.ui.theme.AppThemeState.simpleLook
+    if (lab && activeDialog in LAB_DIALOGS) {
+        com.winlator.star.ui.deck.LabInGameTheme {
+            when (activeDialog) {
+                XServerDialogState.ActiveDialog.DEBUG           -> com.winlator.star.ui.deck.LabDebugDialog(state)
+                XServerDialogState.ActiveDialog.ACTIVE_WINDOWS  -> com.winlator.star.ui.deck.LabActiveWindowsDialog(state)
+                XServerDialogState.ActiveDialog.NEW_TASK        -> com.winlator.star.ui.deck.LabNewTaskDialog(state)
+                XServerDialogState.ActiveDialog.CAST            -> com.winlator.star.ui.deck.LabCastDialog(state)
+                XServerDialogState.ActiveDialog.CONTROLLER_TEST -> com.winlator.star.ui.deck.LabControllerTestDialog(state)
+                XServerDialogState.ActiveDialog.RUN_PROGRAM     -> com.winlator.star.ui.deck.LabRunProgramDialog(state)
+                else -> Unit
+            }
+        }
+    } else when (activeDialog) {
         XServerDialogState.ActiveDialog.VIBRATION      -> VibrationDialog(state)
         XServerDialogState.ActiveDialog.DEBUG          -> DebugDialogContent(state)
         XServerDialogState.ActiveDialog.INPUT_CONTROLS -> InputControlsDialog(state)
@@ -74,3 +88,13 @@ fun XServerDialogHost() {
     // non-interactive, each pill auto-dismisses on its own ~4.5s lifecycle.
     if (achievementPills.isNotEmpty()) AchievementPillStackOverlay(state)
 }
+
+/** The host's pop-ups Lab draws itself (LabInGamePopups.kt); the rest have no Lab entry and stay Classic. */
+private val LAB_DIALOGS = setOf(
+    XServerDialogState.ActiveDialog.DEBUG,
+    XServerDialogState.ActiveDialog.ACTIVE_WINDOWS,
+    XServerDialogState.ActiveDialog.NEW_TASK,
+    XServerDialogState.ActiveDialog.CAST,
+    XServerDialogState.ActiveDialog.CONTROLLER_TEST,
+    XServerDialogState.ActiveDialog.RUN_PROGRAM,
+)

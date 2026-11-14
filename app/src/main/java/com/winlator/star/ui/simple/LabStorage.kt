@@ -3,6 +3,10 @@ package com.winlator.star.ui.simple
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,12 +35,16 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 
-/** Classic's Storage Info in Lab's look: [container]'s Drive C, cache and total, and Clear cache (same steps as Classic). */
+/**
+ * Classic's Storage Info in Lab's look: [container]'s Drive C, cache and total, the share of the internal storage it
+ * uses (Classic's ring), and Clear cache (same steps as Classic).
+ */
 @Composable
 internal fun LabStorageDialog(container: Container, onDismiss: () -> Unit) {
     var driveC by remember { mutableLongStateOf(0L) }
     var cache by remember { mutableLongStateOf(0L) }
     val handler = remember { android.os.Handler(android.os.Looper.getMainLooper()) }
+    val internal = remember { FileUtils.getInternalStorageSize() }
     val done = remember { FocusRequester() }
     LaunchedEffect(container) {
         val root = container.getRootDir()
@@ -56,9 +64,28 @@ internal fun LabStorageDialog(container: Container, onDismiss: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(container.name, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            SizeLine(L("Drive C"), driveC)
-            SizeLine(L("Cache"), cache)
-            SizeLine(L("Total"), driveC + cache, strong = true)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SizeLine(L("Drive C"), driveC)
+                    SizeLine(L("Cache"), cache)
+                    SizeLine(L("Total"), driveC + cache, strong = true)
+                }
+                // As Classic: the total against the internal storage's size.
+                val pct = if (internal > 0) ((driveC + cache).toFloat() / internal * 100f).coerceIn(0f, 100f) else 0f
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(
+                            progress = { pct / 100f },
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = SimpleLine,
+                            strokeWidth = 8.dp,
+                            modifier = Modifier.size(84.dp),
+                        )
+                        Text("${pct.toInt()}%", color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    }
+                    Text(L("Estimated used space"), color = SimpleMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
+                }
+            }
             Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
                 LabButton(L("Clear cache")) {
                     FileUtils.clear(File(container.getRootDir(), ".cache"))

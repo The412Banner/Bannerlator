@@ -46,10 +46,10 @@ import com.winlator.star.ui.screens.MenuItemDivider
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import com.winlator.star.ui.screens.outlinedMenuCard
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
+import com.winlator.star.ui.theme.LabOutlinedButton as OutlinedButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.material3.Button
+import com.winlator.star.ui.theme.LabButton as Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -62,7 +62,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.winlator.star.ui.theme.LabTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -123,6 +123,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.URL
+import com.winlator.star.ui.deck.deckShape
 
 /** Semantic action carried by the install button; the colour resolves inside the composable
  *  (install/retry = primary, cancel/uninstall = error) so theme presets recolor it live. */
@@ -2077,7 +2078,7 @@ private fun SteamGameDetailScreen(
     )
     // Primary action + gear menu: a single state-driven button drives install / retry / add-to-shortcuts (and shows
     // download progress read-only), while the gear dropdown carries pause/resume, cancel, uninstall, branch, DLC and Goldberg.
-    val primaryShape = RoundedCornerShape(10.dp)
+    val primaryShape = deckShape(10.dp)
     var freeMessage by remember(appId) { mutableStateOf<String?>(null) }
     StorePage(
         geometry = geometry,
@@ -2349,7 +2350,7 @@ private fun SteamGameDetailScreen(
                         )
                         OutlinedButton(
                             onClick = onBranchLineClick,
-                            modifier = Modifier.padding(top = 6.dp).storeFocus(CircleShape, onBranchLineClick),
+                            modifier = Modifier.padding(top = 6.dp).storeFocus(com.winlator.star.ui.theme.labPillShape(), onBranchLineClick),
                         ) {
                             Text("Change branch")
                         }
@@ -2364,7 +2365,7 @@ private fun SteamGameDetailScreen(
                         )
                         OutlinedButton(
                             onClick = onLanguageLineClick,
-                            modifier = Modifier.padding(top = 6.dp).storeFocus(CircleShape, onLanguageLineClick),
+                            modifier = Modifier.padding(top = 6.dp).storeFocus(com.winlator.star.ui.theme.labPillShape(), onLanguageLineClick),
                         ) {
                             Text("Change language")
                         }
@@ -2377,7 +2378,7 @@ private fun SteamGameDetailScreen(
                             )
                             OutlinedButton(
                                 onClick = onLanguageDownloadClick,
-                                modifier = Modifier.padding(top = 6.dp).storeFocus(CircleShape, onLanguageDownloadClick),
+                                modifier = Modifier.padding(top = 6.dp).storeFocus(com.winlator.star.ui.theme.labPillShape(), onLanguageDownloadClick),
                             ) {
                                 Text("Download language files")
                             }
@@ -2465,7 +2466,7 @@ private fun SteamGameDetailScreen(
                             )
                             OutlinedButton(
                                 onClick = onDlcLineClick,
-                                modifier = Modifier.padding(top = 8.dp).storeFocus(CircleShape, onDlcLineClick),
+                                modifier = Modifier.padding(top = 8.dp).storeFocus(com.winlator.star.ui.theme.labPillShape(), onDlcLineClick),
                             ) { Text("Choose DLC") }
                         }
                     }
@@ -2610,7 +2611,7 @@ private fun SteamGameDetailScreen(
                 Button(
                     onClick = onDismissDlcSheet,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = deckShape(10.dp),
                 ) { Text("Done") }
             }
         }
@@ -2753,7 +2754,7 @@ private fun SteamGameDetailScreen(
                         onClick = { onCheckBranchPassword(code) },
                         enabled = !branchCheckBusy && code.isNotBlank(),
                         modifier = Modifier.padding(top = 8.dp),
-                        shape = RoundedCornerShape(10.dp),
+                        shape = deckShape(10.dp),
                     ) {
                         if (branchCheckBusy) {
                             CircularProgressIndicator(
@@ -2770,7 +2771,7 @@ private fun SteamGameDetailScreen(
                 Button(
                     onClick = onDismissBranchSheet,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = deckShape(10.dp),
                 ) { Text("Done") }
             }
         }
@@ -2806,7 +2807,7 @@ private fun GearMenuItem(
 ) {
     val base = if (danger) MaterialTheme.colorScheme.error else AchvInk
     DropdownMenuItem(
-        modifier = if (enabled) Modifier.storeFocus(RoundedCornerShape(6.dp), onClick) else Modifier,
+        modifier = if (enabled) Modifier.storeFocus(deckShape(6.dp), onClick) else Modifier,
         text = {
             Text(
                 text = text,
@@ -2845,7 +2846,7 @@ private fun SteamDetailTabs(
         },
         selected = tabs.indexOf(selected),
         onSelect = { onSelect(tabs[it]) },
-        shape = RoundedCornerShape(8.dp),
+        shape = deckShape(8.dp),
         idle = StoreChipStyle(AchvCard, AchvLineSoft, AchvInk2),
         active = StoreChipStyle(AchvTabActiveBg, AchvTabActiveBorder, AchvTabActiveText),
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 6.dp),
@@ -2958,7 +2959,7 @@ private fun AchievementProgressBlock(done: Int, total: Int, pct: Int) {
         }
         Spacer(Modifier.height(8.dp))
         val frac = (pct / 100f).coerceIn(0f, 1f)
-        val trackShape = RoundedCornerShape(20.dp)
+        val trackShape = deckShape(20.dp)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -3003,7 +3004,7 @@ private fun AchievementTile(
     modifier: Modifier = Modifier,
 ) {
     val hiddenLocked = a.hidden && !a.unlocked
-    val shape = RoundedCornerShape(11.dp)
+    val shape = deckShape(11.dp)
     val bg = if (a.unlocked) Brush.linearGradient(listOf(AchvTileUnlockedTop, AchvTileUnlockedBot))
              else Brush.linearGradient(listOf(AchvTileLockedTop, AchvTileLockedBot))
     val borderColor = when {
@@ -3072,8 +3073,8 @@ private fun AchievementTile(
 @Composable
 private fun AchievementHelpDialog(a: SteamAchievement, onDismiss: () -> Unit) {
     val hiddenLocked = a.hidden && !a.unlocked
-    val iconShape = RoundedCornerShape(16.dp)
-    val pillShape = RoundedCornerShape(20.dp)
+    val iconShape = deckShape(16.dp)
+    val pillShape = deckShape(20.dp)
     val statusLabel = when {
         a.unlocked && a.unlockTimeSec > 0L -> "Unlocked · ${formatUnlockDate(a.unlockTimeSec)}"
         a.unlocked                         -> "Unlocked"
@@ -3234,7 +3235,7 @@ private fun AchievementCaptionBar(selected: SteamAchievement?, modifier: Modifie
 /** Status pill for the caption bar: gold "Unlocked" vs muted "Locked". */
 @Composable
 private fun AchvStatusPill(unlocked: Boolean) {
-    val shape = RoundedCornerShape(20.dp)
+    val shape = deckShape(20.dp)
     Box(
         modifier = Modifier
             .clip(shape)
@@ -3263,7 +3264,7 @@ private fun AchvLegendItem(swatch: @Composable () -> Unit, label: String) {
 /** A 12dp legend swatch: unlocked (gold-bordered bright gradient) vs locked (dim greyed gradient). */
 @Composable
 private fun AchvLegendSwatch(unlocked: Boolean) {
-    val shape = RoundedCornerShape(4.dp)
+    val shape = deckShape(4.dp)
     Box(
         modifier = Modifier
             .size(12.dp)
@@ -3422,7 +3423,7 @@ private fun GoldbergSection(
                 Button(
                     onClick = onDownloadClick,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = deckShape(10.dp),
                 ) { Text("$verb Steam Emulator$sizeSuffix", maxLines = 1) }
             }
         }
@@ -3445,7 +3446,7 @@ private fun GoldbergSection(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(deckShape(8.dp))
                     .clickable(enabled = !busy) { onModeSelected(optMode) }
                     .padding(vertical = 4.dp),
             ) {
@@ -3516,7 +3517,7 @@ private fun CloudSavesSection(
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .padding(bottom = 16.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(deckShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(16.dp),
     ) {
@@ -3571,8 +3572,8 @@ private fun CloudSavesSection(
                 Spacer(Modifier.height(12.dp))
                 Button(
                     onClick = onSetUp,
-                    modifier = Modifier.fillMaxWidth().storeFocus(RoundedCornerShape(10.dp), onSetUp, tint = MaterialTheme.colorScheme.onPrimary),
-                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().storeFocus(deckShape(10.dp), onSetUp, tint = MaterialTheme.colorScheme.onPrimary),
+                    shape = deckShape(10.dp),
                 ) { Text("Set up in a container", maxLines = 1) }
             }
 
@@ -3594,8 +3595,8 @@ private fun CloudSavesSection(
                 Button(
                     onClick = onSyncFromCloud,
                     enabled = !busy,
-                    modifier = Modifier.fillMaxWidth().storeFocus(RoundedCornerShape(10.dp), onSyncFromCloud, tint = MaterialTheme.colorScheme.onPrimary),
-                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().storeFocus(deckShape(10.dp), onSyncFromCloud, tint = MaterialTheme.colorScheme.onPrimary),
+                    shape = deckShape(10.dp),
                 ) { Text("⬇ Sync from Cloud", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 Spacer(Modifier.height(2.dp))
                 Text(
@@ -3608,8 +3609,8 @@ private fun CloudSavesSection(
                 Button(
                     onClick = onSyncToCloud,
                     enabled = !busy,
-                    modifier = Modifier.fillMaxWidth().storeFocus(RoundedCornerShape(10.dp), onSyncToCloud, tint = MaterialTheme.colorScheme.onPrimary),
-                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().storeFocus(deckShape(10.dp), onSyncToCloud, tint = MaterialTheme.colorScheme.onPrimary),
+                    shape = deckShape(10.dp),
                 ) { Text("⬆ Sync to Cloud", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 Spacer(Modifier.height(2.dp))
                 Text(
@@ -3624,8 +3625,8 @@ private fun CloudSavesSection(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .storeFocus(RoundedCornerShape(8.dp), { advancedExpanded = !advancedExpanded })
-                        .clip(RoundedCornerShape(8.dp))
+                        .storeFocus(deckShape(8.dp), { advancedExpanded = !advancedExpanded })
+                        .clip(deckShape(8.dp))
                         .clickable { advancedExpanded = !advancedExpanded }
                         .padding(vertical = 6.dp),
                 ) {
@@ -3655,15 +3656,15 @@ private fun CloudSavesSection(
                         Button(
                             onClick = onDownload,
                             enabled = !busy,
-                            modifier = Modifier.weight(1f).storeFocus(RoundedCornerShape(10.dp), onDownload, tint = MaterialTheme.colorScheme.onPrimary),
-                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f).storeFocus(deckShape(10.dp), onDownload, tint = MaterialTheme.colorScheme.onPrimary),
+                            shape = deckShape(10.dp),
                         ) { Text("⬇ Download", maxLines = 1, overflow = TextOverflow.Ellipsis) }
 
                         OutlinedButton(
                             onClick = onUpload,
                             enabled = !busy,
-                            modifier = Modifier.weight(1f).storeFocus(RoundedCornerShape(10.dp), onUpload),
-                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f).storeFocus(deckShape(10.dp), onUpload),
+                            shape = deckShape(10.dp),
                         ) { Text("⬆ Upload", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                     }
 
@@ -3679,15 +3680,15 @@ private fun CloudSavesSection(
                         Button(
                             onClick = onApply,
                             enabled = !busy,
-                            modifier = Modifier.weight(1f).storeFocus(RoundedCornerShape(10.dp), onApply, tint = MaterialTheme.colorScheme.onPrimary),
-                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f).storeFocus(deckShape(10.dp), onApply, tint = MaterialTheme.colorScheme.onPrimary),
+                            shape = deckShape(10.dp),
                         ) { Text("→ Apply", maxLines = 1, overflow = TextOverflow.Ellipsis) }
 
                         OutlinedButton(
                             onClick = onCollect,
                             enabled = !busy,
-                            modifier = Modifier.weight(1f).storeFocus(RoundedCornerShape(10.dp), onCollect),
-                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f).storeFocus(deckShape(10.dp), onCollect),
+                            shape = deckShape(10.dp),
                         ) { Text("← Collect", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                     }
                 }
@@ -3809,7 +3810,7 @@ private fun CloudConfirmDialog(
 private fun InfoChip(label: String) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(deckShape(6.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(horizontal = 8.dp, vertical = 3.dp),
     ) {
@@ -4250,7 +4251,7 @@ private fun SpeedLoadMeter(filled: Int) {
             Box(
                 modifier = Modifier
                     .size(width = 12.dp, height = 4.dp)
-                    .clip(RoundedCornerShape(2.dp))
+                    .clip(deckShape(2.dp))
                     .background(if (i < filled) cs.primary else cs.surfaceVariant),
             )
         }
@@ -4265,9 +4266,9 @@ private fun DownloadDialogWarning(text: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(deckShape(8.dp))
             .background(cs.error.copy(alpha = 0.12f))
-            .border(1.dp, cs.error.copy(alpha = 0.30f), RoundedCornerShape(8.dp))
+            .border(1.dp, cs.error.copy(alpha = 0.30f), deckShape(8.dp))
             .padding(horizontal = 8.dp, vertical = 6.dp),
     ) {
         Text(

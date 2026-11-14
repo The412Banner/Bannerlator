@@ -72,6 +72,7 @@ import org.json.JSONObject
 import androidx.lifecycle.lifecycleScope
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
+import com.winlator.star.ui.deck.deckShape
 
 class EpicGameDetailActivity : ComponentActivity() {
 
@@ -1135,7 +1136,7 @@ private fun EpicGameDetailScreen(
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .clip(deckShape(8.dp))
                                     .background(MaterialTheme.colorScheme.surface)
                                     .padding(10.dp),
                             ) {

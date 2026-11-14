@@ -5904,7 +5904,7 @@ private fun ContainerInfoRow(label: String, value: String, valueColor: Color? = 
 }
 
 /** Prettify a raw dxwrapper id (e.g. "dxvk+vkd3d") to its display form ("DXVK+VKD3D"). */
-private fun prettyDxWrapper(raw: String): String {
+internal fun prettyDxWrapper(raw: String): String {
     if (raw.isBlank() || raw == "—") return raw
     return raw.split("+").joinToString("+") { token ->
         when (token.trim().lowercase()) {
@@ -5918,7 +5918,7 @@ private fun prettyDxWrapper(raw: String): String {
 }
 
 /** Prettify a raw renderer id (e.g. "vulkan") to its display form ("Vulkan"). */
-private fun prettyRenderer(raw: String): String = when (raw.trim().lowercase()) {
+internal fun prettyRenderer(raw: String): String = when (raw.trim().lowercase()) {
     "" -> raw
     "vulkan" -> "Vulkan"
     "gl", "opengl", "gles" -> "OpenGL"
@@ -5928,7 +5928,7 @@ private fun prettyRenderer(raw: String): String = when (raw.trim().lowercase()) 
 
 /** Tidy the device line: "8 cores" -> "8c" so it fits the narrow value column without wrapping to a
  *  dangling separator. */
-private fun tidyDevice(raw: String): String = raw.replace(" cores", "c")
+internal fun tidyDevice(raw: String): String = raw.replace(" cores", "c")
 
 /** Mods tab: one card per mod this game's EXE can take (core.GameMods). A loaded mod shows its release,
  *  the DLL it loads as and a button that shows or hides its in-game menu; an off or not-loaded one is dimmed. */

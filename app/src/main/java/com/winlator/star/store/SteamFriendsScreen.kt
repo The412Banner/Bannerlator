@@ -54,7 +54,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import com.winlator.star.ui.screens.OutlinedAlertDialog as AlertDialog
-import androidx.compose.material3.Button
+import com.winlator.star.ui.theme.LabButton as Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -62,7 +62,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.winlator.star.ui.theme.LabTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -105,6 +105,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.delay
+import com.winlator.star.ui.deck.deckShape
 
 // Status-dot colours — recognisable Steam-ish presence palette, held explicitly so both themes match.
 // `internal` so the in-app friend-profile screen (SteamFriendProfileScreen.kt) reuses the exact palette.
@@ -603,7 +604,7 @@ private fun FriendActionsDialog(
     // Compact, outlined pop-up menu that hugs its options with a divider between each.
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            shape = deckShape(16.dp),
             color = MaterialTheme.colorScheme.surface,
             border = BorderStroke(1.dp, MenuOutline),
             tonalElevation = 6.dp,
@@ -815,7 +816,7 @@ private fun AddFriendDialog(onDismiss: () -> Unit) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(deckShape(12.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
                     .padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -895,7 +896,7 @@ private fun AddFriendDialog(onDismiss: () -> Unit) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(deckShape(12.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)),
                 ) {
                     results.forEachIndexed { i, r ->
@@ -944,7 +945,7 @@ private fun AddFriendDialog(onDismiss: () -> Unit) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(deckShape(12.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
                         .padding(12.dp),
                 ) {
@@ -985,13 +986,13 @@ private fun AddFriendDialog(onDismiss: () -> Unit) {
             Modifier
                 .widthIn(max = 800.dp)
                 .fillMaxWidth(0.92f)
-                .border(1.dp, MenuOutline, RoundedCornerShape(28.dp))
+                .border(1.dp, MenuOutline, deckShape(28.dp))
         } else {
-            Modifier.border(1.dp, MenuOutline, RoundedCornerShape(28.dp))
+            Modifier.border(1.dp, MenuOutline, deckShape(28.dp))
         },
         // Landscape needs a wider-than-platform-default dialog for the two columns; portrait keeps the default.
         properties = if (landscape) DialogProperties(usePlatformDefaultWidth = false) else DialogProperties(),
-        shape = RoundedCornerShape(28.dp),
+        shape = deckShape(28.dp),
         onDismissRequest = onDismiss,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1062,7 +1063,7 @@ private fun SearchResultRow(result: SteamUserSearch.Result, state: ResultState, 
         Box(
             modifier = Modifier
                 .size(40.dp)
-                .clip(RoundedCornerShape(10.dp))
+                .clip(deckShape(10.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center,
         ) {
@@ -1487,7 +1488,7 @@ fun ChatScreen(
                             text = e,
                             fontSize = 22.sp,
                             modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(deckShape(8.dp))
                                 .clickable { draft += e }
                                 .padding(horizontal = 6.dp, vertical = 4.dp),
                         )
@@ -1629,7 +1630,7 @@ internal fun MessageBubble(
             Column(
                 modifier = Modifier
                     .widthIn(max = 280.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(deckShape(14.dp))
                     .background(
                         if (mine) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.surfaceVariant,
@@ -1644,7 +1645,7 @@ internal fun MessageBubble(
                         modifier = Modifier
                             .widthIn(max = 240.dp)
                             .heightIn(max = 240.dp)
-                            .clip(RoundedCornerShape(10.dp)),
+                            .clip(deckShape(10.dp)),
                         contentScale = ContentScale.Fit,
                     )
                 } else {

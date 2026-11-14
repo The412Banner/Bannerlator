@@ -135,9 +135,9 @@ internal fun SoundPackPicker(onDismiss: () -> Unit) {
                 }
             }
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                SimpleGlyph("A"); Spacer(Modifier.width(4.dp)); Text(L("Select"), color = SimpleMuted, fontSize = 12.sp)
-                Spacer(Modifier.width(14.dp))
-                SimpleGlyph("B"); Spacer(Modifier.width(4.dp)); Text(L("Close"), color = SimpleMuted, fontSize = 12.sp)
+                LabHint("A", L("Select"))
+                Spacer(Modifier.width(8.dp))
+                LabHint("B", L("Close"))
             }
         }
     }

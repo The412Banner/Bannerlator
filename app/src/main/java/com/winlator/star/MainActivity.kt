@@ -705,7 +705,9 @@ private fun AppShell(
                 )
             }
             if (showAboutDialog) {
-                AboutDialog(onDismiss = onDismissAboutDialog)
+                // Lab draws its own About box (same content).
+                if (AppThemeState.simpleLook) com.winlator.star.ui.simple.LabAboutDialog(onDismiss = onDismissAboutDialog)
+                else AboutDialog(onDismiss = onDismissAboutDialog)
             }
         }
     } else {

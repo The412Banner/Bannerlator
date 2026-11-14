@@ -33,7 +33,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
+import com.winlator.star.ui.theme.LabButton as Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -73,6 +73,7 @@ import org.json.JSONObject
 import androidx.lifecycle.lifecycleScope
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
+import com.winlator.star.ui.deck.deckShape
 
 class EpicGamesActivity : ComponentActivity() {
     data class GameDownloadState(
@@ -700,7 +701,7 @@ private fun EpicGamesScreen(
             Button(
                 onClick = onBack,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                shape = RoundedCornerShape(8.dp),
+                shape = deckShape(8.dp),
                 modifier = Modifier.height(40.dp),
             ) { Text("\u2190", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp) }
             Text(
@@ -713,7 +714,7 @@ private fun EpicGamesScreen(
             Button(
                 onClick = onViewToggle,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                shape = RoundedCornerShape(8.dp),
+                shape = deckShape(8.dp),
                 modifier = Modifier.height(40.dp),
             ) { Text("\u25A6", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp) }
             Spacer(Modifier.width(4.dp))
@@ -721,14 +722,14 @@ private fun EpicGamesScreen(
                 onClick = onRefresh,
                 enabled = refreshEnabled,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                shape = RoundedCornerShape(8.dp),
+                shape = deckShape(8.dp),
                 modifier = Modifier.height(40.dp),
             ) { Text("\u21ba", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp) }
             Spacer(Modifier.width(4.dp))
             Button(
                 onClick = onFreeGames,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                shape = RoundedCornerShape(8.dp),
+                shape = deckShape(8.dp),
                 modifier = Modifier.height(40.dp),
             ) { Text("FREE", color = MaterialTheme.colorScheme.onPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
             // ⬇ cross-store Download Manager (global active-count badge).
@@ -890,7 +891,7 @@ private fun EmptyState(query: String) {
 internal fun EosBadge() {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
+            .clip(deckShape(4.dp))
             .background(Color(0xFF1A73E8))
             .padding(horizontal = 5.dp, vertical = 1.dp),
     ) {
@@ -907,7 +908,7 @@ internal fun EosBadge() {
 internal fun EpicBadge() {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
+            .clip(deckShape(4.dp))
             .background(Color(0xFF2A2A2A))
             .padding(horizontal = 5.dp, vertical = 1.dp),
     ) {
@@ -944,7 +945,7 @@ private fun GameListCard(
             .fillMaxWidth()
             .padding(bottom = 8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        shape = RoundedCornerShape(12.dp),
+        shape = deckShape(12.dp),
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
             Row(
@@ -954,7 +955,7 @@ private fun GameListCard(
                 Box(
                     modifier = Modifier
                         .size(60.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(deckShape(8.dp))
                     .background(MaterialTheme.colorScheme.surface),
                 ) {
                     val imageUrl = if (game.artCover.isNotEmpty()) game.artCover else game.artSquare
@@ -1053,7 +1054,7 @@ private fun GameListCard(
                         else MaterialTheme.colorScheme.primary,
                     ),
                     modifier = Modifier.fillMaxWidth().height(40.dp).padding(top = 8.dp),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = deckShape(8.dp),
                 ) {
                     Text(
                         when {
@@ -1085,9 +1086,9 @@ private fun GameGridTile(
 
     Column(
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(deckShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline, deckShape(12.dp))
             .clickable { onClick() },
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -1167,7 +1168,7 @@ private fun GameGridTile(
                         else MaterialTheme.colorScheme.primary,
                     ),
                     modifier = Modifier.fillMaxWidth().height(32.dp).padding(top = 4.dp),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = deckShape(8.dp),
                     contentPadding = PaddingValues(0.dp),
                 ) {
                     Text(

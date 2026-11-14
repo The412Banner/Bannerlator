@@ -146,8 +146,10 @@ internal fun SimpleMenuPage(
     banner: String? = null,
     /** The section open first (its key); the first one when null. */
     startSection: String? = null,
+    /** Called with the key of the section on screen, each time it changes (a section that loads only when shown). */
+    onSection: ((String) -> Unit)? = null,
 ) {
-    SimpleFlat { SimpleMenuPageBody(overline, title, sections, onBack, banner, startSection) }
+    SimpleFlat { SimpleMenuPageBody(overline, title, sections, onBack, banner, startSection, onSection) }
 }
 
 @Composable
@@ -158,10 +160,12 @@ private fun SimpleMenuPageBody(
     onBack: () -> Unit,
     banner: String?,
     startSection: String? = null,
+    onSection: ((String) -> Unit)? = null,
 ) {
     val layout by AppThemeState.simpleLayout.collectAsState()
     var secKey by rememberSaveable { mutableStateOf(startSection ?: sections.firstOrNull()?.key ?: "") }
     val sec = sections.firstOrNull { it.key == secKey } ?: sections.firstOrNull()
+    LaunchedEffect(sec?.key) { sec?.key?.let { onSection?.invoke(it) } }
     val secIndex = sections.indexOfFirst { it.key == sec?.key }.coerceAtLeast(0)
     var row by rememberSaveable { mutableIntStateOf(0) }
     var zone by remember { mutableStateOf(PZone.ROWS) }
@@ -462,7 +466,7 @@ private fun SectionStrip(sections: List<MenuSection>, sec: MenuSection?, active:
 }
 
 @Composable
-private fun EntryPanel(
+internal fun EntryPanel(
     sec: MenuSection?,
     entries: List<MenuEntry>,
     row: Int,
@@ -657,9 +661,9 @@ internal fun SimpleActionSheet(title: String, actions: List<MenuAction>, onDismi
                 }
             }
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                SimpleGlyph("A"); Spacer(Modifier.width(4.dp)); Text(L("Select"), color = SimpleMuted, fontSize = 12.sp)
-                Spacer(Modifier.width(14.dp))
-                SimpleGlyph("B"); Spacer(Modifier.width(4.dp)); Text(L("Close"), color = SimpleMuted, fontSize = 12.sp)
+                LabHint("A", L("Select"))
+                Spacer(Modifier.width(8.dp))
+                LabHint("B", L("Close"))
             }
         }
     }

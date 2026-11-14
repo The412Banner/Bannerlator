@@ -248,7 +248,7 @@ private fun RootToggle(key: String, label: String, granted: Boolean, harnessProv
     }
 }
 
-private fun rootStateLabel(state: RootManager.RootState): String = when (state) {
+internal fun rootStateLabel(state: RootManager.RootState): String = when (state) {
     RootManager.RootState.UNKNOWN -> "checking…"
     RootManager.RootState.UNAVAILABLE -> "not available on this device"
     RootManager.RootState.AVAILABLE_NOT_GRANTED -> "available (not granted)"
@@ -307,7 +307,7 @@ private fun InfoButton(onClick: () -> Unit) {
     }
 }
 
-private object PerfCopy {
+internal object PerfCopy {
     const val SUSTAINED = "Keeps clock speeds steady instead of spiking and dropping, so long sessions stay smoother. Safe, no root."
     const val PRIORITY = "Gives the game's rendering higher priority than other apps for more CPU time. Safe, no root."
     const val BIG_CORES = "Pins the game to your fastest CPU cores instead of the efficiency cores. Safe, no root."
@@ -347,7 +347,7 @@ private object PerfCopy {
 }
 
 /** Consolidated explainer body, grouped by root requirement. */
-private fun explainAllBody(): String = buildString {
+internal fun explainAllBody(): String = buildString {
     append("No root needed\n\n")
     append("• Sustained Performance Mode\n${PerfCopy.SUSTAINED}\n\n")
     append("• Thread Priority Boost\n${PerfCopy.PRIORITY}\n\n")

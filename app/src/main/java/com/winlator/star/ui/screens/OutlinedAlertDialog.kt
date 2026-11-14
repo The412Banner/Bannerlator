@@ -1,5 +1,6 @@
 package com.winlator.star.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.CircleShape
@@ -37,6 +38,7 @@ import com.winlator.star.ui.deck.xmbHighlight
 import com.winlator.star.ui.deck.xmbHighlightOverlay
 import com.winlator.star.ui.deck.xmbOnGlass
 import com.winlator.star.ui.deck.xmbPanel
+import com.winlator.star.ui.simple.simpleDepth
 
 // Single source of truth for the app's AlertDialogs: a drop-in wrapper around the Material3
 // slot-based AlertDialog that adds a 1dp outline around the whole popup box — matching the
@@ -84,16 +86,25 @@ internal fun OutlinedAlertDialog(
         val labShape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
         // The outline goes round the focused button itself, in its own pill shape (the slot is wider than the button).
         val ring: @Composable (@Composable () -> Unit) -> Unit = { slot ->
-            androidx.compose.foundation.layout.Box(Modifier.labFocusedOutline(accent)) { slot() }
+            androidx.compose.foundation.layout.Box(Modifier.labFocusedOutline(accent)) {
+                CompositionLocalProvider(com.winlator.star.ui.theme.LocalLabFocusDrawn provides true) { slot() }
+            }
         }
         val labIndication = androidx.compose.runtime.remember(accent) { com.winlator.star.ui.simple.LabFocusIndication(accent) }
+        // In the Lab style a dialog without a colour of its own is a Lab panel (as Lab's own pop-ups): its fill, depth and line.
+        val ownFill = containerColor != AlertDialogDefaults.containerColor
+        val labPanel = com.winlator.star.ui.theme.AppThemeState.simpleLook && !ownFill
         AlertDialog(
             onDismissRequest = onDismissRequest,
             confirmButton = {
                 DeckDialogBars()
                 ring { DeckDialogScaled(content = confirmButton) }
             },
-            modifier = modifier.border(1.dp, com.winlator.star.ui.simple.SimpleLine, labShape),
+            modifier = (if (labPanel) {
+                modifier
+                    .simpleDepth(high = true, shape = labShape)
+                    .background(com.winlator.star.ui.simple.SimplePanelBrush, labShape)
+            } else modifier).border(1.dp, com.winlator.star.ui.simple.SimpleLine, labShape),
             dismissButton = dismissButton?.let { { ring { DeckDialogScaled(content = it) } } },
             icon = icon?.let { { DeckDialogScaled(content = it) } },
             title = title?.let {
@@ -107,11 +118,11 @@ internal fun OutlinedAlertDialog(
                 { androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.LocalIndication provides labIndication) { DeckDialogScaled(content = it) } }
             },
             shape = labShape,
-            containerColor = if (containerColor == AlertDialogDefaults.containerColor) MaterialTheme.colorScheme.surface else containerColor,
+            containerColor = if (labPanel) Color.Transparent else if (containerColor == AlertDialogDefaults.containerColor) MaterialTheme.colorScheme.surface else containerColor,
             iconContentColor = iconContentColor,
             titleContentColor = titleContentColor,
             textContentColor = textContentColor,
-            tonalElevation = tonalElevation,
+            tonalElevation = if (labPanel) 0.dp else tonalElevation,
             properties = properties,
         )
         return

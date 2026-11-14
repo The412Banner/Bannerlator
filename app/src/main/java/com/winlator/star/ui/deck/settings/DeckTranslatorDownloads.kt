@@ -65,22 +65,36 @@ internal class DeckTranslatorDownloads(
     @Composable
     override fun Dialogs() {
         val type = sheet ?: return
-        val vm = env.vm ?: return
-        ContentDownloadSheet(
+        if (env.vm == null) return
+        // Lab: its own download picker on the same steps.
+        if (AppThemeState.simpleLook) com.winlator.star.ui.simple.LabContentDownloadSheet(
+            contentTypes = listOf(type),
+            onDismiss = { sheet = null },
+            onContentChanged = { refreshVersions(type) },
+            inUseKey = inUseKey(type),
+        ) else ContentDownloadSheet(
             contentType = type,
             onDismiss = { sheet = null },
-            onContentChanged = {
-                when (type) {
-                    ContentProfile.ContentType.CONTENT_TYPE_FEXCORE -> vm.refreshFEXCoreVersions()
-                    ContentProfile.ContentType.CONTENT_TYPE_BOX64EC -> vm.refreshBox64ECVersions()
-                    else -> vm.refreshBox64Versions()
-                }
-            },
-            inUseKey = when (type) {
-                ContentProfile.ContentType.CONTENT_TYPE_FEXCORE -> vm.selectedFEXCoreVersion
-                ContentProfile.ContentType.CONTENT_TYPE_BOX64EC -> vm.selectedBox64ECVersion
-                else -> vm.selectedBox64Version
-            },
+            onContentChanged = { refreshVersions(type) },
+            inUseKey = inUseKey(type),
         )
+    }
+
+    private fun refreshVersions(type: ContentProfile.ContentType) {
+        val vm = env.vm ?: return
+        when (type) {
+            ContentProfile.ContentType.CONTENT_TYPE_FEXCORE -> vm.refreshFEXCoreVersions()
+            ContentProfile.ContentType.CONTENT_TYPE_BOX64EC -> vm.refreshBox64ECVersions()
+            else -> vm.refreshBox64Versions()
+        }
+    }
+
+    private fun inUseKey(type: ContentProfile.ContentType): String? {
+        val vm = env.vm ?: return null
+        return when (type) {
+            ContentProfile.ContentType.CONTENT_TYPE_FEXCORE -> vm.selectedFEXCoreVersion
+            ContentProfile.ContentType.CONTENT_TYPE_BOX64EC -> vm.selectedBox64ECVersion
+            else -> vm.selectedBox64Version
+        }
     }
 }

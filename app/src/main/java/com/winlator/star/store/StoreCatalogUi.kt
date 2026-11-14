@@ -39,13 +39,13 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Redeem
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SportsEsports
-import androidx.compose.material3.Button
+import com.winlator.star.ui.theme.LabButton as Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.winlator.star.ui.theme.LabOutlinedButton as OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -87,6 +87,7 @@ import com.winlator.star.ui.deck.xmbGlassCard
 import com.winlator.star.ui.theme.StoreDiscountBg
 import com.winlator.star.ui.theme.StoreDiscountInk
 import com.winlator.star.ui.theme.StoreFreeGreen
+import com.winlator.star.ui.deck.deckShape
 
 /**
  * Store-AGNOSTIC storefront pieces: the catalog item model plus the card / row / hero / price-row /
@@ -243,7 +244,7 @@ fun CatalogPriceRow(item: CatalogItem, modifier: Modifier = Modifier) {
                     fontWeight = FontWeight.Bold,
                     color = StoreDiscountInk,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
+                        .clip(deckShape(4.dp))
                         .background(StoreDiscountBg)
                         .padding(horizontal = 5.dp, vertical = 2.dp),
                 )
@@ -284,7 +285,7 @@ fun CatalogActionButton(
     modifier: Modifier = Modifier,
     compact: Boolean = false,
 ) {
-    val shape = RoundedCornerShape(7.dp)
+    val shape = deckShape(7.dp)
     val pad = if (compact) PaddingValues(horizontal = 8.dp, vertical = 2.dp)
     else PaddingValues(horizontal = 10.dp, vertical = 4.dp)
     val style = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium

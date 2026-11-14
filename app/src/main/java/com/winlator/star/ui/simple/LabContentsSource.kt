@@ -10,6 +10,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winlator.star.contents.DriverGpuLabel
@@ -23,7 +26,8 @@ import com.winlator.star.ui.screens.contents.ContentsTypes
 /**
  * One download in a repository's list or in the search results, as Classic's row: A downloads and installs it
  * (installed: A opens its actions), the error of a failed install under the name, the Adreno GPUs a driver is for
- * and Saved as labels, X for Cancel, Download and replace, and Save the file only (again, once saved).
+ * and Saved as labels, X for Cancel, Download and replace, and Save the file only (again, once saved). While it runs,
+ * A opens its progress pop-up through [onProgress] (with the registry key), when the page has one.
  */
 internal fun catalogEntry(
     context: Context,
@@ -35,6 +39,7 @@ internal fun catalogEntry(
     keepRaw: Boolean,
     showSource: Boolean = false,
     group: String? = null,
+    onProgress: ((String) -> Unit)? = null,
     onChanged: () -> Unit = {},
 ): MenuEntry {
     val key = ContentsInstaller.keyFor(item.type, item.sourceName, item.versionName)
@@ -66,13 +71,19 @@ internal fun catalogEntry(
         icon = Icons.Filled.CloudDownload,
         group = group,
         // Installed: A opens the actions (Download and replace, Save the file only) instead of downloading it again.
-        onA = if (installed) null else ({ if (!running) install() }),
+        onA = when {
+            running && onProgress != null -> ({ onProgress(key) })
+            installed -> null
+            else -> ({ if (!running) install() })
+        },
         // The download button on the row (Right from the row, or Start), unless it is installed or on its way.
         play = if (installed || running) null else ({ install() }),
         playIcon = Icons.Filled.Download, playLabel = L("Download"),
         actions = buildList {
-            if (running) add(MenuAction(L("Cancel the download"), { ContentDownloadRegistry.requestCancel(key) }))
-            else {
+            if (running) {
+                if (onProgress != null) add(MenuAction(L("Show progress"), { onProgress(key) }))
+                add(MenuAction(L("Cancel the download"), { ContentDownloadRegistry.requestCancel(key) }))
+            } else {
                 // A driver already installed, or refused because one with its name is: download it again over that one.
                 if (item.isDriver && (installed || st?.replaceable == true)) add(MenuAction(L("Download and replace"), { install(replace = true) }))
                 if (saved) add(MenuAction(L("Save the file again"), { vm.saveArchive(item, force = true) }))
@@ -104,6 +115,7 @@ internal fun SimpleComponentSourcePage(index: Int, onBack: () -> Unit, vm: Conte
     val states by ContentDownloadRegistry.states.collectAsState()
     val installedKeys by vm.installedKeys.collectAsState()
     val savedKeys by vm.savedKeys.collectAsState()
+    var progressKey by remember { mutableStateOf<String?>(null) }
     val source = sources.getOrNull(index)
     LaunchedEffect(source?.name) { if (source != null) vm.selectSource(source) }
     // As Classic's refresh: drops the cached lists and loads this one again.
@@ -119,6 +131,7 @@ internal fun SimpleComponentSourcePage(index: Int, onBack: () -> Unit, vm: Conte
                     installed = installedKeys.let { vm.isInstalled(item) },
                     saved = savedKeys.let { vm.isSaved(item) },
                     keepRaw = keepRaw,
+                    onProgress = { progressKey = it },
                 )
             },
             primary = refresh,
@@ -131,6 +144,7 @@ internal fun SimpleComponentSourcePage(index: Int, onBack: () -> Unit, vm: Conte
             listOf(MenuSection("none", L("Components"), Icons.Filled.Extension, emptyList(), empty = if (loading) L("Loading the list…") else L("Nothing to download here."), primary = refresh))
         },
         onBack = onBack,
-        banner = states.values.firstOrNull { !it.terminal }?.let { L("Downloading %1\$s · %2\$s%%", it.title, (it.fraction * 100).toInt()) },
+        banner = labContentsBanner(states),
     )
+    LabInstallProgressHost(request = progressKey, onRequestTaken = { progressKey = null })
 }

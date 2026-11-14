@@ -21,7 +21,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.ViewList
-import androidx.compose.material3.Button
+import com.winlator.star.ui.theme.LabButton as Button
 import androidx.compose.material3.Icon
 import com.winlator.star.store.StoreGlassIconButton as IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.winlator.star.core.AppOrientation
 import com.winlator.star.store.download.DownloadRegistry
 import com.winlator.star.store.download.DownloadsButton
+import com.winlator.star.ui.deck.deckShape
 
 /**
  * The Epic section's host — flipped from a login card + "View Game Library" button to a
@@ -307,8 +308,8 @@ private fun EpicLoginScreen(onLoginClick: () -> Unit) {
             Spacer(Modifier.height(24.dp))
             Button(
                 onClick = onLoginClick,
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.height(48.dp).steamFocusRing(RoundedCornerShape(8.dp)),
+                shape = deckShape(8.dp),
+                modifier = Modifier.height(48.dp).steamFocusRing(deckShape(8.dp)),
             ) { Text("Login with Epic Games") }
         }
     }

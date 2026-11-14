@@ -75,7 +75,19 @@ class FilePickerActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize().then(if (xmb) Modifier.windowInsetsPadding(WindowInsets.displayCutout) else Modifier),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    FileManagerScreen(
+                    // Lab: the Lab-drawn picker (same choices and result as the file manager in pick mode).
+                    if (AppThemeState.simpleLook) com.winlator.star.ui.simple.LabFilePicker(
+                        pickDirMode = pickDir,
+                        pickExtensions = extensions,
+                        initialDir = initialDir,
+                        pickerTitle = title,
+                        driveCPath = driveCPath,
+                        onPick = { file ->
+                            setResult(Activity.RESULT_OK, Intent().putExtra(EXTRA_SELECTED_FILE, file.absolutePath))
+                            finish()
+                        },
+                        onCancel = { finish() },
+                    ) else FileManagerScreen(
                         pickMode = true,
                         pickDirMode = pickDir,
                         pickExtensions = extensions,

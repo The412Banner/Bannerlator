@@ -222,6 +222,8 @@ private val SIMPLE_ALIASES = mapOf(
     Screen.Settings.route to DeckSettingsRoutes.APP,
     Screen.Appearance.route to com.winlator.star.ui.simple.SimpleRoutes.APPEARANCE,
     Screen.SaveManager.route to com.winlator.star.ui.simple.SimpleRoutes.SAVES,
+    Screen.Wrappers.route to com.winlator.star.ui.simple.LabParityRoutes.WRAPPERS,
+    DeckRoutes.STORES to com.winlator.star.ui.simple.LabRoutes.STORES,
 )
 
 /** Routes the shell draws itself (no page bar above them). */

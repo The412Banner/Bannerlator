@@ -1,5 +1,46 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 05:25 EST — feat/lab-parity-2: touch back buttons + tappable hints (branch, awaiting the user)
+
+- **User:** "these portrait menus need simple back buttons that are touch screen tappable since portrait is more touch screen driven and landscape is more controller navigation also with touch".
+- **52950295:** new `ui/simple/LabTouch.kt` — `LabHint` (a button hint you can tap; it presses that controller button through the window the way a real press goes; an unhandled B is sent as Back), `LabBackButton` (the Lab top line's ← for pages in their own window), `LabCloseButton`. `SimpleLegend` draws every hint as `LabHint`; the hand-drawn hint rows of `SimpleActionSheet`, `SimplePicker`, the sound-pack list and the download lists too. Full-screen Lab pages (`LabOverlay`: glossary, audio fine-tune, VEGAS editor, editor wrapper manager) get the ← arrow; Lab tool dialogs (`LabDialog`) get a ✕. CI 43582411251.
+- **d03ed0da:** a hint whose button acts on the focused item did nothing after touch (nothing focused): `LabHintFallback` lets a page give the default — Home and Library X opens the shown game's menu, audio page X saves, Start explains the chosen preset. CI 43583931789.
+- **Device (Pocket FIT, touch, portrait + landscape, crash buffer empty):** ← on the glossary and audio page; B Close / Cancel / Back hints (glossary, audio page without saving, picker unchanged, Containers → Home); Y New container (left with B Back, nothing created); X Game menu on Home and Library; Start ? on the audio page. Restored: Lab orientation Auto, system rotation. FIT runs d03ed0da (7d56a946). Not merged.
+
+## 2026-11-14 04:45 EST — feat/lab-parity-2: the 3 small issues (branch, awaiting the user)
+
+- **User:** "fix the 3 small issues first".
+- **Box64EC version row had no download line:** e4cb86bc — `LabDownloads` knows `performance.box64ecVersion`; its "+ Download from source" opens the Lab Box64EC download list (`LabContentDownloadSheet`, same as Translator downloads). Device-proven 04:17 EST (list opens, "In use" right).
+- **Full-screen Lab pages showed the page underneath (its top line, last row and button hints) in a strip above and below:** dumpsys showed the Compose Dialog window at 1080×1764 centred on the 1920 screen — Compose 1.6.2's DialogLayout measures with `screenHeightDp` (screen minus bar areas) and re-sets the window size on every layout, so `setLayout(MATCH_PARENT)`, `decorFitsSystemWindows = false` and hiding the bars (a89536b8) changed nothing. d997b93f: `LabFullScreenWindow` = `androidx.activity.ComponentDialog` (DeviceDefault NoActionBar Fullscreen, transparent, no dim, cutout short edges, hides the bars the activity hides) with a `ComposeView` in the caller's composition; Back runs the page's own BackHandler first, then closes. Used by `LabOverlay` (glossary, audio fine-tune, VEGAS editor, editor wrapper manager). Device-proven 04:43 EST: glossary + audio page fill the screen, one row of hints, Back/B close without saving, d-pad focus moves; crash buffer empty.
+- **Back past the Lab file picker left the app:** reproduced step by step — picker → its Home → closes to Contents → Lab Home → leaves the app; Android's normal Back, Classic has no "press Back again" guard either. Not a bug, no change.
+- **CI:** e4cb86bc 43578791791, a89536b8 43579870047, d997b93f 43580930006 — all green ×4. FIT runs d997b93f (73761c0e). Not merged.
+
+## 2026-11-14 04:00 EST — feat/lab-parity-2: full build installed + device-tested (branch, awaiting the user)
+
+- **Build:** 05036caa (all 8 areas + merge fixes), CI 43577134770 green ×4; `/sdcard/Download/Bannerlator-lab-parity-2-05036caa-pubg.apk` sha256 616995b4… (host = device, cert a40da80a), installed 03:56:19 EST.
+- **Seen working (touch, landscape + portrait, crash buffer empty):** Lab Manage Wrappers (tabs, update badge, Reset all); container card details; "What is all this?" glossary; audio fine-tune page; Translator downloads › Box64EC Lab download window (community switch, sources, install from file); in-game menu (AIO Vulkan): Screen, Performance, Effects, Controls chips, Tools + Task Manager tiles, Performance dashboard pop-up, Exit confirm. Pass-1 items on 8fc677b5 listed in the 03:55 entry.
+- **Found:** audio fine-tune shows its button hints twice (own + the editor's behind it); the Box64EC version row has no download line (downloads live under Advanced › More › Performance › Translator downloads); Back pressed past the Lab file picker's root leaves the app.
+- **Not tried on the device:** VEGAS editor, Turnip/VEGAS downloads, save backup/restore, community upload/apply, add games, EA/Ubisoft/pre-flight pop-ups, Linux sessions, store page skins, Lab light look, controller-only navigation.
+- **Restored after tests:** AIO.desktop (md5 d7398638), Show game stores on, Lab orientation Auto. Not merged; the user decides.
+
+## 2026-11-14 03:55 EST — feat/lab-parity-2: device pass 1 (8fc677b5), in-game menu launch next (branch)
+
+- **Seen working on the Pocket FIT (8fc677b5, no crash):** Lab Settings › Updates page (the original Classic-jump bug), Storage and folders, Root controls and heat safety, new Settings rows (download engines, Steam connection tests, Steam library locations, MIDI banks); Appearance › Show game stores off/on (Stores leaves the side menu; restored on); Tools › Lab file manager + folder listing, Lab Log Manager + Lab log viewer; Save Manager › Settings in landscape scrolls to the last switch (Shuvam's bug); Contents › Linux runtime + Installed (Install GPU driver warning + Browse/Pick via system, Wayland/Linux zip rows), Lab file picker; Controls › Assign + Device; game menu › Community configs page, Properties pop-up; game settings info lines (exe, SD card, container) + Direct XInput row. Wrappers still Classic in this build (containers merge not in it).
+- **Next:** AIO launch (container 1, shortcut execArgs temporarily `--cube vk`, backup /sdcard/Download/lp2-test/AIO.desktop.bak) to check the Lab in-game menu; then full build 05036caa (CI 43577134770).
+
+## 2026-11-14 05:25 EST — feat/lab-parity-2: all 8 areas merged, first device test (branch)
+
+- **Merged** (backup `refs/backup/20261114/lab-parity-2-before-merges` = f6f2e98c): settings, gameactions, gameextras, contents, tools, ingame, theme, containers (each CI-green on its sub-branch). Merge fixes: duplicate `val lab` in ShortcutActionDialogs (game extras' one → `labPages`), SimpleOneMenu Logs tab conflict (kept the settings side: the tab is gone, Lab Settings links to the Lab Log Manager), duplicate internal Lab dialog helpers renamed per area (`LabAction*`, `LabTool*`, `LabSheetDialog`), SimpleClassicEditor link/tool lines combined. Plus root-27's Save Manager scroll fix (bcbb0940 → f6f2e98c).
+- **CI:** 7-area merge 8fc677b5 → 43576106412 green ×4; full 05036caa → 43577134770 running.
+- **Device:** 8fc677b5 pubg staged `/sdcard/Download/Bannerlator-lab-parity-2-8fc677b5-pubg.apk` (sha256 8b1f4341…, host = device, cert a40da80a), installing on the Pocket FIT for a first pass. Undo: `/sdcard/Download/Bannerlator-sound-startup-own-pack-cd44d9c2.apk`.
+
+## 2026-11-14 03:05 EST — feat/lab-parity-2: Lab as a 1:1 equal of Classic (branch, in progress)
+
+- **Why:** user (after Lab Settings › Check for updates opened the Classic Settings page): "lab is supposed to be a 1:1 equal to classic to offer all classic has but all in lab ui style/theme". Audit of main 1a8728a2 (5 areas, code reading, top claims spot-checked): ~15 options missing from Lab, ~45 places where Lab opens a Classic page or pop-up, ~20 partial. User: "do it all on one new branch off main, then install and test to verify"; also remove AGENTS.md.
+- **Built so far:** beb3b1c5 removes AGENTS.md (upstream agent persona incl. an auto `git add/commit/push` rule under another author). d40d4bd1 route groundwork: `ui/simple/LabParity.kt` + one route file per area; Lab redirects the Classic wrapper route and Deck's Stores page to Lab routes; Tools › Wrappers uses the Lab route; side-rail highlight on the wrapper page. CI 43571860249.
+- **Plan:** one helper per area on sub-branches `feat/lab-parity-2-<area>` (settings, game actions, game extras, containers/downloads/wrappers, contents/controls, files/logs/saves/search, in-game menu, Lab theme + store pages), each CI-built, merged here, then one APK, install on the Pocket FIT, drive every area, logcat check. Merge to main only on the user's go.
+- **Resume:** `git ls-remote origin 'refs/heads/feat/lab-parity-2*'`, CI per sub-branch.
+
 ## 2026-11-14 01:56 EST — fix/sound-startup-own-pack MERGED (main 1ad771c0)
 
 - **User:** "sounds right, [no] more start up sound. merge it" — listened on the Pocket FIT with the Switch pack after restarting the app (installed build cd44d9c2, base.apk cbb41ae5; app started 01:35:45 EST, after the 01:32:38 install). Device-proven by the user.

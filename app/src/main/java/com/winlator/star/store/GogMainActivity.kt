@@ -22,7 +22,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.ViewList
-import androidx.compose.material3.Button
+import com.winlator.star.ui.theme.LabButton as Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import com.winlator.star.core.AppOrientation
 import com.winlator.star.store.download.DownloadRegistry
 import com.winlator.star.store.download.DownloadsButton
+import com.winlator.star.ui.deck.deckShape
 
 /**
  * The GOG section's host — flipped from a login card + "View Game Library" button to a
@@ -329,8 +330,8 @@ private fun GogLoginScreen(onLoginClick: () -> Unit) {
             Spacer(Modifier.height(24.dp))
             Button(
                 onClick = onLoginClick,
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.steamFocusRing(RoundedCornerShape(8.dp)),
+                shape = deckShape(8.dp),
+                modifier = Modifier.steamFocusRing(deckShape(8.dp)),
             ) { Text("Login with GOG") }
         }
     }

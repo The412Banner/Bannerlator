@@ -1120,27 +1120,12 @@ internal fun GameSavesDialog(
 
     LaunchedEffect(gameKey, rescan) {
         loading = true
-        val (list, sidecar) = withContext(Dispatchers.IO) {
-            val saved = if (rescan == 0) SaveLocator.loadMap(container, gameKey) else null
-            if (saved != null && saved.roots.isNotEmpty()) {
-                saved.roots.map { rel ->
-                    SaveLocator.Candidate(rel, rel.substringAfterLast('/'), 100, SaveLocator.sizeOf(container, rel))
-                } to true
-            } else {
-                SaveLocator.discover(container, gameName, exePath, wmClass) to false
-            }
-        }
-        val (foundId, emu) = withContext(Dispatchers.IO) {
-            val found = EmuSaveRoots.appIdFor(container, appIdExtra, exePath)
-            val driveC = File(container.rootDir, ".wine/drive_c")
-            found to found?.let { EmuSaveRoots.includedFor(driveC, it) }.orEmpty()
-                .map { it to FileUtils.totalSize(File(driveC, it)) }
-        }
-        appId = foundId
-        emuDirs.clear(); emuDirs.addAll(emu)
-        rows.clear(); rows.addAll(list)
-        checked.clear(); checked.addAll(list.map { it.relPath })
-        fromSidecar = sidecar
+        val scan = withContext(Dispatchers.IO) { scanGameSaves(container, gameKey, gameName, exePath, wmClass, appIdExtra, useSidecar = rescan == 0) }
+        appId = scan.appId
+        emuDirs.clear(); emuDirs.addAll(scan.emuDirs)
+        rows.clear(); rows.addAll(scan.rows)
+        checked.clear(); checked.addAll(scan.rows.map { it.relPath })
+        fromSidecar = scan.fromSidecar
         loading = false
     }
 
@@ -1258,6 +1243,36 @@ internal fun GameSavesDialog(
         },
         dismissButton = { TextButton(onClick = onBack) { Text("Back") } },
     )
+}
+
+/** A game's save step as it opens: the folders to offer (remembered or found), and the emulator save folders the backup always takes. */
+internal class GameSaveScan(
+    val rows: List<SaveLocator.Candidate>,
+    val fromSidecar: Boolean,
+    val appId: Int?,
+    /** drive_c-relative emulator folders for [appId], with their sizes. */
+    val emuDirs: List<Pair<String, Long>>,
+)
+
+/**
+ * The remembered folder set from the sidecar (when [useSidecar] and there is one), else a scan of the container,
+ * plus the emulator save folders named by the game's Steam app id. Blocking: call off the UI thread.
+ */
+internal fun scanGameSaves(
+    container: Container, gameKey: String, gameName: String, exePath: String, wmClass: String, appIdExtra: String, useSidecar: Boolean,
+): GameSaveScan {
+    val saved = if (useSidecar) SaveLocator.loadMap(container, gameKey) else null
+    val (list, sidecar) = if (saved != null && saved.roots.isNotEmpty()) {
+        saved.roots.map { rel ->
+            SaveLocator.Candidate(rel, rel.substringAfterLast('/'), 100, SaveLocator.sizeOf(container, rel))
+        } to true
+    } else {
+        SaveLocator.discover(container, gameName, exePath, wmClass) to false
+    }
+    val found = EmuSaveRoots.appIdFor(container, appIdExtra, exePath)
+    val driveC = File(container.rootDir, ".wine/drive_c")
+    val emu = found?.let { EmuSaveRoots.includedFor(driveC, it) }.orEmpty().map { it to FileUtils.totalSize(File(driveC, it)) }
+    return GameSaveScan(list, sidecar, found, emu)
 }
 
 /**

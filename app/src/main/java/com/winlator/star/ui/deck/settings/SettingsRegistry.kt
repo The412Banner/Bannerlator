@@ -119,12 +119,18 @@ internal object SettingsRegistry {
         val m = linkedMapOf<String, List<Handoff>>()
         if (game) {
             val containerName = env.shortcut?.container?.name.orEmpty()
+            // Lab's rows show what the Classic editor's Executable, Storage and Container rows show: the .exe the game runs,
+            // where its files are and its container (the other looks show the hints only).
+            val lab = com.winlator.star.ui.theme.AppThemeState.simpleLook
+            val exeInfo = if (!lab) null else env.shortcut?.let { runCatching { com.winlator.star.core.CopyGameToDriveC.parse(it) }.getOrNull() }
+            val exeName = if (!lab) null else exeInfo?.exeWin?.substringAfterLast('\\')?.substringAfterLast('/')?.ifEmpty { null } ?: T("Unknown")
+            val storage = if (!lab) null else env.shortcut?.let { runCatching { com.winlator.star.core.CopyGameToDriveC.storageLabel(it) }.getOrNull() }
             m["game"] = listOf(
                 Handoff(T("Name, cover art and details"), T("Cover art from your files, Steam or SteamGridDB, the Steam link, genres, year and description (Game Details)."), TARGET_DETAILS, ALL_WORLDS),
                 // The icon is picked on this page now (DeckIconSection); the file operations stay with the Games screen.
-                Handoff(T("Change the program to run"), T("Pick another .exe in the game's folder for this entry."), TARGET_CHANGE_EXE, WINE_ONLY),
-                Handoff(T("Copy the game to drive C"), T("Copy the game's folder into the container's drive C and run it from there."), TARGET_DRIVE_C, WINE_ONLY),
-                Handoff(T("Move to another container"), "Now in \"$containerName\". Move this game to another container, or copy it there.", TARGET_MOVE_CONTAINER, WINE_ONLY),
+                Handoff(T("Change the program to run"), T("Pick another .exe in the game's folder for this entry."), TARGET_CHANGE_EXE, WINE_ONLY, value = exeName),
+                Handoff(T("Copy the game to drive C"), T("Copy the game's folder into the container's drive C and run it from there."), TARGET_DRIVE_C, WINE_ONLY, value = storage),
+                Handoff(T("Move to another container"), "Now in \"$containerName\". Move this game to another container, or copy it there.", TARGET_MOVE_CONTAINER, WINE_ONLY, value = containerName.ifEmpty { null }?.takeIf { lab }),
             ) + listOfNotNull(
                 if (xmb) Handoff(T("Container settings"), "Open the settings of \"$containerName\", the container this game runs in.", TARGET_CONTAINER, WINE_ONLY) else null,
             )
@@ -604,6 +610,12 @@ internal object SettingsRegistry {
             },
             vm = vmString({ it.displayBackend }, { vm, v -> vm.onDisplayBackendChanged(v) }),
             game = key("displayBackend") { if (it == Container.DISPLAY_BACKEND_WAYLAND) it else Container.DISPLAY_BACKEND_X11 },
+            // Lab: Classic's notes under the backend picker of a container whose layer can't drive Wayland.
+            note = { env, _ ->
+                if (!com.winlator.star.ui.theme.AppThemeState.simpleLook || env.waylandCapable || env.scope == EditorScope.GAME) null
+                else if (env.vm?.isWaylandStored == true) T("This container was saved on Wayland, but its Proton layer is no longer Wayland-capable: it runs on X11 and will be saved as X11.")
+                else T("Wayland needs ") + com.winlator.star.core.WineWaylandSupport.LAYER_HINT + T(". The selected layer does not include winewayland and its Wayland Turnip.")
+            },
         ),
         SettingDef(
             id = ID_DISPLAY_SERVER, category = "display", group = T("Screen"), level = ADVANCED,
@@ -743,6 +755,11 @@ internal object SettingsRegistry {
             control = { _, _ -> seg(UnrealHdr.OFF to T("Off"), UnrealHdr.DX12 to T("DirectX 12 fix"), UnrealHdr.DX11 to T("DirectX 11 (NVAPI)")) },
             vm = vmString({ it.unrealHdr }, { vm, v -> vm.unrealHdr = v }),
             game = key(UnrealHdr.EXTRA) { UnrealHdr.normalize(it).ifEmpty { null } },
+            // Lab: Classic's DirectX 11 notes (the bundled dxvk-nvapi, the NVIDIA spoof hint).
+            note = { env, values ->
+                if (!com.winlator.star.ui.theme.AppThemeState.simpleLook || values("graphics.unrealHdr") != UnrealHdr.DX11) null
+                else com.winlator.star.ui.simple.LabUnrealHdrFacts.note(env.context, values("graphics.gdc.gpuName"), env.wayland(values))
+            },
         ),
         SettingDef(
             id = "graphics.driver", category = "graphics", group = T("GPU driver"), level = SIMPLE,
@@ -1206,6 +1223,23 @@ internal object SettingsRegistry {
             vm = vmBool({ it.bannerinXInputSwitching }, { vm, v -> vm.bannerinXInputSwitching = v }),
             game = key10(BannerinXInput.EXTRA_SWITCHING),
         ),
+        // Lab only (Classic's game editor has it; the Deck and XMB editors are left as they are).
+        SettingDef(
+            id = "input.bannerinXInputOverGameDll", category = "input", group = T("Controllers"), level = ADVANCED,
+            label = T("Use Direct XInput over the game's own XInput DLL"),
+            hint = T("A game that ships its own XInput DLL gets Wine's for it unless this is on. Off by default."),
+            help = T("Some games ship their own XInput DLL next to the EXE (often Microsoft's xinput1_3.dll). Wine loads that copy before Bannerlator's, and Microsoft's needs a Windows-only driver, so the game would see no controller. So by default Bannerlator gives that DLL Wine's own XInput, as before Direct XInput, and says so once.\n\nOn: while the game runs, its copy is renamed (xinput1_3.dll becomes xinput1_3.dll.bannerin-disabled) so Direct XInput is used, and renamed back when the session ends, or at the next app start or launch if the session ended unexpectedly. Nothing is deleted or overwritten.\n\nA Prefer game-folder DLLs entry for the same DLL in the env vars wins over this.\n\nOff by default. For this game only."),
+            tech = com.winlator.star.core.GameXInputDlls.EXTRA_OVER_GAME,
+            control = { _, _ -> Control.Toggle },
+            // As Classic stores it: "1" when on, the key removed when off.
+            game = GameBinding(
+                listOf(com.winlator.star.core.GameXInputDlls.EXTRA_OVER_GAME),
+                read = { e -> e.get(com.winlator.star.core.GameXInputDlls.EXTRA_OVER_GAME)?.takeIf { it.isNotEmpty() }?.let { if (it == "1") "1" else "0" } },
+                write = { e, v -> e.put(com.winlator.star.core.GameXInputDlls.EXTRA_OVER_GAME, if (v == "1") "1" else null) },
+                inherit = Inherit.BUILT_IN, inherited = { "0" },
+            ),
+            visible = { env, _ -> gameScope(env) && com.winlator.star.ui.theme.AppThemeState.simpleLook },
+        ),
         SettingDef(
             id = "input.stickPacing", category = "input", group = T("Controllers"), level = ADVANCED,
             label = T("Stick updates"), hint = T("How often stick movement reaches the game. Also changeable in-game."),
@@ -1345,7 +1379,8 @@ internal object SettingsRegistry {
             id = "input.vibrationIntensity", category = "input", group = T("Rumble"), level = ADVANCED,
             label = T("Rumble strength"), tech = T("Vibration intensity"),
             help = T("Scales vibration strength. Note: on some handhelds a lower strength does not reduce stick slowdown. Use Rumble motors: Single for that."),
-            control = { _, _ -> Control.Slider(0f, 100f, 5f, { "${it.toInt()}%" }, { "${it.toInt()}" }) },
+            // Lab steps 1 % as Classic's slider does; the Deck and XMB editors keep 5 %.
+            control = { _, _ -> Control.Slider(0f, 100f, if (com.winlator.star.ui.theme.AppThemeState.simpleLook) 1f else 5f, { "${it.toInt()}%" }, { "${it.toInt()}" }) },
             vm = vmInt({ it.vibrationIntensity }, { vm, v -> vm.vibrationIntensity = v }),
             game = intKey("vibrationIntensity"),
             visible = { _, values -> values("input.vibrationTarget") != "${Container.VIBRATION_MODE_OFF}" },

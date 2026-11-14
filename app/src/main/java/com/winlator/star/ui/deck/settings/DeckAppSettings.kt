@@ -1,10 +1,13 @@
 package com.winlator.star.ui.deck.settings
 
 import com.winlator.star.ui.simple.L
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -26,16 +29,21 @@ import com.winlator.star.ui.theme.AppThemeState
 /**
  * The Settings tab. XMB only: the seven-tab editor of [AppSettingsLayout] (theme popup, Steam library locations first, no logs): the
  * registry's rows plus the XMB-only rows (AppSettingsRows), the page items of [AppSettingsExtras] (updates, folders, backup, sound
- * banks, Lossless.dll, frame-gen capture...) and no hand-off row at all. The plain Deck and Lab get the registry's categories and rows
- * exactly as they always did ([layout] null, no extras, hand-off rows that open the classic screens), so Lab's own Settings menu keeps
- * working. [onMyAccount] null hides the My account line of General > About and help.
+ * banks, Lossless.dll, frame-gen capture...) and no hand-off row at all. The plain Deck gets the registry's categories and rows
+ * exactly as it always did ([layout] null, no extras, hand-off rows that open the classic screens). Lab gets the same categories with
+ * [AppSettingsRegistry.labDefs] and [AppSettingsRegistry.labHandoffs], whose rows open Lab pages only. [onMyAccount] null hides the
+ * My account line of General > About and help.
  */
 @Composable
 internal fun DeckAppSettings(navController: NavHostController, onAbout: () -> Unit, onMyAccount: (() -> Unit)? = null) {
     val context = LocalContext.current
-    val env = remember { SettingsEnv(context, EditorScope.APP, null, null) }
-    val source = remember { AppSource(env) }
-    val xmb = rememberXmbHome() && !AppThemeState.simpleLook
+    val lab = AppThemeState.simpleLook
+    // Lab: the preset lists are read again when Settings comes back (Lab's Translator presets page may have added one).
+    var labGen by remember { mutableIntStateOf(0) }
+    if (lab) com.winlator.star.ui.simple.OnResume { labGen++ }
+    val env = remember(labGen) { SettingsEnv(context, EditorScope.APP, null, null) }
+    val source = remember(env) { AppSource(env) }
+    val xmb = rememberXmbHome() && !lab
     var showLogs by remember { mutableStateOf(false) }
     val about by rememberUpdatedState(onAbout)
     val account by rememberUpdatedState(onMyAccount)
@@ -54,16 +62,21 @@ internal fun DeckAppSettings(navController: NavHostController, onAbout: () -> Un
         ),
         source = source,
         categories = AppSettingsRegistry.categories,
-        defs = if (xmb) AppSettingsRegistry.defs else AppSettingsRegistry.legacyDefs,
-        handoffs = AppSettingsRegistry.handoffs,
+        defs = if (xmb) AppSettingsRegistry.defs else if (lab) AppSettingsRegistry.labDefs else AppSettingsRegistry.legacyDefs,
+        // Lab: its own hand-offs, which open Lab pages (never the classic Settings screen).
+        handoffs = if (lab) AppSettingsRegistry.labHandoffs else AppSettingsRegistry.handoffs,
         onExit = null,
         // The plain Deck and Lab reach the hand-offs (their Settings lists them); the XMB layout drops every one.
         onHandoff = { h ->
-            when (h.target) {
+            if (h.target.startsWith(AppSettingsRegistry.TARGET_LAB)) {
+                navController.navigate(h.target.removePrefix(AppSettingsRegistry.TARGET_LAB)) { launchSingleTop = true }
+            } else if (h.target.startsWith(AppSettingsRegistry.TARGET_URL)) {
+                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(h.target.removePrefix(AppSettingsRegistry.TARGET_URL)))) }
+            } else when (h.target) {
                 AppSettingsRegistry.TARGET_APPEARANCE -> navController.navigate(
                     if (AppThemeState.simpleLook) SimpleRoutes.APPEARANCE else Screen.Appearance.route,
                 )
-                AppSettingsRegistry.TARGET_LOGS -> showLogs = true
+                AppSettingsRegistry.TARGET_LOGS -> if (AppThemeState.simpleLook) navController.navigate(SimpleRoutes.LOGS) { launchSingleTop = true } else showLogs = true
                 AppSettingsRegistry.TARGET_ABOUT -> onAbout()
                 AppSettingsRegistry.TARGET_INPUT_CONTROLS -> navController.navigate(
                     if (AppThemeState.simpleLook) SimpleRoutes.CONTROLS else Screen.InputControls.route,
@@ -72,7 +85,7 @@ internal fun DeckAppSettings(navController: NavHostController, onAbout: () -> Un
                     if (AppThemeState.simpleLook) SimpleRoutes.DRIVERS else Screen.Contents.route,
                 )
                 AppSettingsRegistry.TARGET_DEFAULTS -> navController.navigate(DeckSettingsRoutes.DEFAULTS)
-                else -> navController.navigate(Screen.Settings.route)
+                else -> if (!AppThemeState.simpleLook) navController.navigate(Screen.Settings.route)
             }
         },
         extras = extras,

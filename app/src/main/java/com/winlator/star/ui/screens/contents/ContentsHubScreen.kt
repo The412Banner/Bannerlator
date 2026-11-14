@@ -1518,7 +1518,7 @@ internal fun AddRepoDialog(vm: ContentsHubViewModel, onDismiss: () -> Unit) {
 }
 
 /** JSON feeds (.json / raw github) stay JSON; anything that parses as owner/repo becomes a releases feed. */
-private fun driverFeedFor(url: String): DriverFeed {
+internal fun driverFeedFor(url: String): DriverFeed {
     val looksJson = url.endsWith(".json", true) || url.contains("raw.githubusercontent.com", true)
     if (!looksJson) {
         DriverSourceStore.parseGithubRepo(url, "")?.let { (owner, repo) ->

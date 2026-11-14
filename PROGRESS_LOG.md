@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 12:50 EST — feat/lab-parity-2 MERGED into main (c36fb172)
+
+- **User:** "merge it" (after the 05:23 EST device test of d03ed0da).
+- **Merge:** backup `refs/backup/20261114/main-before-lab-parity-2` = 1a8728a2 (main had not moved since the branch started); `--no-ff` merge commit c36fb172 (parents 1a8728a2 + 75587252). Merged tree = branch tip tree; vs the tested build d03ed0da only PROGRESS_LOG.md differs, so main code = the code device-tested on the Pocket FIT (CI 43583931789 green ×4). Main push CI: 43623964637.
+- **In main now:** Lab pages/rows/pop-ups for every Classic option from the 11-14 audit (settings, game actions + extras, containers, contents, tools, in-game menu, theme), Save Manager Settings scroll (Shuvam's bug), Box64EC download line, full-screen Lab pages (`LabFullScreenWindow`), tappable back/close buttons + tappable hints (`LabTouch.kt`), AGENTS.md removed.
+- **Open (follow-ups, not started):** still Classic: controller test window, layout/bindings editors' pop-ups, TextEditorActivity/UnpackArchiveActivity, store pages without the Lab background, Add games "Recommended components". Not device-tested: VEGAS editor, Turnip/VEGAS downloads, save backup/restore, community upload/apply, add games, EA/Ubisoft/pre-flight pop-ups, Linux sessions, Lab light look, controller-only navigation. User decisions pending: End process confirm, Steam pre-flight B = Cancel, VEGAS delete confirm, Lab VEGAS editor fork (~400 lines). Sub-branches feat/lab-parity-2-* + worktrees kept (delete only on the user's word).
+
 ## 2026-11-14 05:25 EST — feat/lab-parity-2: touch back buttons + tappable hints (branch, awaiting the user)
 
 - **User:** "these portrait menus need simple back buttons that are touch screen tappable since portrait is more touch screen driven and landscape is more controller navigation also with touch".

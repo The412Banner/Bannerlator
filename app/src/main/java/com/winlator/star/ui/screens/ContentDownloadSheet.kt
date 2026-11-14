@@ -172,20 +172,7 @@ fun ContentDownloadSheet(
             return@LaunchedEffect
         }
         communityLoading = true
-        val typeStr = selectedType.toString()
-        val groups = withContext(Dispatchers.IO) {
-            val repo = RemoteSourceRepository(context)
-            repo.getAllSources()
-                // The hub lists the Official catalog as a built-in repository; this sheet already renders
-                // that same contents.json as its own Official group, so skip it here (never "community").
-                .filter { !it.isOfficial && sourceSupportsType(it, typeStr) }
-                .mapNotNull { s ->
-                    val items = runCatching { repo.fetchFromSource(s, typeStr) }.getOrDefault(emptyList())
-                        .map { it.toProfile(selectedType) }
-                        .distinctBy { it.remoteUrl }
-                    if (items.isEmpty()) null else CommunityGroup(s.name, items)
-                }
-        }
+        val groups = withContext(Dispatchers.IO) { fetchCommunityGroups(context, selectedType) }
         communityGroups = groups
         if (selectAllOnLoad) {
             activeSources = setOf(OFFICIAL_KEY) + groups.map { it.name }
@@ -707,14 +694,14 @@ private fun InfoField(label: String, value: String) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-private fun isInUse(profile: ContentProfile, inUseKey: String?): Boolean {
+internal fun isInUse(profile: ContentProfile, inUseKey: String?): Boolean {
     if (inUseKey.isNullOrEmpty()) return false
     return inUseKey == ContentsManager.getEntryName(profile) ||
         inUseKey == profile.verName ||
         inUseKey == "${profile.type}-${profile.verName}-${profile.verCode}"
 }
 
-private fun loadProfiles(
+internal fun loadProfiles(
     cm: ContentsManager,
     contentTypes: List<ContentProfile.ContentType>,
     onResult: (List<ContentProfile>) -> Unit,
@@ -810,9 +797,9 @@ internal fun installContent(
 
 // ── Community source unification (opt-in) ─────────────────────────────────────
 
-private const val COMMUNITY_PREFS = "component_download_prefs"
-private const val COMMUNITY_KEY = "include_community"
-private const val OFFICIAL_KEY = "__official__"
+internal const val COMMUNITY_PREFS = "component_download_prefs"
+internal const val COMMUNITY_KEY = "include_community"
+internal const val OFFICIAL_KEY = "__official__"
 
 /** Official-source green, shared with the Contents hub's repository badge. */
 internal val OfficialSourceColor = Color(0xFF37C26B)
@@ -825,7 +812,26 @@ private fun sourceColorFor(name: String): Color =
     CommunityPalette[name.hashCode().absoluteValue % CommunityPalette.size]
 
 /** A community repo's versions for the active type, bridged to installable ContentProfiles. */
-private data class CommunityGroup(val name: String, val profiles: List<ContentProfile>)
+internal data class CommunityGroup(val name: String, val profiles: List<ContentProfile>)
+
+/**
+ * The community repositories' versions of [type] (the Contents screen's component sources that list it), bridged to
+ * installable profiles. Blocking (network): call off the main thread.
+ */
+internal fun fetchCommunityGroups(context: Context, type: ContentProfile.ContentType): List<CommunityGroup> {
+    val typeStr = type.toString()
+    val repo = RemoteSourceRepository(context)
+    return repo.getAllSources()
+        // The hub lists the Official catalog as a built-in repository; this sheet already renders
+        // that same contents.json as its own Official group, so skip it here (never "community").
+        .filter { !it.isOfficial && sourceSupportsType(it, typeStr) }
+        .mapNotNull { s ->
+            val items = runCatching { repo.fetchFromSource(s, typeStr) }.getOrDefault(emptyList())
+                .map { it.toProfile(type) }
+                .distinctBy { it.remoteUrl }
+            if (items.isEmpty()) null else CommunityGroup(s.name, items)
+        }
+}
 
 /** One rendered group in the sheet: Official (contents.json) or a community source. */
 private data class SheetSection(
@@ -861,7 +867,7 @@ private fun RemoteSourceRepository.RemoteItem.toProfile(type: ContentProfile.Con
     }
 
 /** Normalized identity for cross-checking an installed version against a community duplicate. */
-private fun normVer(type: String, ver: String?): String =
+internal fun normVer(type: String, ver: String?): String =
     (type + (ver ?: "")).lowercase().filter { it.isLetterOrDigit() }
 
 @Composable

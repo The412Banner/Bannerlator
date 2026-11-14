@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 23:55 EST — MERGED PR #660 (Abu, XMB update) → main ef7ca394 (merge commit via GitHub), NOT device-tested
+
+- **User:** "I want to merge" → "create a merge commit then … idc about Claude co author on a pr from someone else" → "merge it then build main as artifacts only". Merged WITHOUT a device test (user's decision; recommended first).
+- **Before:** PR head b6017c21 (31 commits, all authored MGamer404; 208 files +27,554/−8,841). merge-tree vs main 88735c5b: no conflicts. Test merge 3fd25d2e (branch review/pr660-b6017c21-on-main) CI 43555840404 GREEN 4/4, 15 skipped = main. Review of Abu's 20 commits since 55e04b1d (agent + my checks): no crash/data-loss bug; notes for Abu: Steam game page Online/reconnect pill removed in every look (5bf133df), store page layout/highlight/search in every look (intended), plain Deck in-game drawer gets xmbRevealRoom (DeckInGame.kt:430,1005,1068), XMB custom size not carried over (new xmb_ui_scale/xmb_font_scale), store XMB screens report every key handled (sounds), possible: XMB icon picker gone, uncapped reveal room, options reopen on game 0 after rename. PR description is stale (Charcoal default, landscape both ways, "Classic/Lab/Deck untouched").
+- **Squash idea dropped:** GitHub's squash dialog said the commit would be authored by The412Banner (not Abu) → user chose a merge commit (keeps Abu's commits and authorship; their AI trailers stay in history, user OK).
+- **Merge:** `gh pr merge 660 --merge --match-head-commit b6017c21` → **ef7ca394** (parents 88735c5b + b6017c21, author The412Banner noreply, committer GitHub, message = default subject + PR title, no trailer). Backup `refs/backup/20261113/main-before-pr660` = 88735c5b. Tree ef7ca394 == test-merge 3fd25d2e tree (36f8a25b) → main == the CI-green build. 26 Abu commits + 5 of his merges now on main under his name.
+- **Main build:** CI 43558955467 (push, CI Build artifacts only, headSha ef7ca394) started 23:54:49 EST automatically; user: no monitoring.
+- **Next:** device test of main on the FIT when the user wants; send Abu the follow-up list (Steam pill, Deck drawer leak, sounds, unverified items, stale PR text) on the user's word. review/pr660-b6017c21-on-main + review/pr660-on-main kept (delete on the user's word).
+
 ## 2026-11-13 23:15 EST — MERGED feat/lab-yserver-controller-tab → main 042ae311 (--no-ff), device-tested on the Pocket FIT (settings)
 
 - **User:** "merge" (after the settings test report; launch test on yserver offered, not chosen).

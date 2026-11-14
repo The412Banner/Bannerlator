@@ -10,6 +10,7 @@
 - **Correction:** this entry's title first said 19:40 EST; the commits were at 19:28 EST.
 - **CI 43534485095 (headSha 5a08e99a, 19:29–19:36 EST): GREEN 4/4**, pubg BUILD SUCCESSFUL in 5m 24s, no Kotlin errors; skipped steps identical to main build 43530432107 (cache hits, Xbox backend restored from cache).
 - **Staged:** /sdcard/Download/Bannerlator-xbox-search-5a08e99a.apk sha256 bd39b666…868e (artifact = host = device), com.tencent.ig vc106 3.1.9-pre2, cert a40da80a (same as installed); classes4.dex has the xbox.com search URL. FIT currently runs main 6b38d097 (base.apk 0f979eca, 19:08:27); undo APK /sdcard/Download/Bannerlator-main-6b38d097-pubg.apk. NOT installed — asked the user.
+- **19:40 EST user: "yes test then merge if fixed"** → peers root-63/-6a/-54/-15 told (root-63, root-6a acked); installing 5a08e99a on the FIT, then Xbox store search test (kotor, conker, halo) + crash check; merge to main (backup ref first) if it passes. Resume point: FIT base.apk sha256 bd39b666 = test build, 0f979eca = still main; undo /sdcard/Download/Bannerlator-main-6b38d097-pubg.apk; bring Termux back after the UI test.
 - **User decision 19:36 EST:** start the Xbox backend + runtime update (Nexus backend 0.2.15 / runtime 20261102) only after this branch is device-tested and merged.
 - **Resume point:** branch fix/xbox-search head = this log commit; code d3a2077a. If cut: check `gh run list --workflow build-artifacts.yml --branch fix/xbox-search`.
 

@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 02:40 EST — same branch: Save Manager Settings tab scrolls (fix/sound-startup-own-pack, CI pending)
+
+- **Why:** user forwarded 2 screenshots (Telegram "The412Banner Gaming", Shuvam Chowdhury 1:35 AM: "a small graphical bug here"): Lab Save Manager › Settings in landscape — a switch shows below the panel's bottom edge, its label cut. User: "include it in these fixes".
+- **Cause:** SaveManagerSettingsSection (SteamSaveManagerActivity.kt ~820) is a plain Column of 8 SettingsToggleRows with no scroll; landscape fits 6–7, the rest draw outside the panel.
+- **Fix:** verticalScroll(rememberScrollState()) on that Column (+ import). The toggle prompt is drawn after the Column, unaffected.
+- **Next:** CI → stage → ASK before install (new build) → check Save Manager › Settings in landscape (all 8 reachable by scroll / D-pad) + the start-up sound by ear.
+
 ## 2026-11-14 01:30 EST — fix/sound-startup-own-pack: start-up sound only from the chosen pack (branch, CI pending)
 
 - **Why:** user (Pocket FIT, pack "Switch" by EMERALD0874): "I have a different sound pack set so why do I still hear steam big picture when starting the app?" Switch has no steam_os_startup.wav; UiSoundBank.resolve fills every missing sound from the Steam Big Picture pack. Options given A (start-up only from the pack) / B (missing sounds: fill or silent) / C (start-up switch); user: "option a".

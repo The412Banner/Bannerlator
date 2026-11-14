@@ -170,9 +170,13 @@ internal fun IgHelpButton(title: String, text: String) {
     if (open) LabInfoSheet(title, text) { open = false }
 }
 
-/** [IgHelpButton] with the help text from a string resource (help_scaling_mode, help_rumble_motors …). */
+/** [IgHelpButton] with the help text from a string resource (help_scaling_mode, help_rumble_motors …; small HTML, shown as plain text). */
 @Composable
-internal fun IgHelpButton(title: String, @StringRes textRes: Int) = IgHelpButton(title, stringResource(textRes))
+internal fun IgHelpButton(title: String, @StringRes textRes: Int) {
+    val raw = stringResource(textRes)
+    val text = remember(raw) { com.winlator.star.ui.screens.htmlToAnnotated(raw).text }
+    IgHelpButton(title, text)
+}
 
 /**
  * A choice from a list as one button (the Classic drawer's dropdown fields): it shows the current choice, and A or a

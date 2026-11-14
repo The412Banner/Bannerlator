@@ -34,7 +34,7 @@ import com.winlator.star.widget.HudMetrics
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
-private const val WATCHDOG_WHATS_THIS =
+internal const val WATCHDOG_WHATS_THIS =
     "A safety backstop. If your device gets too hot, it automatically undoes the performance " +
     "settings you've turned on and restores your device to how it was.\n\n" +
     "It is NOT what throttles your device. Your device has its own built-in thermal protection " +
@@ -200,7 +200,7 @@ private fun modeLabel(mode: ThresholdMode): String = when (mode) {
     ThresholdMode.MANUAL -> "Manual"
 }
 
-private fun presetInfo(mode: ThresholdMode): String {
+internal fun presetInfo(mode: ThresholdMode): String {
     val first = TempWatchdog.firstTripC ?: TempWatchdog.FALLBACK_CEILING_C
     val ceiling = TempWatchdog.resolvedCeilingFor(mode)
     return when (mode) {

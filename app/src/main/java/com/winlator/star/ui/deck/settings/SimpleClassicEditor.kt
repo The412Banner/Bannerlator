@@ -874,13 +874,13 @@ internal fun SimpleClassicEditor(
     textFor?.let { def ->
         val control = def.control(env, values) as? Control.TextField
         if (control == null) textFor = null
-        else com.winlator.star.ui.simple.LabPanelDialog(
+        else com.winlator.star.ui.simple.LabSheetDialog(
             title = (lines.firstOrNull { it is RSet && it.def.id == def.id } as? RSet)?.label ?: def.label,
             onDismiss = { textFor = null },
         ) { TextControl(control, source.value(def), enabled = true) { v -> pick(def, v) } }
     }
     coresFor?.let { def ->
-        com.winlator.star.ui.simple.LabPanelDialog(title = L(def.label), onDismiss = { coresFor = null }) {
+        com.winlator.star.ui.simple.LabSheetDialog(title = L(def.label), onDismiss = { coresFor = null }) {
             CoresControl(source.value(def), enabled = true) { v -> pick(def, v) }
         }
     }

@@ -131,7 +131,7 @@ internal fun LabNote(title: String, body: String, onDismiss: () -> Unit) {
 
 /** A Lab panel in a dialog around [content] (a setting's own control), with [doneLabel] to close it. */
 @Composable
-internal fun LabPanelDialog(title: String, onDismiss: () -> Unit, doneLabel: String = L("Done"), content: @Composable () -> Unit) {
+internal fun LabSheetDialog(title: String, onDismiss: () -> Unit, doneLabel: String = L("Done"), content: @Composable () -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
         com.winlator.star.sound.DialogSound()
         Column(

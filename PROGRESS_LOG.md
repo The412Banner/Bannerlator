@@ -1,5 +1,19 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 14:06 EST — Lab untried-areas device test DONE + fix/lab-test-fixes (branch, awaiting the user)
+
+- **User:** "test the untried areas first, device is yours and finish it". Tested on the Pocket FIT on main code (d03ed0da), then on the fix builds.
+- **Worked (device):** Lab light look (Settings, Updates, Tools, file manager, Wrappers, Library, game page, VEGAS editor, pickers readable); controller only (gamepad B/A/X/R1/R2/L2/D-pad: rail sections, lists, tabs, options, pop-ups); VEGAS editor (4 tabs, delete confirm, real delete of a downloaded build, Save-the-config? on Back); VEGAS builds download (1.11.2 installed, progress shown); stock VEGAS configs list; Turnip download (sources + Banners-Turnip releases); Lab file picker incl. search in subfolders; save backup (DiRT Showdown, 67 files, zip) and the restore confirm (cancelled); community configs: matched game, config detail, Apply to a test game (41 changes), My uploads; Lab Remove confirm. Crash buffer empty throughout.
+- **Bugs found and fixed on fix/lab-test-fixes (off main 0a8b88d7):**
+  - e9c05840 — **from the lp2 merge:** `LabDialogButton` was both a composable (game actions) and a class (LabPanelDialog buttons); calls like `LabDialogButton(L("Cancel"), onClick = x)` built the class and drew nothing → Add games, container picker, Properties, Copy/Move, Confirm game etc. had no Cancel/Close/Save/Skip. Composable renamed `LabActionButton`. Light look: no lift shadow under the focused row / selected tab (showed as a second offset box).
+  - cab202ed — pre-existing (Classic too): Add game EXE wrote over an existing game with the same name (CursorTest.exe in AIO-2.2.0 was named "AIO" and replaced AIO's shortcut and its settings during the test; AIO.desktop restored from backup, the art it wrote removed). New game now gets "Name (2)".
+  - cf97cc79 — pre-existing: restore confirm said "the backup of backup" for a zip picked in the app's picker (file:// Uri); now the game name.
+  - d2e208d3 — pre-existing: the file picker ignored the app's Orientation setting.
+  - CI 43629051037 green ×4 (d2e208d3). Device-proven (d2e208d3 installed 14:04 EST, sha256 e6ee7312): Properties Close, Add games Cancel, container picker Cancel, Confirm game Skip/Save, "AIO (2)" with AIO untouched, restore confirm names DiRT Showdown, picker stays landscape, light focus one box.
+- **Not tested:** Steam pre-flight + EA setup (pre-flight launches the game by itself when its checks pass; Need for Speed Heat would start), Ubisoft pop-up (no Ubisoft-published Steam/Epic game), Linux sessions (754 MB runtime + Android "Disable child process restrictions" developer option needed), community upload (one tap publishes, as in Classic).
+- **Seen, not changed (pre-existing):** Lab menu rows open on the second tap (first tap selects); Remove leaves the game's cover/icon files behind (Classic too).
+- **Cleanup:** test games removed, downloaded VEGAS build + config removed, test backup zip removed (copies in /sdcard/Download/lp2-test/), Look Dark, Orientation Auto, NFS Heat shortcut unchanged. FIT runs d2e208d3. Not merged.
+
 ## 2026-11-14 13:15 EST — main: device test of the Lab areas not tried yet (in progress)
 
 - **User:** "test the untried areas first, device is yours and finish it". FIT runs d03ed0da (= main c36fb172 code).

@@ -359,6 +359,9 @@ internal fun LabGameDetailsPage(path: String, tab: Int, onNavigate: (String) -> 
     var slotFor by remember { mutableStateOf<String?>(null) }
     var adjustOpen by remember { mutableStateOf(false) }
     var steamHits by remember { mutableStateOf<List<SteamStoreSearch.SteamSuggestion>?>(null) }
+    // A Steam result picked: its details being fetched (the app id), then the filled fields to check before Save.
+    var filling by remember { mutableStateOf<Int?>(null) }
+    var review by remember { mutableStateOf<SteamReview?>(null) }
 
     fun saveDetails(d: GameDetails) {
         runCatching { d.writeTo(s) }
@@ -378,17 +381,37 @@ internal fun LabGameDetailsPage(path: String, tab: Int, onNavigate: (String) -> 
             ShortcutsViewModel.notifyContainersChanged()
         }
     }
-    fun linkSteam(appId: Int) {
+    /**
+     * A Steam result picked: its details fill the fields, as Classic's Game Details does (Steam's name, genres, year,
+     * Metacritic and description; the current ones when Steam could not be reached), for review before anything is saved.
+     */
+    fun fillFromSteam(appId: Int) {
+        filling = appId
+        scope.launch {
+            val info = withContext(Dispatchers.IO) { SteamStoreSearch.fetchDetails(appId) }
+            if (filling != appId) return@launch
+            filling = null
+            review = if (info != null) SteamReview(
+                appId, info.name.ifBlank { s.name }, info.genres.joinToString(", "), info.releaseYear ?: "",
+                info.metacritic?.toString() ?: "", info.shortDescription ?: "",
+            ) else SteamReview(
+                appId, s.name, details.genres.joinToString(", "), details.releaseYear ?: "",
+                details.metacritic?.toString() ?: "", details.description ?: "",
+            )
+        }
+    }
+    /** Save on the review: the details and the Steam link, Steam's cover, then the name (Classic's Save, in its order here). */
+    fun linkSteam(r: SteamReview) {
+        val appId = r.appId
         scope.launch {
             val before = details.steamAppId
-            val info = withContext(Dispatchers.IO) { SteamStoreSearch.fetchDetails(appId) }
             saveDetails(
                 GameDetails(
-                    appId,
-                    info?.genres?.takeIf { it.isNotEmpty() } ?: details.genres,
-                    info?.shortDescription ?: details.description,
-                    info?.releaseYear ?: details.releaseYear,
-                    info?.metacritic ?: details.metacritic,
+                    steamAppId = appId,
+                    genres = r.genres.split(",").map { it.trim() }.filter { it.isNotBlank() },
+                    description = r.description.trim().ifBlank { null },
+                    releaseYear = r.year.trim().ifBlank { null },
+                    metacritic = r.metacritic.trim().toIntOrNull()?.takeIf { it in 1..100 },
                 ),
             )
             // Steam's cover, as Classic's Game Details saves a link: written after the details (it reads the game's
@@ -404,8 +427,8 @@ internal fun LabGameDetailsPage(path: String, tab: Int, onNavigate: (String) -> 
             ShortcutsViewModel.notifyContainersChanged()
             LabArt.changed()
             toast(context, L("Linked to Steam app %1\$s", appId))
-            // As Classic's Game Details does when a result is picked: the game takes Steam's title (its cover and icons move with it).
-            info?.name?.takeIf { it.isNotBlank() }?.let { rename(it) }
+            // The name as reviewed (Steam's title unless changed); its cover and icons move with it.
+            rename(r.name)
         }
     }
     fun searchSteam(query: String) {
@@ -537,7 +560,15 @@ internal fun LabGameDetailsPage(path: String, tab: Int, onNavigate: (String) -> 
         }
     }
     steamHits?.let { hits ->
-        SimpleActionSheet(L("Steam"), hits.map { h -> MenuAction("${h.name}  ·  ${h.appId}", { linkSteam(h.appId) }) }, onDismiss = { steamHits = null }) { a -> steamHits = null; a.run() }
+        LabSteamResults(hits, onDismiss = { steamHits = null }) { h -> steamHits = null; fillFromSteam(h.appId) }
+    }
+    filling?.let { id ->
+        LabPanelDialog(L("Steam app %1\$s", id), onDismiss = { filling = null }, buttons = listOf(LabDialogButton(L("Cancel"), { filling = null }))) {
+            LabBusyLine(L("Getting the details from Steam…"))
+        }
+    }
+    review?.let { r ->
+        LabSteamReview(r, onChange = { review = it }, onDismiss = { review = null }) { linkSteam(r); review = null }
     }
     slotFor?.let { slot ->
         if (slot == "clip") LabClipChooser(s, onDismiss = { slotFor = null })
@@ -574,6 +605,94 @@ private fun SlotThumb(s: Shortcut, slot: String) {
                     if (slot == "logo") Text(s.name, color = SimpleMuted, fontSize = 10.sp, maxLines = 2, modifier = Modifier.align(Alignment.Center).padding(4.dp))
                 })
             }
+        }
+    }
+}
+
+/** What a picked Steam result fills in, to check (and change) before Save. */
+private data class SteamReview(
+    val appId: Int,
+    val name: String,
+    val genres: String,
+    val year: String,
+    val metacritic: String,
+    val description: String,
+)
+
+/** Search Steam's results, as Classic's list shows them: the cover, the name and the App ID. A fills the fields from one. */
+@Composable
+private fun LabSteamResults(hits: List<SteamStoreSearch.SteamSuggestion>, onDismiss: () -> Unit, onPick: (SteamStoreSearch.SteamSuggestion) -> Unit) {
+    val first = remember { FocusRequester() }
+    LaunchedEffect(Unit) { delay(80); runCatching { first.requestFocus() } }
+    LabPickerFrame(L("Steam results"), onDismiss) {
+        hits.forEachIndexed { i, h ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth().labTile(onClick = { onPick(h) }, requester = if (i == 0) first else null).padding(horizontal = 10.dp, vertical = 6.dp),
+            ) {
+                com.winlator.star.ui.screens.SteamResultThumbnail(h.appId)
+                Column(Modifier.weight(1f)) {
+                    Text(h.name, color = SimpleStrong, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(L("App ID: %1\$s", h.appId), color = SimpleMuted, fontSize = 11.sp)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The fields a Steam result filled in, before anything is saved: the cover and App ID, then the name, genres, year,
+ * Metacritic and description (A changes one). Save links the game and writes them; Cancel keeps the game as it was.
+ */
+@Composable
+private fun LabSteamReview(r: SteamReview, onChange: (SteamReview) -> Unit, onDismiss: () -> Unit, onSave: () -> Unit) {
+    var editing by remember { mutableStateOf<String?>(null) }
+    val notSet = L("Not set")
+    LabPanelDialog(
+        L("Link to Steam app %1\$s", r.appId),
+        onDismiss = onDismiss,
+        buttons = listOf(LabDialogButton(L("Cancel"), onDismiss), LabDialogButton(L("Save"), onSave, primary = true)),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            com.winlator.star.ui.screens.SteamResultThumbnail(r.appId)
+            Text(L("App ID: %1\$s", r.appId), color = SimpleMuted, fontSize = 13.sp)
+        }
+        listOf(
+            Triple("name", L("Name"), r.name),
+            Triple("genres", L("Genres"), r.genres),
+            Triple("year", L("Release year"), r.year),
+            Triple("meta", L("Metacritic"), r.metacritic),
+            Triple("desc", L("Description"), r.description),
+        ).forEach { (key, label, value) ->
+            Column(Modifier.fillMaxWidth().labTile(onClick = { editing = key }).padding(horizontal = 10.dp, vertical = 6.dp)) {
+                Text(label, color = SimpleMuted, fontSize = 12.sp)
+                Text(value.ifBlank { notSet }, color = SimpleStrong, fontSize = 14.sp, maxLines = if (key == "desc") 4 else 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+    editing?.let { key ->
+        val (title, start) = when (key) {
+            "name" -> L("Name") to r.name
+            "genres" -> L("Genres") to r.genres
+            "year" -> L("Release year") to r.year
+            "meta" -> L("Metacritic") to r.metacritic
+            else -> L("Description") to r.description
+        }
+        LabTextDialog(
+            title, start, hint = when (key) { "genres" -> L("Action, RPG, Strategy"); "meta" -> "1–100"; else -> null }, multiline = key == "desc",
+            onDismiss = { editing = null },
+        ) { v ->
+            editing = null
+            onChange(
+                when (key) {
+                    "name" -> r.copy(name = v.trim().ifBlank { r.name })
+                    "genres" -> r.copy(genres = v)
+                    "year" -> r.copy(year = v.filter { it.isDigit() }.take(4))
+                    "meta" -> r.copy(metacritic = v.filter { it.isDigit() }.take(3))
+                    else -> r.copy(description = v)
+                },
+            )
         }
     }
 }

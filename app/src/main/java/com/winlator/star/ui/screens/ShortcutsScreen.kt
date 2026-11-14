@@ -321,6 +321,7 @@ import androidx.documentfile.provider.DocumentFile
 import com.winlator.star.ui.DeckDialogBars
 import com.winlator.star.ui.DeckDialogScaled
 import kotlin.math.roundToInt
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -758,6 +759,9 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
     // picker/result) don't stack behind them; the chooser/detail themselves are gated on installSheetOpen.
     val installSheetOpen = installSheetFor != null || driverSheetFor != null
     val communityDialogsGated = installSheetOpen || configAction != null || detailFor != null
+    // Lab: its own pages for the community configs, a game's logs and My account (LabCommunity.kt), instead of these dialogs.
+    val lab = com.winlator.star.ui.simple.LabNav.ready
+    if (lab) com.winlator.star.ui.simple.LabActionHandoffs(actions)
 
     // Shared apply runner — used by both the catalog browser and the per-shortcut sheet. Dispatches by
     // pick kind: a specific uploaded file applies THAT file; a device-row fallback applies the
@@ -806,49 +810,11 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
     // the same authority the save-share + updater use); Save copies it to public Downloads and toasts.
     val shareExport: (ShortcutExporter.ExportResult) -> Unit = { res ->
         exportResult = null
-        scope.launch(Dispatchers.IO) {
-            val dir = File(context.cacheDir, "community_configs/export").apply { mkdirs() }
-            val file = File(dir, res.fileName)
-            file.writeText(res.json)
-            withContext(Dispatchers.Main) {
-                try {
-                    val authority = context.packageName + ".tileprovider"
-                    val uri = FileProvider.getUriForFile(context, authority, file)
-                    val send = Intent(Intent.ACTION_SEND).apply {
-                        type = "application/json"
-                        putExtra(Intent.EXTRA_STREAM, uri)
-                        putExtra(Intent.EXTRA_SUBJECT, res.game)
-                        putExtra(Intent.EXTRA_TEXT, "Bannerlator config for ${res.game}")
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    context.startActivity(Intent.createChooser(send, "Share config"))
-                } catch (e: Exception) {
-                    Toast.makeText(context, "Couldn't share the config.", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
+        shareCommunityExport(context, scope, res)
     }
     val saveExportToDownloads: (ShortcutExporter.ExportResult) -> Unit = { res ->
         exportResult = null
-        scope.launch(Dispatchers.IO) {
-            val ok = try {
-                val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                // Exported configs live under Download/bannerlator/game-configs/ (created if absent).
-                val exportDir = File(downloads, "bannerlator/game-configs")
-                if (!exportDir.exists()) exportDir.mkdirs()
-                val out = File(exportDir, res.fileName)
-                out.writeText(res.json)
-                out.setReadable(true, false)
-                MediaScannerConnection.scanFile(context, arrayOf(out.absolutePath), null, null)
-                out.absolutePath
-            } catch (e: Exception) {
-                null
-            }
-            withContext(Dispatchers.Main) {
-                if (ok != null) Toast.makeText(context, "Saved to $ok", Toast.LENGTH_LONG).show()
-                else Toast.makeText(context, "Couldn't save the config.", Toast.LENGTH_SHORT).show()
-            }
-        }
+        saveCommunityExportToDownloads(context, scope, res)
     }
 
     // Post-install fixup shared by the inline installer and the "Browse all versions" fallback sheet:
@@ -858,20 +824,7 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
         val target = applyTarget
         if (target != null) {
             scope.launch {
-                val resolved = withContext(Dispatchers.IO) {
-                    val installed = com.winlator.star.communityconfigs.InstalledComponents.read(context)
-                    // Try the exact wanted version first. If the user installed a CLOSEST build instead
-                    // (e.g. a date-stamped FEX like "Fex-20260103" that has no exact catalog match), the
-                    // wanted string never re-resolves — so fall back to the NEWEST installed build of this
-                    // type, i.e. the one that was just installed, and apply that.
-                    if (CommunityConfigApply.applyResolvedComponent(target, mc, installed)) {
-                        true
-                    } else {
-                        val newest = CommunityConfigApply.installedTypeKey(mc.type)?.let { installed.newestToken(it) }
-                        newest != null &&
-                            CommunityConfigApply.applyResolvedComponent(target, mc.copy(wanted = newest), installed)
-                    }
-                }
+                val resolved = withContext(Dispatchers.IO) { applyCommunityComponentAfterInstall(context, target, mc) }
                 if (resolved) {
                     if (mc.label !in resolvedMissing) resolvedMissing.add(mc.label)
                     vm.refresh()
@@ -1129,7 +1082,7 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
     // Three outcomes, and it matters that they read differently: per-game folders off (nothing is
     // filed per game, so we cannot show "this game's" logs at all), on but nothing captured yet, or
     // the viewer. Silently opening an empty viewer for the first two would look like a bug.
-    logsShortcut?.let { s ->
+    if (!lab) logsShortcut?.let { s ->
         val entry = remember(s.name) { LogInventory.forGame(context, s.name) }
         val perGameOff = remember { !LogLocation.isPerGameEnabled(context) }
         if (entry != null) {
@@ -1265,7 +1218,7 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
     }
 
     // Community configs dialog (Phase 1 — match + suggest, read-only)
-    if (!communityDialogsGated) communityTarget?.let { s ->
+    if (!communityDialogsGated && !lab) communityTarget?.let { s ->
         val dismiss = { communityTarget = null; communityResult = null }
         val communityDialogShape = RoundedCornerShape(28.dp)
         OutlinedAlertDialog(
@@ -1758,7 +1711,7 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
     }
 
     // Catalog browser (Part A) — full-catalog entry from the header button.
-    if (showCommunityBrowser && !communityDialogsGated) {
+    if (showCommunityBrowser && !communityDialogsGated && !lab) {
         CommunityCatalogBrowser(
             vm = vm,
             onDismiss = { showCommunityBrowser = false },
@@ -1771,7 +1724,7 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
 
     // Phase 2 (optional accounts) — the My-account sheet. Its "My uploads" button dismisses this and opens
     // the existing My-uploads manager (the per-game dialog still opens My uploads directly, unchanged).
-    if (showMyAccount) {
+    if (showMyAccount && !lab) {
         MyAccountDialog(
             vm = vm,
             onDismiss = { showMyAccount = false },
@@ -2150,13 +2103,78 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
     }
 
     // Game Details editor (Edit Game): name + Steam link/search + genres/description/year/metacritic.
-    gameDetailsShortcut?.let { s ->
+    if (!lab) gameDetailsShortcut?.let { s ->
         GameDetailsSheet(
             shortcut = s,
             onDismiss = { gameDetailsShortcut = null },
             onSaved = { vm.refresh() },
         )
     }
+}
+
+/**
+ * Shares an exported config: written to cacheDir/community_configs/export/<file> off the main thread, then handed to
+ * the system share sheet through the app's FileProvider (${applicationId}.tileprovider, as the save share and the
+ * updater use). Shared by Classic's export sheet and Lab's.
+ */
+internal fun shareCommunityExport(context: Context, scope: CoroutineScope, res: ShortcutExporter.ExportResult) {
+    scope.launch(Dispatchers.IO) {
+        val dir = File(context.cacheDir, "community_configs/export").apply { mkdirs() }
+        val file = File(dir, res.fileName)
+        file.writeText(res.json)
+        withContext(Dispatchers.Main) {
+            try {
+                val authority = context.packageName + ".tileprovider"
+                val uri = FileProvider.getUriForFile(context, authority, file)
+                val send = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/json"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_SUBJECT, res.game)
+                    putExtra(Intent.EXTRA_TEXT, "Bannerlator config for ${res.game}")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(send, "Share config"))
+            } catch (e: Exception) {
+                Toast.makeText(context, "Couldn't share the config.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+}
+
+/** Saves an exported config to the public Download/bannerlator/game-configs/ folder and says where. Shared by Classic and Lab. */
+internal fun saveCommunityExportToDownloads(context: Context, scope: CoroutineScope, res: ShortcutExporter.ExportResult) {
+    scope.launch(Dispatchers.IO) {
+        val ok = try {
+            val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            // Exported configs live under Download/bannerlator/game-configs/ (created if absent).
+            val exportDir = File(downloads, "bannerlator/game-configs")
+            if (!exportDir.exists()) exportDir.mkdirs()
+            val out = File(exportDir, res.fileName)
+            out.writeText(res.json)
+            out.setReadable(true, false)
+            MediaScannerConnection.scanFile(context, arrayOf(out.absolutePath), null, null)
+            out.absolutePath
+        } catch (e: Exception) {
+            null
+        }
+        withContext(Dispatchers.Main) {
+            if (ok != null) Toast.makeText(context, "Saved to $ok", Toast.LENGTH_LONG).show()
+            else Toast.makeText(context, "Couldn't save the config.", Toast.LENGTH_SHORT).show()
+        }
+    }
+}
+
+/**
+ * After a config's missing component was installed: writes the build now on disk to [target]. Tries the exact wanted
+ * version first. If the user installed a CLOSEST build instead (e.g. a date-stamped FEX like "Fex-20260103" that has no
+ * exact catalog match), the wanted string never re-resolves — so it falls back to the NEWEST installed build of this
+ * type, i.e. the one that was just installed, and applies that. BLOCKING. Shared by Classic and Lab.
+ */
+internal fun applyCommunityComponentAfterInstall(context: Context, target: Shortcut, mc: CommunityConfigApply.MissingComponent): Boolean {
+    val installed = com.winlator.star.communityconfigs.InstalledComponents.read(context)
+    if (CommunityConfigApply.applyResolvedComponent(target, mc, installed)) return true
+    val newest = CommunityConfigApply.installedTypeKey(mc.type)?.let { installed.newestToken(it) }
+    return newest != null && CommunityConfigApply.applyResolvedComponent(target, mc.copy(wanted = newest), installed)
 }
 
 // Small "BANNERLATOR" source pill for configs shared through our own repo (app_source=bannerlator), so
@@ -2199,7 +2217,7 @@ internal fun CommunityStoreBadge(isSteam: Boolean) {
 
 // Map a worker account error code to a human message. Reset reads "invalid" as a bad recovery key; every
 // other flow reads it as bad credentials; unknown / "network" collapses to a connection message.
-private fun accountErrorMessage(code: String, isReset: Boolean): String = when (code) {
+internal fun accountErrorMessage(code: String, isReset: Boolean): String = when (code) {
     "invalid_username" -> "Usernames are 3–20 characters: letters, numbers, _ or -."
     "username_reserved" -> "That username is reserved — pick another."
     "weak_password" -> "Password must be at least 6 characters."
@@ -2210,7 +2228,7 @@ private fun accountErrorMessage(code: String, isReset: Boolean): String = when (
 }
 
 /** Phase 3 (optional accounts) — the worker's typed avatar-upload rejections, in plain language. */
-private fun avatarErrorMessage(code: String): String = when (code) {
+internal fun avatarErrorMessage(code: String): String = when (code) {
     "bad_type" -> "That image type isn't supported — pick a JPEG, PNG, or WebP."
     "bad_size" -> "That image is too large — pick a smaller one."
     "bad_image" -> "That file isn't a valid image."
@@ -2224,7 +2242,7 @@ private fun avatarErrorMessage(code: String): String = when (code) {
  * off the main thread (bitmap work + IO); returns null on any read/decode failure so the caller degrades
  * to a toast rather than crashing.
  */
-private fun compressAvatar(context: Context, uri: Uri): ByteArray? {
+internal fun compressAvatar(context: Context, uri: Uri): ByteArray? {
     return try {
         val bitmap = com.winlator.star.core.ImageUtils.getBitmapFromUri(context, uri, 512) ?: return null
         val maxBytes = 512 * 1024
@@ -4036,9 +4054,12 @@ internal fun isWineEntry(shortcut: Shortcut): Boolean =
     !AndroidGames.isAndroidEntry(shortcut) && !LinuxShortcuts.isLinuxEntry(shortcut)
 
 internal fun launchSaveManager(context: Context, focusAppId: Int) {
+    // Lab: its own Save Manager page on this game, in the Lab frame (the Activity, Lab-skinned, when the frame is not up).
+    if (com.winlator.star.ui.simple.LabNav.go(com.winlator.star.ui.simple.LabCommunityRoutes.saves(focusAppId))) return
     context.startActivity(
         Intent(context, SteamSaveManagerActivity::class.java)
-            .putExtra(SteamSaveManagerActivity.EXTRA_FOCUS_APP_ID, focusAppId),
+            .putExtra(SteamSaveManagerActivity.EXTRA_FOCUS_APP_ID, focusAppId)
+            .putExtra(SteamSaveManagerActivity.EXTRA_LAB, com.winlator.star.ui.theme.AppThemeState.simpleLook),
     )
 }
 

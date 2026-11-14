@@ -605,8 +605,12 @@ fun ShortcutLaunchDialogs(launcher: ShortcutLauncher, onRemove: (Shortcut) -> Bo
         )
     }
 
+    // Lab draws the EA and Ubisoft pop-ups as Lab panels (LabLaunchDialogs.kt): the same text, buttons and outcomes.
+    val lab = com.winlator.star.ui.theme.AppThemeState.simpleLook
+
     // ── Steam launch-method popup (M3): SteamLite (real Steam / VAC) vs Goldberg (offline) ──────────
-    launcher.eaUnsupportedFor?.let { s ->
+    if (lab) launcher.eaUnsupportedFor?.let { s -> com.winlator.star.ui.simple.LabEaUnsupportedDialog(s.name ?: "") { launcher.eaUnsupportedFor = null } }
+    if (!lab) launcher.eaUnsupportedFor?.let { s ->
         AlertDialog(
             onDismissRequest = { launcher.eaUnsupportedFor = null },
             title = { Text("Not supported: EA anti-cheat") },
@@ -619,7 +623,50 @@ fun ShortcutLaunchDialogs(launcher: ShortcutLauncher, onRemove: (Shortcut) -> Bo
             confirmButton = { DeckDialogBars(); TextButton(onClick = { launcher.eaUnsupportedFor = null }) { Text("OK") } },
         )
     }
-    launcher.eaSetupFor?.let { s ->
+    // "Set up" on the EA question (Classic's and Lab's): one setup session that runs EA's installer.
+    fun startEaSetup(s: Shortcut) {
+        launcher.eaSetupBusy = true
+        launcher.eaScope.launch {
+            // Resolve with the SAME derivation that decided to show this dialog
+            // (EaSupport.installDirOf): a legacy shortcut written before steamAppId was stamped
+            // (pre-2026-08 downloads), or a drive-letter path the strict resolver can't map, used
+            // to dead-end here with a misleading "install folder" toast (reported on NFS Heat, 3.0.7).
+            val installDir = withContext(Dispatchers.IO) {
+                runCatching { EaSupport.installDirOf(s) }.getOrNull()
+            }
+            val exe = withContext(Dispatchers.IO) {
+                val resolved = runCatching { WinePath.resolveAndroidPath(s.container, s.path)?.absolutePath }.getOrNull()
+                // runForShortcut locates the depot from the exe's steam_games/ segment, so prefer a
+                // path inside the resolved depot when the direct mapping lacks that segment.
+                resolved?.takeIf { InstallScriptExecutor.locateInstallDir(File(it)) != null }
+                    ?: installDir?.let { File(it, s.path.replace('\\', '/').substringAfterLast('/')).absolutePath }
+                    ?: resolved
+            }
+            val appId = withContext(Dispatchers.IO) {
+                runCatching { EaSupport.resolveSteamAppId(s, installDir) }.getOrDefault(0)
+            }
+            if (exe != null && appId > 0) {
+                withContext(Dispatchers.IO) {
+                    try { InstallScriptExecutor.runForShortcut(context, s.container, appId, exe, true) }
+                    catch (t: Throwable) { android.util.Log.w("ShortcutsScreen", "EA setup failed", t) }
+                }
+            } else {
+                android.util.Log.w("ShortcutsScreen", "EA setup: cannot start for '${s.name}' — exe=$exe appId=$appId path='${s.path}' container=${s.container.id}")
+                Toast.makeText(
+                    context,
+                    if (exe == null) "Couldn't locate the game's install folder (${s.path})"
+                    else "Couldn't work out this game's Steam app id — re-add it from the Steam library",
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+            launcher.eaSetupBusy = false
+            launcher.eaSetupFor = null
+        }
+    }
+    if (lab) launcher.eaSetupFor?.let { s ->
+        com.winlator.star.ui.simple.LabEaSetupDialog(s.name ?: "", busy = launcher.eaSetupBusy, onSetUp = { startEaSetup(s) }, onCancel = { launcher.eaSetupFor = null })
+    }
+    if (!lab) launcher.eaSetupFor?.let { s ->
         AlertDialog(
             onDismissRequest = { if (!launcher.eaSetupBusy) launcher.eaSetupFor = null },
             title = { Text("Set up EA Desktop") },
@@ -635,51 +682,38 @@ fun ShortcutLaunchDialogs(launcher: ShortcutLauncher, onRemove: (Shortcut) -> Bo
             confirmButton = {
                 DeckDialogBars()
                 DeckDialogScaled {
-                    TextButton(enabled = !launcher.eaSetupBusy, onClick = {
-                        launcher.eaSetupBusy = true
-                        launcher.eaScope.launch {
-                            // Resolve with the SAME derivation that decided to show this dialog
-                            // (EaSupport.installDirOf): a legacy shortcut written before steamAppId was stamped
-                            // (pre-2026-08 downloads), or a drive-letter path the strict resolver can't map, used
-                            // to dead-end here with a misleading "install folder" toast (reported on NFS Heat, 3.0.7).
-                            val installDir = withContext(Dispatchers.IO) {
-                                runCatching { EaSupport.installDirOf(s) }.getOrNull()
-                            }
-                            val exe = withContext(Dispatchers.IO) {
-                                val resolved = runCatching { WinePath.resolveAndroidPath(s.container, s.path)?.absolutePath }.getOrNull()
-                                // runForShortcut locates the depot from the exe's steam_games/ segment, so prefer a
-                                // path inside the resolved depot when the direct mapping lacks that segment.
-                                resolved?.takeIf { InstallScriptExecutor.locateInstallDir(File(it)) != null }
-                                    ?: installDir?.let { File(it, s.path.replace('\\', '/').substringAfterLast('/')).absolutePath }
-                                    ?: resolved
-                            }
-                            val appId = withContext(Dispatchers.IO) {
-                                runCatching { EaSupport.resolveSteamAppId(s, installDir) }.getOrDefault(0)
-                            }
-                            if (exe != null && appId > 0) {
-                                withContext(Dispatchers.IO) {
-                                    try { InstallScriptExecutor.runForShortcut(context, s.container, appId, exe, true) }
-                                    catch (t: Throwable) { android.util.Log.w("ShortcutsScreen", "EA setup failed", t) }
-                                }
-                            } else {
-                                android.util.Log.w("ShortcutsScreen", "EA setup: cannot start for '${s.name}' — exe=$exe appId=$appId path='${s.path}' container=${s.container.id}")
-                                Toast.makeText(
-                                    context,
-                                    if (exe == null) "Couldn't locate the game's install folder (${s.path})"
-                                    else "Couldn't work out this game's Steam app id — re-add it from the Steam library",
-                                    Toast.LENGTH_LONG,
-                                ).show()
-                            }
-                            launcher.eaSetupBusy = false
-                            launcher.eaSetupFor = null
-                        }
-                    }) { Text(if (launcher.eaSetupBusy) "Starting…" else "Set up") }
+                    TextButton(enabled = !launcher.eaSetupBusy, onClick = { startEaSetup(s) }) { Text(if (launcher.eaSetupBusy) "Starting…" else "Set up") }
                 }
             },
             dismissButton = { TextButton(enabled = !launcher.eaSetupBusy, onClick = { launcher.eaSetupFor = null }) { Text("Cancel") } },
         )
     }
-    launcher.ubisoftSetupFor?.let { s ->
+    // The Ubisoft question's main button (Classic's and Lab's): download the installer first, or start the setup.
+    fun confirmUbisoft(s: Shortcut, download: Boolean) {
+        if (download) {
+            launcher.runUbisoftDownloadSetup(s)
+        } else {
+            launcher.ubisoftSetupBusy = true
+            launcher.eaScope.launch {
+                val problem = withContext(Dispatchers.IO) {
+                    try { UbisoftSupport.startSetup(context, s) }
+                    catch (t: Throwable) {
+                        android.util.Log.w("ShortcutsScreen", "Ubisoft setup failed", t)
+                        context.getString(R.string.ubisoft_setup_failed)
+                    }
+                }
+                // Launched: the game starts by itself once the setup session is over and the app is back.
+                if (problem != null) Toast.makeText(context, problem, Toast.LENGTH_LONG).show()
+                else launcher.ubisoftSetupStarted(s)
+                launcher.ubisoftSetupBusy = false
+                launcher.closeUbisoftSetup()
+            }
+        }
+    }
+    if (lab) launcher.ubisoftSetupFor?.let { s ->
+        com.winlator.star.ui.simple.LabUbisoftSetupDialog(launcher, s) { confirmUbisoft(s, launcher.ubisoftSetupDownload) }
+    }
+    if (!lab) launcher.ubisoftSetupFor?.let { s ->
         val download = launcher.ubisoftSetupDownload
         val busy = launcher.ubisoftSetupBusy
         AlertDialog(
@@ -725,27 +759,7 @@ fun ShortcutLaunchDialogs(launcher: ShortcutLauncher, onRemove: (Shortcut) -> Bo
             confirmButton = {
                 DeckDialogBars()
                 DeckDialogScaled {
-                    TextButton(enabled = !busy, onClick = {
-                        if (download) {
-                            launcher.runUbisoftDownloadSetup(s)
-                        } else {
-                            launcher.ubisoftSetupBusy = true
-                            launcher.eaScope.launch {
-                                val problem = withContext(Dispatchers.IO) {
-                                    try { UbisoftSupport.startSetup(context, s) }
-                                    catch (t: Throwable) {
-                                        android.util.Log.w("ShortcutsScreen", "Ubisoft setup failed", t)
-                                        context.getString(R.string.ubisoft_setup_failed)
-                                    }
-                                }
-                                // Launched: the game starts by itself once the setup session is over and the app is back.
-                                if (problem != null) Toast.makeText(context, problem, Toast.LENGTH_LONG).show()
-                                else launcher.ubisoftSetupStarted(s)
-                                launcher.ubisoftSetupBusy = false
-                                launcher.closeUbisoftSetup()
-                            }
-                        }
-                    }) {
+                    TextButton(enabled = !busy, onClick = { confirmUbisoft(s, download) }) {
                         Text(stringResource(when {
                             !busy -> if (download) R.string.ubisoft_download_confirm else R.string.ubisoft_setup_confirm
                             download -> R.string.ubisoft_download_downloading

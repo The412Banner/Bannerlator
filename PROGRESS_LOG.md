@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 19:40 EST — fix/xbox-search: Xbox store search finds console-first PC games (branch, CI pending, NOT device-tested)
+
+- **Why:** Discord #winlator-general screenshot (11-13): are the 25 original Xbox games now on PC (Xbox Wire 11-12) on BL's Xbox store? Checked live: all 25 pass BL's filter (Game + Windows.Desktop MSIXVC, `XboxCatalog.kt` product()) but the name search (apps.microsoft.com) found 1 of 25. User: "can you build it on top of latest merged work on main?"
+- **Built d3a2077a** on main bad851ab (branch fix/xbox-search, worktree /root/src/Bannerlator-wt/xbox-search): `XboxCatalog.search` asks xbox.com's search (POST emerald.xboxservices.com/xboxcomfd/search/games?locale=<lang>-<market>, headers x-ms-api-version 1.1 + MS-CV; up to 25 ids) on a daemon thread (15 s wait) at the same time as the old Store search; xbox.com ids first, then Store ids, distinct, max 60; if both fail the old error is thrown (UI already shows an empty list). `fetch` takes an optional POST body + headers. displaycatalog keeps request order (checked), so best matches stay on top.
+- **Pre-checks (host, same requests):** xbox.com search found 25/25 (position 1 or 2); "halo infinite" control fine; locales en-us/en-DE/ja-US/en-GB OK, zh-CN returns market results (none for "kotor"), a bad locale gives 400 → falls back to the Store search.
+- **Caveat (not fixed, not tested):** these 25 games' PC packages are 1.7–3.0 MB launchers; the game data and emulator come from Windows 11's Xbox app, so a download in BL will most likely not run.
+- **Open/Next:** CI build → stage APK → ask the user before install → search "kotor", "conker", "halo" in the Xbox tab.
+- **Resume point:** branch fix/xbox-search head = this log commit; code d3a2077a. If cut: check `gh run list --workflow build-artifacts.yml --branch fix/xbox-search`.
+
 ## 2026-11-13 19:08 EST — INSTALLED main 6b38d097 pubg on the Pocket FIT (main, installed, NOT device-tested)
 
 - **Why:** user: "build me main branch APK" then "install it".

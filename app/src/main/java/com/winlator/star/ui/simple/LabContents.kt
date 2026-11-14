@@ -5,10 +5,8 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Download
@@ -22,9 +20,7 @@ import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Terminal
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -34,12 +30,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.ImeAction
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.winlator.star.R
 import com.winlator.star.contents.AdrenotoolsManager
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
@@ -47,19 +40,15 @@ import com.winlator.star.contents.LinuxVulkanDriverManager
 import com.winlator.star.contents.WaylandGameDriverManager
 import com.winlator.star.store.download.ContentDownloadPhase
 import com.winlator.star.store.download.ContentDownloadRegistry
-import com.winlator.star.ui.screens.OutlinedAlertDialog
-import com.winlator.star.ui.screens.contents.AddRepoDialog
 import com.winlator.star.ui.screens.contents.ContentsHubViewModel
 import com.winlator.star.ui.screens.contents.ContentsInstaller
 import com.winlator.star.ui.screens.contents.ContentsTypes
 import com.winlator.star.ui.screens.contents.HubSource
-import com.winlator.star.ui.screens.contents.LinuxRuntimeTab
+import com.winlator.star.ui.screens.contents.RemoteSourceRepository
 import com.winlator.star.ui.screens.contents.SetAsDefault
-import com.winlator.star.ui.screens.contents.SetAsDefaultSheet
 import com.winlator.star.ui.screens.contents.shareArchive
 import com.winlator.star.util.InAppFilePicker
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -72,11 +61,13 @@ private fun typeName(t: String): String = when (t.lowercase()) {
 
 /**
  * Lab's Contents: the Classic Contents screen's four tabs as Lab lists, on the same data and actions
- * (ContentsHubViewModel, ContentsInstaller, the three driver managers, SetAsDefault, LinuxRuntimeTab).
+ * (ContentsHubViewModel, ContentsInstaller, the three driver managers, SetAsDefault, LinuxRuntimeTab's calls).
  * Download components: search across the repositories, every repository with the types it offers (one opens its
- * list, SimpleComponentSourcePage), and the list's import / export, save location and restore.
- * Installed: GPU drivers (Windows, Wayland game, Linux runtime) and components, the defaults marked per architecture.
- * My files: saved archives to reinstall, share or delete. Linux runtime: Classic's own tab.
+ * list, SimpleComponentSourcePage), hidden built-in repositories to list again one by one, and the list's import /
+ * export, save location and restore.
+ * Installed: GPU drivers (Windows, Wayland game, Linux runtime, each with its own install / import) and components, the
+ * defaults marked per architecture. My files: saved archives to reinstall, share or delete. Linux runtime: the runtime,
+ * its warnings and the Proton builds (LabContentsLinux.kt). Installs from a file show Lab's progress pop-up with Cancel.
  * [startSection] is the tab opened first ("download", "installed", "files", "linux").
  */
 @Composable
@@ -103,6 +94,11 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
     var addRepo by remember { mutableStateOf(false) }
     var searchOpen by remember { mutableStateOf(false) }
     var restoreAsk by remember { mutableStateOf(false) }
+    var driverAsk by remember { mutableStateOf(false) }
+    var note by remember { mutableStateOf<LabHelpText?>(null) }
+    // A running download's progress pop-up asked for from its row; file installs open theirs by themselves.
+    var progressKey by remember { mutableStateOf<String?>(null) }
+    var linuxShown by remember { mutableStateOf(startSection == "linux") }
 
     val adreno = remember { (context as? Activity)?.let { runCatching { AdrenotoolsManager(it) }.getOrNull() } }
     val wayland = remember { runCatching { WaylandGameDriverManager(context) }.getOrNull() }
@@ -115,13 +111,42 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
         val name = displayNameOf(context, uri)
         val lower = name.lowercase()
         val type = if (lower.endsWith(".wcp") || lower.endsWith(".tzst")) "" else ContentsTypes.GPU_DRIVERS
-        toast(context, L("Installing %1\$s…", name))
         ContentsInstaller.installFromFile(context, type, name, uri) { ok ->
             val msg = fileInstallMessage(type, name, ok)
             (context as? Activity)?.runOnUiThread { msg?.let { toast(context, it) }; vm.refreshStatus(); vm.refreshFolders(); tick++ }
         }
     }
     val fromFile = { picker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.WCP + InAppFilePicker.DRIVER, L("Select content or driver"))) }
+    // Classic's Install GPU driver (the GPU drivers screen): its warning first, then the in-app picker or the system one.
+    val driverPicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode != Activity.RESULT_OK) return@rememberLauncherForActivityResult
+        val uri = result.data?.data ?: InAppFilePicker.pickedUri(result.data) ?: return@rememberLauncherForActivityResult
+        val name = displayNameOf(context, uri)
+        ContentsInstaller.installFromFile(context, ContentsTypes.GPU_DRIVERS, name, uri) { _ ->
+            (context as? Activity)?.runOnUiThread { vm.refreshStatus(); tick++ }
+        }
+    }
+    // Classic's Import Wayland game driver / Import Linux runtime driver: straight into that list, so a zip whose
+    // meta.json names no kind is taken too (Install from file would hand it to AdrenoTools, which refuses it).
+    fun importDriver(uri: Uri, linuxDriver: Boolean) {
+        val name = displayNameOf(context, uri)
+        scope.launch {
+            val r = withContext(Dispatchers.IO) {
+                runCatching { if (linuxDriver) linux!!.let { m -> m.getDriverName(m.installDriver(uri, name)) } else wayland!!.let { m -> m.getDriverName(m.installDriver(uri, name)) } }
+            }
+            r.onSuccess { n -> toast(context, if (linuxDriver) L("Imported Linux runtime driver: %1\$s", n) else L("Imported Wayland game driver: %1\$s", n)); tick++ }
+                .onFailure { e -> toast(context, L("Not imported: %1\$s", e.message ?: e.javaClass.simpleName)) }
+            vm.refreshStatus()
+        }
+    }
+    val waylandPicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode != Activity.RESULT_OK) return@rememberLauncherForActivityResult
+        (result.data?.data ?: InAppFilePicker.pickedUri(result.data))?.let { importDriver(it, linuxDriver = false) }
+    }
+    val linuxPicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode != Activity.RESULT_OK) return@rememberLauncherForActivityResult
+        (result.data?.data ?: InAppFilePicker.pickedUri(result.data))?.let { importDriver(it, linuxDriver = true) }
+    }
 
     // The repository list as Classic's Import / export and Save location dialogs do it, on the in-app file manager.
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -168,6 +193,7 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
                     installed = installedKeys.let { vm.isInstalled(item) },
                     saved = savedKeys.let { vm.isSaved(item) },
                     keepRaw = keepRaw, showSource = true, group = typeName(item.type),
+                    onProgress = { progressKey = it },
                 ) { tick++ },
             )
         }
@@ -188,17 +214,27 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
                         MenuAction(
                             if (s.removeIsHide) L("Hide this repository") else L("Remove this repository"),
                             { vm.removeSource(s) }, danger = true,
-                            confirm = if (s.removeIsHide) L("Hide %1\$s? Restore default repositories shows it again.", s.name) else L("Remove %1\$s?", s.name),
+                            confirm = if (s.removeIsHide) L("Hide %1\$s? It stays under Hidden repositories, where it can be listed again.", s.name) else L("Remove %1\$s?", s.name),
                         ),
                     )
                 },
             )
         }.sortedBy { if (it.group == L("Components")) 0 else 1 }
+        // Hidden built-in repositories, each to list again on its own (Classic switches GPU driver sources on and off).
+        val hidden = remember(sources) { runCatching { vm.hiddenSources() }.getOrDefault(emptyList()) }.map { s ->
+            val show = { vm.showSource(s); toast(context, L("%1\$s is listed again", s.name)) }
+            MenuEntry(
+                key = "h-${s.driverOnly}-${s.name}", title = s.name, subtitle = s.displayFormat,
+                icon = Icons.Filled.VisibilityOff, group = L("Hidden repositories"),
+                onA = show, actions = listOf(MenuAction(L("List it again"), show)),
+            )
+        }
         listOf(
             MenuEntry("search", L("Search all repositories"), icon = Icons.Filled.Search, onA = { searchOpen = true }),
             MenuEntry("refresh", L("Refresh the lists"), icon = Icons.Filled.Refresh, onA = { refreshLists() }),
         ) + repos + listOf(
             MenuEntry("fromfile", L("Install content from file"), icon = Icons.Filled.FolderOpen, primary = true, onA = fromFile),
+        ) + hidden + listOf(
             MenuEntry(
                 "io", L("Import or export the list"), icon = Icons.Filled.ImportExport, group = L("Manage"),
                 actions = listOf(
@@ -246,6 +282,7 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
                     ),
                 )
             }
+            add(MenuEntry("d-install", L("Install GPU driver"), icon = Icons.Filled.Add, group = L("GPU drivers"), onA = { driverAsk = true }))
             runCatching { wayland?.enumerateInstalledDrivers() }.getOrNull().orEmpty().forEach { id ->
                 val name = wayland?.getDriverName(id) ?: id
                 // As Classic: a build without the Wayland WSI is marked.
@@ -259,6 +296,22 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
                     ),
                 )
             }
+            if (wayland != null) {
+                val pick = { waylandPicker.launch(InAppFilePicker.buildIntent(context, arrayOf("zip"), L("Select Wayland game driver zip"))) }
+                add(
+                    MenuEntry(
+                        "w-import", L("Import Wayland game driver (.zip)"),
+                        subtitle = if (runCatching { wayland.enumerateInstalledDrivers().isEmpty() }.getOrDefault(true)) L("None imported. Containers on Wayland use the Turnips bundled in the Proton.") else null,
+                        icon = Icons.Filled.Add, group = L("Wayland game drivers"), onA = pick,
+                        actions = listOf(
+                            MenuAction(L("Import a zip"), pick),
+                            MenuAction(L("What is this?"), {
+                                note = LabHelpText(L("Wayland game drivers"), L("The Vulkan driver a game renders on under the Wayland display backend. Import a zip with a libvulkan_freedreno*.so built for Wayland/Linux (optional libdrm.so, meta.json). Android Turnip zips (vulkan.adXXXX.so) belong under GPU drivers and are rejected here."))
+                            }),
+                        ),
+                    ),
+                )
+            }
             runCatching { linux?.enumerateInstalledDrivers() }.getOrNull().orEmpty().forEach { id ->
                 val name = linux?.getDriverName(id) ?: id
                 val glibc = runCatching { linux?.getMinGlibc(id) }.getOrNull()?.takeIf { it.isNotBlank() }
@@ -268,6 +321,22 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
                         subtitle = listOfNotNull(linux?.getDriverVersion(id)?.takeIf { it.isNotBlank() }, glibc?.let { "glibc $it+" }).joinToString(" · ").ifBlank { null },
                         icon = Icons.Filled.Memory,
                         actions = listOf(MenuAction(L("Remove"), { linux?.removeDriver(id); tick++; toast(context, L("Removed %1\$s", name)) }, danger = true, confirm = L("Remove %1\$s?", name))),
+                    ),
+                )
+            }
+            if (linux != null) {
+                val pick = { linuxPicker.launch(InAppFilePicker.buildIntent(context, arrayOf("zip"), L("Select Linux runtime driver zip"))) }
+                add(
+                    MenuEntry(
+                        "l-import", L("Import Linux runtime driver (.zip)"),
+                        subtitle = if (runCatching { linux.enumerateInstalledDrivers().isEmpty() }.getOrDefault(true)) L("None imported. Linux sessions use the Turnip built into the runtime.") else null,
+                        icon = Icons.Filled.Add, group = L("Linux runtime drivers"), onA = pick,
+                        actions = listOf(
+                            MenuAction(L("Import a zip"), pick),
+                            MenuAction(L("What is this?"), {
+                                note = LabHelpText(L("Linux runtime drivers"), L("The Vulkan driver the Linux runtime draws with: the native Steam client's interface and every game it launches. Import a \"-Linux\" Turnip zip (glibc). The client and its games are Linux processes, so an Android (vulkan.adXXXX.so) or \"-Wayland\" zip cannot be loaded by them and is rejected here. Frames still reach the screen through the GPU driver above."))
+                            }),
+                        ),
                     ),
                 )
             }
@@ -301,7 +370,6 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
     val files = saved.entries.flatMap { (folder, list) ->
         list.map { f ->
             val reinstall = {
-                toast(context, L("Installing %1\$s…", f.name))
                 ContentsInstaller.installFromFile(context, f.type, f.name, f.uri) { ok ->
                     val msg = fileInstallMessage(f.type, f.name, ok)
                     (context as? Activity)?.runOnUiThread { if (ok) vm.markInstalledFromSaved(f); msg?.let { toast(context, it) }; vm.refreshStatus(); tick++ }
@@ -309,7 +377,8 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
             }
             MenuEntry(
                 key = "f${f.uri}", title = f.name, group = folder.ifBlank { typeName(f.type) },
-                subtitle = L("%.1f MB · saved").format(f.sizeBytes / 1_048_576.0),
+                // As Classic: a "Save the file only" download is marked until it is installed from here.
+                subtitle = RemoteSourceRepository.formatFileSize(f.sizeBytes).let { size -> if (f.savedOnly) L("%1\$s · saved only, not installed", size) else size },
                 icon = Icons.Filled.Save,
                 onA = reinstall, play = reinstall, playIcon = Icons.Filled.Download, playLabel = L("Reinstall"),
                 actions = listOf(
@@ -321,6 +390,9 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
         }
     }
 
+    // ── Linux runtime ──
+    val linuxRows = rememberLabLinuxRuntime(active = linuxShown, refresh = tick) { note = it }
+
     SimpleMenuPage(
         overline = L("Manage"),
         title = L("Contents"),
@@ -328,15 +400,17 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
             MenuSection("download", L("Download components"), Icons.Filled.Download, download, empty = L("No repositories."), primary = MenuAction(L("Add a repository"), { addRepo = true })),
             MenuSection("installed", L("Installed"), Icons.Filled.CheckCircle, installed, empty = L("Only the built-in components so far."), primary = MenuAction(L("Install content from file"), { fromFile() })),
             MenuSection("files", L("My files"), Icons.Filled.Save, files, empty = L("No saved files. Use ⋯ › Save the file only on a download.")),
-            MenuSection("linux", L("Linux runtime"), Icons.Filled.Terminal, emptyList(), content = { LinuxRuntimeTab() }),
+            MenuSection("linux", L("Linux runtime"), Icons.Filled.Terminal, linuxRows),
         ),
         // B ends a search first.
         onBack = { if (query.isNotBlank()) vm.setQuery("") else onBack() },
-        banner = states.values.firstOrNull { !it.terminal }?.let { L("Downloading %1\$s · %2\$s%%", it.title, (it.fraction * 100).toInt()) },
+        banner = labContentsBanner(states),
         startSection = startSection,
+        onSection = { if (it == "linux") linuxShown = true },
     )
+    LabInstallProgressHost(request = progressKey, onRequestTaken = { progressKey = null }, auto = { it.contains("::file::") })
     defaultItem?.let { item ->
-        SetAsDefaultSheet(item, onDismiss = { defaultItem = null }) { out -> defaultItem = null; tick++; outcome = out }
+        LabSetAsDefaultDialog(item, onDismiss = { defaultItem = null }) { out -> defaultItem = null; tick++; outcome = out }
     }
     // What Set as default did (running containers skipped, failures), with Classic's Undo.
     outcome?.let { o ->
@@ -356,34 +430,32 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
             message = o.message,
         ) { a -> outcome = null; a.run() }
     }
-    if (addRepo) AddRepoDialog(vm, onDismiss = { addRepo = false })
-    if (searchOpen) SearchDialog(query, onDismiss = { searchOpen = false }) { q -> searchOpen = false; vm.setQuery(q) }
+    if (addRepo) LabAddRepoDialog(vm, onDismiss = { addRepo = false })
+    if (searchOpen) {
+        LabTextEntryDialog(L("Search all repositories"), query, L("Search"), onDismiss = { searchOpen = false }, allowBlank = true, search = true) { q ->
+            searchOpen = false
+            vm.setQuery(q)
+        }
+    }
+    if (driverAsk) {
+        SimpleActionSheet(
+            title = L("Install GPU driver"),
+            actions = listOf(
+                MenuAction(L("Browse files"), { driverPicker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.DRIVER, L("Select GPU driver"))) }),
+                MenuAction(L("Pick via system…"), {
+                    driverPicker.launch(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "*/*" })
+                }),
+                MenuAction(L("Cancel"), {}),
+            ),
+            onDismiss = { driverAsk = false },
+            message = context.getString(R.string.install_drivers_message) + "\n\n" + context.getString(R.string.install_drivers_warning),
+        ) { a -> driverAsk = false; a.run() }
+    }
+    note?.let { n -> LabHelpSheet(n) { note = null } }
     if (restoreAsk) {
         SimpleConfirm(L("Restore default repositories"), L("Hidden built-in repositories come back. Yours stay."), danger = false, onDismiss = { restoreAsk = false }) {
             restoreAsk = false
             vm.restoreDefaultSources()
         }
     }
-}
-
-/** The search over every repository: what to look for; Search (or the keyboard's search key) runs it. */
-@Composable
-private fun SearchDialog(initial: String, onDismiss: () -> Unit, onSearch: (String) -> Unit) {
-    var text by remember { mutableStateOf(initial) }
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { delay(60); runCatching { focus.requestFocus() } }
-    OutlinedAlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = { onSearch(text.trim()) }) { Text(L("Search")) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(L("Cancel")) } },
-        title = { Text(L("Search all repositories")) },
-        text = {
-            OutlinedTextField(
-                value = text, onValueChange = { text = it }, singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { onSearch(text.trim()) }),
-                modifier = Modifier.fillMaxWidth().focusRequester(focus),
-            )
-        },
-    )
 }

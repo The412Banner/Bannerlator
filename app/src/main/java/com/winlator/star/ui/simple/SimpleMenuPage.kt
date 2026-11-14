@@ -146,8 +146,10 @@ internal fun SimpleMenuPage(
     banner: String? = null,
     /** The section open first (its key); the first one when null. */
     startSection: String? = null,
+    /** Called with the key of the section on screen, each time it changes (a section that loads only when shown). */
+    onSection: ((String) -> Unit)? = null,
 ) {
-    SimpleFlat { SimpleMenuPageBody(overline, title, sections, onBack, banner, startSection) }
+    SimpleFlat { SimpleMenuPageBody(overline, title, sections, onBack, banner, startSection, onSection) }
 }
 
 @Composable
@@ -158,10 +160,12 @@ private fun SimpleMenuPageBody(
     onBack: () -> Unit,
     banner: String?,
     startSection: String? = null,
+    onSection: ((String) -> Unit)? = null,
 ) {
     val layout by AppThemeState.simpleLayout.collectAsState()
     var secKey by rememberSaveable { mutableStateOf(startSection ?: sections.firstOrNull()?.key ?: "") }
     val sec = sections.firstOrNull { it.key == secKey } ?: sections.firstOrNull()
+    LaunchedEffect(sec?.key) { sec?.key?.let { onSection?.invoke(it) } }
     val secIndex = sections.indexOfFirst { it.key == sec?.key }.coerceAtLeast(0)
     var row by rememberSaveable { mutableIntStateOf(0) }
     var zone by remember { mutableStateOf(PZone.ROWS) }

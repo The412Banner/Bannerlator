@@ -5,6 +5,7 @@ import com.winlator.star.ui.simple.L
 import com.winlator.star.ui.simple.labTile
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.horizontalScroll
 import com.winlator.star.ui.simple.keepInViewWhen
 import com.winlator.star.ui.simple.simpleTap
@@ -817,7 +818,8 @@ private fun SaveManagerSettingsSection(modifier: Modifier = Modifier) {
     // A pending toggle interaction rendered over the section (null = none).
     var pendingToggle by remember { mutableStateOf<TogglePrompt?>(null) }
 
-    Column(modifier = modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
+    // Scrolls: the eight switches don't fit a landscape screen (the last ones spilled out under the panel).
+    Column(modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp)) {
         SettingsToggleRow(
             title = "Steam games: auto-collect on exit",
             subtitle = "Snapshot Steam-library saves to your local Library when a game exits.",

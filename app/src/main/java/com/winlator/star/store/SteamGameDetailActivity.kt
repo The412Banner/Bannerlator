@@ -15,6 +15,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -2000,19 +2002,18 @@ private fun SteamGameDetailScreen(
         selectedTab == DetailTab.ACHIEVEMENTS && signedIn && !achLoading && achievements.isNotEmpty()
 
     val pageBg = xmbSolidBackground()
-    val conf = androidx.compose.ui.platform.LocalConfiguration.current
     // The tab bodies pad themselves this much: the scrolling column is that much wider on each side, so their text lines up
     // with the action row.
     val pageInset = 16.dp
-    val geometry = rememberStorePageGeometry(conf.screenWidthDp.dp, conf.screenHeightDp.dp, hasSettings = true)
-    val sideBySide = geometry.layout == StorePageLayout.SIDE_BY_SIDE
     // The game's landscape cover beside its name: the store capsule chain, the published one first once the art map has it.
     val publishedHeader = SteamLibraryArt.header(appId)
     val coverUrls = remember(appId, publishedHeader) { capsuleCandidates(appId) }
     val downloading = progressVisible   // installAction == CANCEL (active or paused download)
     val entryTarget = storeEntryTarget(primaryActionable = !downloading, hasGear = true)
     val entry = rememberStoreEntryFocus(entryTarget)
-    Box(modifier = Modifier.fillMaxSize().background(pageBg).storeBackKey(onBack)) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize().background(pageBg).storeBackKey(onBack)) {
+    val geometry = rememberStorePageGeometry(maxWidth, maxHeight, hasSettings = true)
+    val sideBySide = geometry.layout == StorePageLayout.SIDE_BY_SIDE
     // The game's art fills the screen behind the page, like every other store's page: the wide library hero, and
     // under it the capsule chain (PICS art -> CDN hosts -> appdetails -> SteamGridDB) for games without one.
     StoreCapsule(appId = appId, title = nameText, modifier = Modifier.fillMaxSize(), aspectRatio = null)
@@ -2476,7 +2477,7 @@ private fun SteamGameDetailScreen(
                 .align(if (sideBySide) Alignment.BottomStart else Alignment.BottomCenter)
                 // Side by side it sits under the scrolling column, clear of the cover.
                 .then(
-                    if (sideBySide) Modifier.padding(start = geometry.edge.dp - pageInset).width(geometry.leftWidth.dp + pageInset * 2)
+                    if (sideBySide) Modifier.offset(x = geometry.edge.dp - pageInset).width(geometry.leftWidth.dp + pageInset * 2)
                     else Modifier,
                 )
                 .navigationBarsPadding()

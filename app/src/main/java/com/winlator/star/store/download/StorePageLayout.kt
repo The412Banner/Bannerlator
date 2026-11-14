@@ -64,13 +64,14 @@ internal fun storePageLayoutFor(width: Float, height: Float): StorePageLayout =
  * The page opens with a header band the height of the back button ([bandHeight]); everything else starts [bandGap] under it.
  * The action row is the primary button ([installWidth] wide), then the Settings and the Downloads button ([buttonSize] square,
  * a [gap] between them; [buttons] of them, one when the page has no Settings). Side by side, the pair of buttons sits on the
- * window's horizontal centre and the cover ends the page's right side: it is as wide as the primary button, so the gap from the
- * primary button to the pair ([primaryGap]) and the gap from the pair to the cover are equal. The left column (everything under
- * the action row) runs from the page's edge to the pair's far side ([leftWidth]), so it never reaches the cover.
+ * page's horizontal centre, the primary button fills the room between the left [edge] and the pair (less [PAIR_GAP]), and the
+ * cover mirrors it on the right: as wide as the primary button, [PAIR_GAP] after the pair, ending at the right [edge]. The left
+ * column (everything under the action row) runs from the left [edge] to the pair's far side ([leftWidth]), so it never reaches
+ * the cover.
  */
 internal class StorePageGeometry private constructor(
     val layout: StorePageLayout,
-    /** The room from the window's side to the page: the camera cut-out's, the same on both sides, and the page margin. */
+    /** The room from the window's side to the page: the page frame the camera cut-out leaves, never less than [SIDE_MIN]. */
     val edge: Float,
     /** The room from the window's top to the header band: the page margin below the status bar and the cut-out. */
     val top: Float,
@@ -84,6 +85,8 @@ internal class StorePageGeometry private constructor(
     val buttons: Int,
     /** The gap between the primary button and the first of the square buttons. */
     val primaryGap: Float,
+    /** The cover's height: [coverWidth] at the cover's ratio, side by side held to what fits under the band with the name below. */
+    val coverHeight: Float,
     /** Stacked: the top of the page left to the game's art when there is no cover to show it. */
     val artReveal: Float,
 ) {
@@ -97,7 +100,7 @@ internal class StorePageGeometry private constructor(
     val leftWidth: Float get() = installWidth + primaryGap + pairWidth
 
     companion object {
-        /** The page margin, the back button's edge and the gap under the band, on the 412 dp phone scale. */
+        /** The page margin above the band and under the scrolling content, the back button's edge and the gap under the band, on the 412 dp phone scale. */
         const val MARGIN = 20f
         const val BACK_SIZE = 40f
         const val BAND_GAP = 8f
@@ -106,13 +109,14 @@ internal class StorePageGeometry private constructor(
         const val BUTTON_SIZE = 46f
         const val GAP = 8f
 
-        /** Side by side: the primary button's share of the window's width, held between [INSTALL_MIN] and [INSTALL_MAX] (phone-scale dp). */
-        const val INSTALL_SHARE = 0.34f
-        const val INSTALL_MIN = 150f
-        const val INSTALL_MAX = 400f
+        /** The least room from the window's side to the page when the camera cut-out leaves none (phone-scale dp). */
+        const val SIDE_MIN = 12f
 
-        /** Side by side: the least room kept free on each side of the square buttons (phone-scale dp). */
-        const val FREE_GAP_MIN = 16f
+        /** Side by side: the gap between the primary button and the square buttons, and between them and the cover (phone-scale dp). */
+        const val PAIR_GAP = 16f
+
+        /** Side by side: the room the game's name takes under the cover, its top gap and two lines of text; text does not follow the scale (dp). */
+        const val NAME_ROOM = 72f
 
         /** Stacked: the widest the column gets, so a tablet in portrait does not stretch it (phone-scale dp). */
         const val STACKED_MAX = 520f
@@ -125,36 +129,41 @@ internal class StorePageGeometry private constructor(
          * phone-scale constants follow; [safeSide] is the room the camera cut-out takes on the wider of the window's two sides
          * and [safeTop] the room the system bars and the cut-out take at the top; [buttons] is how many square buttons the
          * action row has.
+         *
+         * Side by side, a window too short for the cover at the primary button's width keeps the cover that wide and shows less
+         * of it (the picture is cropped), so the cover and the name end above the page's bottom margin.
          */
         fun of(pageWidth: Float, pageHeight: Float, scale: Float, safeSide: Float, safeTop: Float, buttons: Int): StorePageGeometry {
             val layout = storePageLayoutFor(pageWidth, pageHeight)
             val margin = MARGIN * scale
-            val edge = safeSide + margin
+            val edge = maxOf(safeSide, SIDE_MIN * scale)
+            val top = safeTop + margin
+            val band = BACK_SIZE * scale
+            val bandGap = BAND_GAP * scale
             val button = BUTTON_SIZE * scale
             val gap = GAP * scale
             val pair = buttons * button + (buttons - 1) * gap
             val install: Float
             val primaryGap: Float
+            val coverHeight: Float
             when (layout) {
                 StorePageLayout.SIDE_BY_SIDE -> {
-                    // The pair is centred on the window, so what is left of the window's half between the edge and the pair
-                    // is shared by the primary button and its gap; the cover mirrors both on the other side.
-                    val half = pageWidth / 2f - pair / 2f - edge
-                    install = (pageWidth * INSTALL_SHARE)
-                        .coerceIn(INSTALL_MIN * scale, INSTALL_MAX * scale)
-                        .coerceAtMost(half - FREE_GAP_MIN * scale)
-                        .coerceAtLeast(0f)
-                    primaryGap = (half - install).coerceAtLeast(0f)
+                    // The pair is centred on the page, so the primary button takes what is left of the page's half between the
+                    // edge and the pair, less the gap; the cover mirrors it on the other side.
+                    primaryGap = PAIR_GAP * scale
+                    install = (pageWidth / 2f - pair / 2f - edge - primaryGap).coerceAtLeast(0f)
+                    val room = (pageHeight - top - band - bandGap - NAME_ROOM - margin).coerceAtLeast(0f)
+                    coverHeight = (install / STORE_COVER_ASPECT).coerceAtMost(room)
                 }
                 StorePageLayout.STACKED -> {
                     install = ((pageWidth - 2f * edge).coerceAtMost(STACKED_MAX * scale) - buttons * (button + gap)).coerceAtLeast(0f)
                     primaryGap = gap
+                    coverHeight = install / STORE_COVER_ASPECT
                 }
             }
             val reveal = if (layout == StorePageLayout.STACKED) pageHeight * STACKED_ART_SHARE else 0f
             return StorePageGeometry(
-                layout, edge, safeTop + margin, margin, BACK_SIZE * scale, BAND_GAP * scale,
-                install, button, gap, buttons, primaryGap, reveal,
+                layout, edge, top, margin, band, bandGap, install, button, gap, buttons, primaryGap, coverHeight, reveal,
             )
         }
     }
@@ -162,7 +171,9 @@ internal class StorePageGeometry private constructor(
 
 /**
  * [StorePageGeometry] for a page [pageWidth] by [pageHeight] whose action row has a Settings button when [hasSettings]. The page
- * keeps clear of the camera cut-out and the system bars the window lays itself under.
+ * is the whole window, measured in the dp of the composition that draws it (a BoxWithConstraints around it), not the
+ * configuration's, which a theme that scales the density does not share. It keeps clear of the camera cut-out and the system
+ * bars the window lays itself under.
  */
 @Composable
 internal fun rememberStorePageGeometry(pageWidth: Dp, pageHeight: Dp, hasSettings: Boolean): StorePageGeometry {
@@ -207,6 +218,7 @@ internal fun StorePage(
     var attempt by remember(coverUrls) { mutableIntStateOf(0) }
     val coverUrl = coverUrls.getOrNull(attempt)
     val coverWidth = geometry.coverWidth.dp
+    val coverHeight = geometry.coverHeight.dp
     val columnWidth = geometry.leftWidth.dp + inset * 2
     val edge = geometry.edge.dp
     val bandGap = geometry.bandGap.dp
@@ -247,7 +259,7 @@ internal fun StorePage(
             }
             if (coverUrl != null) {
                 Column(Modifier.align(Alignment.TopEnd).padding(top = geometry.bandHeight.dp + bandGap).width(coverWidth)) {
-                    StoreCover(coverUrl, coverWidth, coverShape, onError = { attempt += 1 })
+                    StoreCover(coverUrl, coverWidth, coverHeight, coverShape, onError = { attempt += 1 })
                     Box(Modifier.fillMaxWidth().padding(top = 8.dp), contentAlignment = Alignment.CenterEnd) { name() }
                 }
             }
@@ -263,7 +275,7 @@ internal fun StorePage(
                 Column(Modifier.width(columnWidth)) {
                     Column(Modifier.padding(horizontal = inset), horizontalAlignment = Alignment.CenterHorizontally) {
                         if (coverUrl != null) {
-                            StoreCover(coverUrl, coverWidth, coverShape, onError = { attempt += 1 })
+                            StoreCover(coverUrl, coverWidth, coverHeight, coverShape, onError = { attempt += 1 })
                             Box(Modifier.width(coverWidth).padding(top = 8.dp, bottom = bandGap), contentAlignment = Alignment.Center) { name() }
                         } else {
                             Spacer(Modifier.height(geometry.artReveal.dp))

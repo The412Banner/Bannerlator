@@ -2,8 +2,8 @@ package com.winlator.star.store.download
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -22,13 +22,14 @@ internal fun storeCoverUrls(sources: List<String?>): List<String> =
     sources.mapNotNull { it?.trim()?.takeIf(String::isNotEmpty) }.distinct()
 
 /**
- * A game's landscape cover, [width] wide in a box of fixed shape so the page does not move when the picture arrives. [onError]
- * runs when [url] cannot be loaded, for the page to try the next source.
+ * A game's landscape cover, [width] by [height] in a box of fixed shape so the page does not move when the picture arrives; the
+ * picture fills the box and is cropped to it. [onError] runs when [url] cannot be loaded, for the page to try the next source.
  */
 @Composable
 internal fun StoreCover(
     url: String,
     width: Dp,
+    height: Dp,
     shape: Shape,
     onError: () -> Unit,
     modifier: Modifier = Modifier,
@@ -36,7 +37,7 @@ internal fun StoreCover(
     Box(
         modifier
             .width(width)
-            .aspectRatio(STORE_COVER_ASPECT)
+            .height(height)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {

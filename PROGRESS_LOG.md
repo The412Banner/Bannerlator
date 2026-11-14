@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 00:55 EST — 3.2.0 STABLE RELEASED + verified (main, Latest)
+
+- **Release run** release.yml **43561235947** (workflow_dispatch on main, headSha de05bed1) SUCCESS 00:49:30 EST: notes, 4 builds, 4 patch jobs, release — all green.
+- **Verified live:** tag `3.2.0` → de05bed1 (lightweight, = main = built commit). Release "Bannerlator 3.2.0": not draft, not prerelease, **Latest = 3.2.0** (3.1.8 before). Assets: Bannerlator-3.2.0-{antutu,ludashi,pubg,standard}.apk (601,303,988–601,304,272 B) + update.json. Manifest branch: update.json **and** update-pre.json = 3.2.0 / vc107, 32 patches each. Bannerlator-updates release 3.2.0: 32 .bldp assets (pubg from 3.1.7-pre2 … 3.1.9-pre2 incl. 3.1.8, 3.1.8-mali-pre1). Release body 71,707 chars: house layout + collapsed "📜 Every change since 3.1.8 — 146 merged". Link preview (og:description, TelegramBot/Discordbot UA): "Bannerlator 3.2.0 / Run Windows apps and games on Android … / 3.2.0 is everything since 3.1.8: …" → text shows.
+- **Not device-tested as a release build**; the RC (same code) was not installed either (user's call). FIT still runs 2270be35 (vc106) → the in-app updater will offer 3.2.0.
+- **Left:** temp branch tmp/size-3.2.0 (delete on the user's word); release/3.2.0 kept like earlier release branches; XMB follow-ups for Abu; staged RC APK removed from the FIT's Downloads.
+
 ## 2026-11-14 00:45 EST — cutting 3.2.0 STABLE (user: "cut it when done and ready")
 
 - **Size run** CI 43560779400 GREEN (byte-exact rebuilds): pubg 3.1.8→3.2.0 93,071,397 B, 3.1.9-pre2→ 51,476,027 B, 3.1.9-pre1→ 59,463,667 B; standard 93,067,845 / 51,483,759 / 59,465,743 B; full APK 601,306,586 B (pubg). Notes line filled; local `scripts/release_notes.py 3.2.0` passes the stable check (exit 0, no TODO(notes)).

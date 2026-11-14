@@ -12,10 +12,10 @@ index 4f1b211..088a6d0 100644
  pub mod achievements;
 diff --git a/crates/xodus-cli/src/commands/cloud_token.rs b/crates/xodus-cli/src/commands/cloud_token.rs
 new file mode 100644
-index 0000000..ba9c7a5
+index 0000000..1eb5b15
 --- /dev/null
 +++ b/crates/xodus-cli/src/commands/cloud_token.rs
-@@ -0,0 +1,237 @@
+@@ -0,0 +1,238 @@
 +//! Xbox Cloud Gaming streaming token for the stored account (Bannerlator). Same bearer
 +//! RPS -> Xbox user -> XSTS exchange as the profile read, for the cloud gaming relying party,
 +//! then the streaming service's user login (as xbox.com and Greenlight's xal-node do).
@@ -29,13 +29,14 @@ index 0000000..ba9c7a5
 +
 +/// The stored account's compact Microsoft account ticket for one service target and policy.
 +async fn ticket(tokens: &TokenManager, client: &reqwest::Client, target: &str, policy: soap::PolicyReference) -> Result<(String, String), &'static str> {
-+    let (account, device, user) = super::session::prepare(tokens, client).await.map_err(|stage| {
++    let (account, device, user, snapshot) = super::session::prepare(tokens, client).await.map_err(|stage| {
 +        super::session::diagnostic(stage); stage
 +    })?;
 +    let outcome = super::session::exchange(|| async { xodus::api::live::exchange_user_token(client, user.clone(), account.clone(), device.clone(),
 +        None, Some("Silent".into()), "{d6d5a677-0872-4ab0-9442-bb792fce85c5}".into(),
 +        &[(target.into(), Some(policy.clone()))])
 +        .await.map_err(|error| super::session::classify(&error)) }).await?;
++    tokens.validate_user_token_snapshot(&snapshot).map_err(|_| "account-changed")?;
 +    let response = match outcome {
 +        ExchangeUserTokenOutcome::Issued(soap::BodyContent::RequestSecurityTokenResponseCollection(mut collection)) if !collection.security_tokens.is_empty() => collection.security_tokens.remove(0),
 +        ExchangeUserTokenOutcome::Issued(soap::BodyContent::RequestSecurityTokenResponse(response)) => *response,

@@ -11,6 +11,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -54,7 +56,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -163,6 +164,7 @@ internal fun LabChip(text: String) {
  * Lab's home: a dashboard. Continue (the last game: its setup, Play, its page), the next recent games, then live tiles
  * for storage, GPU drivers, downloads, playtime, the device and containers. Every tile opens where it points.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun LabHome(
     onNavigate: (String) -> Unit,
@@ -284,7 +286,7 @@ internal fun LabHome(
                 LabScrollColumn(if (constraints.hasBoundedHeight) maxHeight else 0.dp, Arrangement.spacedBy(8.dp)) {
                     LabTileLabel(if (game == lastGame) L("Continue") else L("Selected"))
                     LabTitle(game, 56.dp, 22.sp)
-                    Text(meta, color = SimpleMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(meta, color = SimpleMuted, fontSize = 13.sp)
                     LabRuntimeStatus(game, fontSize = 12.sp, color = SimpleMuted)
                     // Full names; the row scrolls sideways when they do not fit.
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -353,8 +355,9 @@ internal fun LabHome(
                 if (dev != null && dev.volumes.size > 1) {
                     dev.volumes.forEach { v ->
                         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(L(v.label), color = SimpleInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                            // Name left, size right; the size moves under the name when both do not fit (large text).
+                            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(L(v.label), color = SimpleInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                                 Text(L("%1\$s / %2\$s GB", fmtGb(v.usedGb), fmtGb(v.totalGb)), color = SimpleMuted, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
                             }
                             LabBar(v.fraction, Modifier.fillMaxWidth())
@@ -378,7 +381,7 @@ internal fun LabHome(
                 LabTileLabel(L("GPU drivers"))
                 val list = drivers
                 Text(if (list == null) "…" else L("%1\$s installed", list.size), color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                list?.take(2)?.forEach { Text(it, color = SimpleMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                list?.take(2)?.forEach { Text(it, color = SimpleMuted, fontSize = 12.sp) }
             }
         }
 
@@ -387,7 +390,7 @@ internal fun LabHome(
             LabDashTile(m, onClick = { onNavigate(SimpleRoutes.DRIVERS) }) {
                 LabTileLabel(L("Downloads"))
                 if (active != null) {
-                    Text(active.title, color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(active.title, color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     LabBar(active.fraction, Modifier.fillMaxWidth())
                     Text("${(active.fraction * 100).roundToInt()}%", color = SimpleMuted, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
                 } else {
@@ -405,10 +408,11 @@ internal fun LabHome(
             if (game != null && fps != null) {
                 LabDashTile(m, onClick = { onNavigate(LabRoutes.game(game.file.path)) }) {
                     LabTileLabel(L("Last session"))
-                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // Wraps to a second line when it does not fit (large text).
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("${fps.lastAvg.roundToInt()}", color = SimpleStrong, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp, fontFamily = FontFamily.Monospace)
-                        Text(L("fps avg"), color = SimpleMuted, fontSize = 12.sp, maxLines = 1, modifier = Modifier.padding(bottom = 4.dp))
-                        if (fps.lastLow > 0) Text(L("· 1%% low %1\$s", fps.lastLow), color = SimpleMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(bottom = 4.dp))
+                        Text(L("fps avg"), color = SimpleMuted, fontSize = 12.sp, maxLines = 1, modifier = Modifier.align(Alignment.Bottom).padding(bottom = 4.dp))
+                        if (fps.lastLow > 0) Text(L("· 1%% low %1\$s", fps.lastLow), color = SimpleMuted, fontSize = 12.sp, maxLines = 1, modifier = Modifier.align(Alignment.Bottom).padding(bottom = 4.dp))
                     }
                     LabSparkline(fps.history, Modifier.fillMaxWidth().weight(1f))
                 }
@@ -445,7 +449,7 @@ internal fun LabHome(
             LabDashTile(m, onClick = { onNavigate(SimpleRoutes.CONTAINERS) }) {
                 LabTileLabel(L("Containers"))
                 Text("${containers?.size ?: "…"}", color = SimpleStrong, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp)
-                Text(containers?.joinToString(" · ").orEmpty(), color = SimpleMuted, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(containers?.joinToString(" · ").orEmpty(), color = SimpleMuted, fontSize = 12.sp)
             }
         }
 
@@ -527,7 +531,7 @@ internal fun LabHeroTile(
         LabClipPlayer(game, Modifier.fillMaxSize())
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.08f), 0.35f to Color.Transparent, 0.66f to Color.Black.copy(alpha = 0.55f), 1f to Color.Black.copy(alpha = 0.86f))))
         Box(
-            Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 156.dp).graphicsLayer {
+            Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 156.dp * LocalDensity.current.fontScale.coerceAtLeast(1f)).graphicsLayer {
                 val p = LabParallax.offset(p3d)
                 translationX = p.first * 8.dp.toPx()
                 translationY = p.second * 6.dp.toPx()
@@ -536,7 +540,7 @@ internal fun LabHeroTile(
         // Scrolls when taller than the tile (large text), starting at the bottom so the buttons stay in view.
         Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().verticalScroll(rememberScrollState(), reverseScrolling = true).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(label.uppercase(), color = Color.White.copy(alpha = 0.72f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp, maxLines = 1)
-            Text(meta, color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(meta, color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
             LabRuntimeStatus(game, fontSize = 12.sp)
             // Full names; the row scrolls sideways when they do not fit.
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {

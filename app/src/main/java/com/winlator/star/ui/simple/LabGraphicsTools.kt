@@ -70,3 +70,37 @@ internal fun LabGraphicsDialogs(state: DeckGraphicsState) {
         }
     }
 }
+
+/**
+ * The facts under "Unreal Engine HDR fix" set to DirectX 11 (Classic's UnrealHdrDx11Notes): the dxvk-nvapi this build
+ * carries, and the NVIDIA spoof hint while the GPU name games see is not an NVIDIA one. Read once off the main thread;
+ * the note updates when they arrive.
+ */
+internal object LabUnrealHdrFacts {
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
+    // "" = not read yet, null = this build carries none.
+    private val nvapi = androidx.compose.runtime.mutableStateOf<String?>("")
+    @Volatile private var nvapiAsked = false
+    private val nvidia = androidx.compose.runtime.mutableStateMapOf<String, Boolean>()
+    private val asked = java.util.Collections.synchronizedSet(HashSet<String>())
+
+    fun note(context: android.content.Context, gpuName: String, wayland: Boolean): String? {
+        val app = context.applicationContext
+        if (!nvapiAsked) {
+            nvapiAsked = true
+            Thread { val v = runCatching { com.winlator.star.core.DxvkNvapi.bundledVersion(app) }.getOrNull(); main.post { nvapi.value = v } }.start()
+        }
+        if (asked.add(gpuName)) {
+            Thread { val v = runCatching { com.winlator.star.core.GpuSpoof.isNvidia(app, gpuName) }.getOrDefault(true); main.post { nvidia[gpuName] = v } }.start()
+        }
+        val lines = buildList {
+            when (val b = nvapi.value) {
+                null -> add(L("This build carries no dxvk-nvapi: DirectX 11 mode installs nothing and only the DirectX 12 fix applies."))
+                "" -> {}
+                else -> add(L("Bundled: dxvk-nvapi %1\$s.", b))
+            }
+            if (nvidia[gpuName] == false) add(com.winlator.star.core.UnrealHdr.nvidiaHint(wayland))
+        }
+        return lines.joinToString("\n").ifEmpty { null }
+    }
+}

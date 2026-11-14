@@ -214,13 +214,23 @@ internal class DeckAudioSection(
         }
         if (fineTune) {
             val driver = driver()
-            AudioSettingsDialog(
+            val scopeLabel = when (env.scope) {
+                EditorScope.GAME -> L("this game")
+                EditorScope.DEFAULTS -> L("new containers")
+                else -> L("this container")
+            }
+            // Lab draws the same fine-tune as a Lab page.
+            if (com.winlator.star.ui.theme.AppThemeState.simpleLook) com.winlator.star.ui.simple.LabAudioTune(
                 initial = audioConfigFromEnv(AudioRows.effectiveEnv(source, driver), driver),
-                scopeLabel = when (env.scope) {
-                    EditorScope.GAME -> L("this game")
-                    EditorScope.DEFAULTS -> L("new containers")
-                    else -> L("this container")
-                },
+                scopeLabel = scopeLabel,
+                latencyLive = true,
+                driverLabel = driverLabel(driver),
+                driverId = driver,
+                onDismiss = { fineTune = false },
+                onSave = { save(it) },
+            ) else AudioSettingsDialog(
+                initial = audioConfigFromEnv(AudioRows.effectiveEnv(source, driver), driver),
+                scopeLabel = scopeLabel,
                 latencyLive = true,
                 driverLabel = driverLabel(driver),
                 driverId = driver,

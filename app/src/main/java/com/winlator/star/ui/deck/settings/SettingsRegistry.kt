@@ -604,6 +604,12 @@ internal object SettingsRegistry {
             },
             vm = vmString({ it.displayBackend }, { vm, v -> vm.onDisplayBackendChanged(v) }),
             game = key("displayBackend") { if (it == Container.DISPLAY_BACKEND_WAYLAND) it else Container.DISPLAY_BACKEND_X11 },
+            // Lab: Classic's notes under the backend picker of a container whose layer can't drive Wayland.
+            note = { env, _ ->
+                if (!com.winlator.star.ui.theme.AppThemeState.simpleLook || env.waylandCapable || env.scope == EditorScope.GAME) null
+                else if (env.vm?.isWaylandStored == true) T("This container was saved on Wayland, but its Proton layer is no longer Wayland-capable: it runs on X11 and will be saved as X11.")
+                else T("Wayland needs ") + com.winlator.star.core.WineWaylandSupport.LAYER_HINT + T(". The selected layer does not include winewayland and its Wayland Turnip.")
+            },
         ),
         SettingDef(
             id = ID_DISPLAY_SERVER, category = "display", group = T("Screen"), level = ADVANCED,
@@ -743,6 +749,11 @@ internal object SettingsRegistry {
             control = { _, _ -> seg(UnrealHdr.OFF to T("Off"), UnrealHdr.DX12 to T("DirectX 12 fix"), UnrealHdr.DX11 to T("DirectX 11 (NVAPI)")) },
             vm = vmString({ it.unrealHdr }, { vm, v -> vm.unrealHdr = v }),
             game = key(UnrealHdr.EXTRA) { UnrealHdr.normalize(it).ifEmpty { null } },
+            // Lab: Classic's DirectX 11 notes (the bundled dxvk-nvapi, the NVIDIA spoof hint).
+            note = { env, values ->
+                if (!com.winlator.star.ui.theme.AppThemeState.simpleLook || values("graphics.unrealHdr") != UnrealHdr.DX11) null
+                else com.winlator.star.ui.simple.LabUnrealHdrFacts.note(env.context, values("graphics.gdc.gpuName"), env.wayland(values))
+            },
         ),
         SettingDef(
             id = "graphics.driver", category = "graphics", group = T("GPU driver"), level = SIMPLE,
@@ -1345,7 +1356,8 @@ internal object SettingsRegistry {
             id = "input.vibrationIntensity", category = "input", group = T("Rumble"), level = ADVANCED,
             label = T("Rumble strength"), tech = T("Vibration intensity"),
             help = T("Scales vibration strength. Note: on some handhelds a lower strength does not reduce stick slowdown. Use Rumble motors: Single for that."),
-            control = { _, _ -> Control.Slider(0f, 100f, 5f, { "${it.toInt()}%" }, { "${it.toInt()}" }) },
+            // Lab steps 1 % as Classic's slider does; the Deck and XMB editors keep 5 %.
+            control = { _, _ -> Control.Slider(0f, 100f, if (com.winlator.star.ui.theme.AppThemeState.simpleLook) 1f else 5f, { "${it.toInt()}%" }, { "${it.toInt()}" }) },
             vm = vmInt({ it.vibrationIntensity }, { vm, v -> vm.vibrationIntensity = v }),
             game = intKey("vibrationIntensity"),
             visible = { _, values -> values("input.vibrationTarget") != "${Container.VIBRATION_MODE_OFF}" },

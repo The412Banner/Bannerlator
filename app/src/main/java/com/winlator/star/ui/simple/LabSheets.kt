@@ -128,3 +128,26 @@ internal fun LabFieldDialog(
 internal fun LabNote(title: String, body: String, onDismiss: () -> Unit) {
     SimpleActionSheet(title = title, actions = listOf(MenuAction(L("OK"), onDismiss)), onDismiss = onDismiss, message = body) { it.run() }
 }
+
+/** A Lab panel in a dialog around [content] (a setting's own control), with [doneLabel] to close it. */
+@Composable
+internal fun LabPanelDialog(title: String, onDismiss: () -> Unit, doneLabel: String = L("Done"), content: @Composable () -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        com.winlator.star.sound.DialogSound()
+        Column(
+            modifier = Modifier
+                .widthIn(min = 320.dp, max = 600.dp)
+                .simpleDepth(high = true)
+                .background(SimplePanelBrush, SimpleShape)
+                .border(1.dp, SimpleLine, SimpleShape)
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(title, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            content()
+            Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.End) {
+                LabButton(doneLabel, primary = true, onClick = onDismiss)
+            }
+        }
+    }
+}

@@ -5,7 +5,8 @@
 - **Why:** user forwarded 2 screenshots (Telegram "The412Banner Gaming", Shuvam Chowdhury 1:35 AM: "a small graphical bug here"): Lab Save Manager › Settings in landscape — a switch shows below the panel's bottom edge, its label cut. User: "include it in these fixes".
 - **Cause:** SaveManagerSettingsSection (SteamSaveManagerActivity.kt ~820) is a plain Column of 8 SettingsToggleRows with no scroll; landscape fits 6–7, the rest draw outside the panel.
 - **Fix:** verticalScroll(rememberScrollState()) on that Column (+ import). The toggle prompt is drawn after the Column, unaffected.
-- **Next:** CI → stage → ASK before install (new build) → check Save Manager › Settings in landscape (all 8 reachable by scroll / D-pad) + the start-up sound by ear.
+- **CI 43572093218 (headSha 3af8e6ba) GREEN 4/4** (02:47:58 EST), 15 skipped = main. Staged /sdcard/Download/Bannerlator-sound-savemgr-fixes-3af8e6ba.apk (hash host = device), vc107 3.2.0, cert a40da80a; the superseded cd44d9c2 APK removed from Downloads. Asked the user before installing.
+- **Next:** user yes → install → check Save Manager › Settings in landscape (all 8 reachable by scroll / D-pad) + the start-up sound by ear.
 
 ## 2026-11-14 01:30 EST — fix/sound-startup-own-pack: start-up sound only from the chosen pack (branch, CI pending)
 

@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.winlator.star.MainActivity
 import com.winlator.star.R
 import com.winlator.star.container.Container
+import com.winlator.star.store.StarLaunchBridge
 import com.winlator.star.ui.Screen
 import com.winlator.star.ui.deck.rememberXmbHome
 import com.winlator.star.ui.screens.XmbChoice
@@ -51,6 +52,8 @@ data class AddToShortcutsRequest(
     val containers: List<Container>,
     /** Steam appId stamped on the shortcut (0 = none). Without it Goldberg/SteamLite/cloud saves can't find the game. */
     val appId: Int = 0,
+    /** Epic game data stamped on the shortcut (null = not an Epic game). Without it the game is launched without the Epic launch arguments. */
+    val epic: StarLaunchBridge.EpicMeta? = null,
 )
 
 /** Outcome of writeShortcutAsync, held in a mutableStateOf by the caller. */

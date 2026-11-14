@@ -66,7 +66,7 @@ internal class DownloadActions(
                 onDismiss = { showExePicker = null },
                 onSelected = { chosen ->
                     showExePicker = null
-                    startAddToShortcuts(data.appId, data.gameName, chosen, data.coverUrl)
+                    startAddToShortcuts(data.appId, data.gameName, chosen, data.coverUrl, data.epic)
                 },
             )
         }
@@ -83,7 +83,7 @@ internal class DownloadActions(
                     addToShortcuts = null
                     StarLaunchBridge.writeShortcutAsync(
                         activity, container,
-                        req.gameName, req.exePath, req.coverUrl, req.appId,
+                        req.gameName, req.exePath, req.coverUrl, req.appId, req.epic,
                     ) { success, message ->
                         if (success) onShortcutAdded()
                         if (success && inlineAddResult) {
@@ -210,22 +210,29 @@ internal class DownloadActions(
             exeFiles.sortWith { a, b ->
                 AmazonLaunchHelper.scoreExe(b, lowerTitle) - AmazonLaunchHelper.scoreExe(a, lowerTitle)
             }
-            val coverUrl = "https://shared.steamstatic.com/store_item_assets/steam/apps/$appId/library_600x900.jpg"
+            // An Epic shortcut carries the game's Epic data: the launch arguments an Epic game needs come from it.
+            val epicDetail = if (entry.store == Store.EPIC) EpicLibrarySync.cachedDetail(activity, entry.id) else null
+            val epic = if (entry.store == Store.EPIC) StarLaunchBridge.EpicMeta(entry.id, epicDetail?.namespace, epicDetail?.catalogItemId) else null
+            val coverUrl = when (entry.store) {
+                Store.STEAM -> "https://shared.steamstatic.com/store_item_assets/steam/apps/$appId/library_600x900.jpg"
+                Store.EPIC -> epicDetail?.artCover?.takeIf { it.isNotEmpty() } ?: entry.cover ?: ""
+                else -> entry.cover ?: ""
+            }
 
             if (exeFiles.size == 1) {
-                activity.runOnUiThread { startAddToShortcuts(appId, entry.name, exeFiles[0].absolutePath, coverUrl) }
+                activity.runOnUiThread { startAddToShortcuts(appId, entry.name, exeFiles[0].absolutePath, coverUrl, epic) }
                 return@Thread
             }
             val candidates = exeFiles.map { it.absolutePath }
-            activity.runOnUiThread { showExePicker = ExePickerDataDm(appId, entry.name, candidates, coverUrl) }
+            activity.runOnUiThread { showExePicker = ExePickerDataDm(appId, entry.name, candidates, coverUrl, epic) }
         }.start()
     }
 
     /** Load containers, then show the M3 picker. Goldberg Cold-Client rewrites the exe. */
-    private fun startAddToShortcuts(appId: Int, gameName: String, exePath: String, coverUrl: String?) {
+    private fun startAddToShortcuts(appId: Int, gameName: String, exePath: String, coverUrl: String?, epic: StarLaunchBridge.EpicMeta?) {
         val launchExe = GoldbergPatcher.resolveLaunchExe(activity, appId, exePath)
         StarLaunchBridge.loadContainers(activity) { containers ->
-            addToShortcuts = AddToShortcutsRequest(gameName, launchExe, coverUrl, containers, appId)
+            addToShortcuts = AddToShortcutsRequest(gameName, launchExe, coverUrl, containers, appId, epic)
         }
     }
 
@@ -408,6 +415,7 @@ private data class ExePickerDataDm(
     val gameName: String,
     val candidates: List<String>,
     val coverUrl: String,
+    val epic: StarLaunchBridge.EpicMeta?,
 )
 
 @Composable

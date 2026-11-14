@@ -152,6 +152,7 @@ internal fun XmbDownloadsPage(focus: XmbTabsPageFocus) {
     // The column the cursor last chose, which a move up or down keeps (through a one-card line, say).
     var wantCol by remember { mutableIntStateOf(0) }
     var armed by remember { mutableStateOf<XmbDlAction?>(null) }
+    com.winlator.star.sound.MoveSound(listOf(selKey ?: keys.firstOrNull(), inner))
     val cursor = xmbDlCursor(keys, selKey, selIdx)
     // The buttons of the card under the cursor: when a card changes state under it (downloading, then failed) they can be fewer than the one
     // the cursor was on, or lose the one waiting for its second press.
@@ -239,7 +240,7 @@ internal fun XmbDownloadsPage(focus: XmbTabsPageFocus) {
                         if (up) focus.toBar()
                     } else {
                         val to = xmbTwoColVertical(lines, at, down = !up, wantCol = wantCol)
-                        if (to == XMB_TWO_COL_TO_BAR) focus.toBar() else select(to)
+                        if (to == XMB_TWO_COL_TO_BAR) focus.toBar() else if (to == at) com.winlator.star.sound.edgeSound() else select(to)
                     }
                     true
                 }
@@ -251,10 +252,12 @@ internal fun XmbDownloadsPage(focus: XmbTabsPageFocus) {
                         if (next != inner) {
                             inner = next
                             armed = null
+                        } else {
+                            com.winlator.star.sound.edgeSound()
                         }
                     } else if (n > 0) {
                         val to = xmbTwoColSide(lines, at, d)
-                        if (to != at) pick(to)
+                        if (to != at) pick(to) else com.winlator.star.sound.edgeSound()
                     }
                     true
                 }

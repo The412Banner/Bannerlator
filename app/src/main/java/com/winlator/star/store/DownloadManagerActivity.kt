@@ -80,6 +80,7 @@ import com.winlator.star.store.download.formatDownloadSize
 import com.winlator.star.store.download.formatDownloadSpeed
 import com.winlator.star.store.download.formatEta
 import com.winlator.star.core.AppOrientation
+import com.winlator.star.sound.popupKeySounds
 import com.winlator.star.ui.deck.LocalXmbGroup
 import com.winlator.star.ui.deck.ScreenScale
 import com.winlator.star.ui.deck.XmbHighlightHost
@@ -270,8 +271,8 @@ private fun DownloadManagerScreen(
         val frame = xmbFrame()
         val density = LocalDensity.current
         // The highlight host sits outside the density change below: the gliding outline is drawn over the whole page (dialogs bring
-        // their own host).
-        XmbHighlightHost(enabled = true, modifier = Modifier.fillMaxSize()) {
+        // their own host). The activity hands its keys to nobody, so the page notes them for the UI sounds itself.
+        XmbHighlightHost(enabled = true, modifier = Modifier.fillMaxSize().popupKeySounds()) {
             CompositionLocalProvider(LocalDensity provides Density(density.density, density.fontScale * scale.factor)) {
                 Column(
                     modifier = Modifier

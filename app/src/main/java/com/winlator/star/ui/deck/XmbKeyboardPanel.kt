@@ -93,6 +93,7 @@ import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import com.winlator.star.R
 import com.winlator.star.core.GuestTyper
+import com.winlator.star.sound.focusSound
 import com.winlator.star.ui.DeckDialogBars
 import com.winlator.star.ui.LocalDeckDensity
 import kotlin.math.max
@@ -622,6 +623,7 @@ private fun RowScope.KeyCap(
         modifier = Modifier
             .weight(cap.weight)
             .fillMaxHeight()
+            .focusSound()
             .onFocusChanged { focused = it.isFocused }
             .then(if (focused) Modifier.border(scale.dp(FOCUS_RING_DP), ringColor, shape) else Modifier)
             .onKeyEvent { event ->

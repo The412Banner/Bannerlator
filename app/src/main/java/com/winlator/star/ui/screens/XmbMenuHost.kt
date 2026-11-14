@@ -190,6 +190,13 @@ private fun XmbNavState.step(m: XmbMenu, rows: List<XmbRow>, d: Int) {
     com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.NAVIGATE_EDGE)
 }
 
+private fun XmbPicker.step(d: Int) {
+    val to = (sel + d).coerceIn(0, row.options.lastIndex.coerceAtLeast(0))
+    if (to == sel) { com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.NAVIGATE_EDGE); return }
+    sel = to
+    com.winlator.star.sound.UiSounds.focusGained()
+}
+
 private fun XmbNavState.commitChoice(row: XmbRow.Choice, value: String) {
     picker = null
     if (value == row.selected) return
@@ -247,8 +254,8 @@ internal fun XmbNavState.onKey(k: XmbKey, xmb: XmbScope): Boolean {
     m.panel?.let { p -> if (p.onKey(k)) return true; if (k == XmbKey.B) pop(); return true }
     picker?.let { p ->
         when (k) {
-            XmbKey.Up -> p.sel = max(0, p.sel - 1)
-            XmbKey.Down -> p.sel = min(p.row.options.lastIndex, p.sel + 1)
+            XmbKey.Up -> p.step(-1)
+            XmbKey.Down -> p.step(1)
             XmbKey.A -> p.row.options.getOrNull(p.sel)?.let { commitChoice(p.row, it) }
             XmbKey.B, XmbKey.Left -> picker = null
             else -> {}

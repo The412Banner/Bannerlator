@@ -259,6 +259,7 @@ private fun XmbFriendsRoster(focus: XmbTabsPageFocus) {
     var openKey by remember { mutableStateOf<String?>(null) }
     var confirmRemove by remember { mutableStateOf(false) }
     var wantCol by remember { mutableIntStateOf(0) }
+    com.winlator.star.sound.MoveSound(listOf(selKey, sub))
     val lastIndex = remember { IntArray(1) }
     val selIdx = xmbFriendsResolve(rows, selKey, lastIndex[0])
     SideEffect { lastIndex[0] = selIdx }
@@ -371,7 +372,7 @@ private fun XmbFriendsRoster(focus: XmbTabsPageFocus) {
                 // Along the lines (the cards two to a line, a heading across both), on the column the cursor last chose.
                 Key.DirectionUp, Key.DirectionDown -> {
                     val to = xmbFriendsVertical(rows, lines, selIdx, down = e.key == Key.DirectionDown, wantCol = wantCol)
-                    if (to == XMB_TWO_COL_TO_BAR) focus.toBar() else if (to != selIdx) select(to)
+                    if (to == XMB_TWO_COL_TO_BAR) focus.toBar() else if (to != selIdx) select(to) else com.winlator.star.sound.edgeSound()
                     true
                 }
                 // Between the columns; on the toolbar, and on a card whose buttons A has stepped into, between the buttons instead.
@@ -383,10 +384,12 @@ private fun XmbFriendsRoster(focus: XmbTabsPageFocus) {
                         if (next != sub) {
                             sub = next
                             confirmRemove = false
+                        } else {
+                            com.winlator.star.sound.edgeSound()
                         }
                     } else {
                         val to = xmbTwoColSide(lines, selIdx, d)
-                        if (to != selIdx) pick(to)
+                        if (to != selIdx) pick(to) else com.winlator.star.sound.edgeSound()
                     }
                     true
                 }

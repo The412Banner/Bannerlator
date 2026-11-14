@@ -110,6 +110,8 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.preference.PreferenceManager
+import com.winlator.star.sound.focusSound
+import com.winlator.star.sound.popupKeySounds
 import com.winlator.star.ui.LocalXmbHintInset
 import com.winlator.star.ui.deck.DeckInk
 import com.winlator.star.ui.deck.LocalXmbGroup
@@ -1829,10 +1831,13 @@ private fun SelectBox(
             Spacer(Modifier.width(10.dp))
             Icon(Icons.Filled.UnfoldMore, contentDescription = null, tint = cs.onSurfaceVariant, modifier = Modifier.size(20.dp))
         }
+        // In an XMB row the popup (a window of its own, out of reach of the screen's key hook) makes the move, select and back sounds itself.
+        val itemSound = if (inRow) Modifier.focusSound() else Modifier
         val items: @Composable () -> Unit = {
             control.options.forEach { o ->
                 DropdownMenuItem(
                     text = { Text(o.label) },
+                    modifier = itemSound,
                     enabled = o.disabledReason == null,
                     leadingIcon = {
                         if (o.value == value) Icon(Icons.Filled.Check, contentDescription = null, tint = cs.primary)
@@ -1847,6 +1852,7 @@ private fun SelectBox(
             control.customLabel?.let { custom ->
                 DropdownMenuItem(
                     text = { Text(custom) },
+                    modifier = itemSound,
                     leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
                     onClick = {
                         open = false
@@ -1857,7 +1863,11 @@ private fun SelectBox(
         }
         if (picker != null) {
             if (open) picker { open = false }
-        } else DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.heightIn(max = 420.dp)) {
+        } else DropdownMenu(
+            expanded = open,
+            onDismissRequest = { open = false },
+            modifier = Modifier.heightIn(max = 420.dp).then(if (inRow) Modifier.popupKeySounds() else Modifier),
+        ) {
             if (inRow) {
                 MaterialTheme(colorScheme = menuScheme, typography = MaterialTheme.typography, shapes = MaterialTheme.shapes) { items() }
             } else {

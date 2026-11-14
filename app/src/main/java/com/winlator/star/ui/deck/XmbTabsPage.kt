@@ -198,6 +198,8 @@ private fun XmbTabsPageBody(
     val onCloseNow by rememberUpdatedState(onClose)
     val onAddNow by rememberUpdatedState(onAddGame)
     val onStores = current == XmbSteamTab.STORES
+    // The cursor moving along the pill bar and between the bar and the page (the pages move their own inside).
+    com.winlator.star.sound.MoveSound(listOf(sel, focus.contentFocused))
 
     // The phone layout has no floating header nor hints (the shell keeps its bars there), so it needs no room for them, and shows the
     // Add Game hint itself.
@@ -262,6 +264,11 @@ private fun XmbTabsPageBody(
         if (dragged >= closePx) { dragDone = true; onCloseNow() }
     }
 
+    // Left / Right on the bar: the next tab, or the edge sound at the first and last one.
+    val stepBar = { d: Int ->
+        val to = xmbTabStep(selNow, d, tabs.size, wrap = false)
+        if (to == selNow) com.winlator.star.sound.edgeSound() else onTabNow(to)
+    }
     val onKeyEvent: (KeyEvent) -> Boolean = keys@{ e ->
         if (!open || e.type != KeyEventType.KeyDown) return@keys false
         val first = e.nativeKeyEvent.repeatCount == 0
@@ -281,8 +288,8 @@ private fun XmbTabsPageBody(
             }
         }
         when (e.key) {
-            Key.DirectionLeft -> { onTabNow(xmbTabStep(selNow, -1, tabs.size, wrap = false)); true }
-            Key.DirectionRight -> { onTabNow(xmbTabStep(selNow, 1, tabs.size, wrap = false)); true }
+            Key.DirectionLeft -> { stepBar(-1); true }
+            Key.DirectionRight -> { stepBar(1); true }
             // Into the page on a fresh press only: a held Down that opened the page would otherwise carry on into it with its repeats.
             Key.DirectionDown, Key.ButtonA, Key.Enter, Key.NumPadEnter, Key.DirectionCenter -> { if (first) focus.contentFocused = true; true }
             Key.DirectionUp, Key.ButtonB, Key.Escape -> { if (first) onCloseNow(); true }

@@ -84,6 +84,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.winlator.star.sound.popupKeySounds
 import com.winlator.star.ui.deck.ScreenScale
 import com.winlator.star.ui.deck.XmbEditTapCatcher
 import com.winlator.star.ui.deck.XmbGlassBackdrop
@@ -157,7 +158,8 @@ internal fun StoreXmbScreen(content: @Composable () -> Unit) {
             ) {
                 Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).windowInsetsPadding(WindowInsets.ime)) {
                     // One gliding highlight for the screen, in every interface: the stores look the same in all of them.
-                    XmbHighlightHost(enabled = true, modifier = Modifier.fillMaxSize()) {
+                    // A store's activity hands its keys to nobody: in XMB home the screen notes them for the UI sounds itself.
+                    XmbHighlightHost(enabled = true, modifier = Modifier.fillMaxSize().then(if (xmb) Modifier.popupKeySounds() else Modifier)) {
                         XmbKeyboardHost(xmb) { content() }
                     }
                 }
@@ -198,7 +200,7 @@ internal fun StoreKeyboardTheme(content: @Composable () -> Unit) {
                 XmbKeyboardHost(content = content)
             } else {
                 // These screens paint no backdrop of their own, and their `background` fills are clear on the glass.
-                XmbHighlightHost(enabled = true, modifier = Modifier.fillMaxSize()) {
+                XmbHighlightHost(enabled = true, modifier = Modifier.fillMaxSize().popupKeySounds()) {
                     XmbGlassBackdrop(Modifier.matchParentSize())
                     XmbKeyboardHost { content() }
                 }
@@ -283,7 +285,10 @@ internal fun StoreTabCycle(enabled: Boolean, onCycle: (Int) -> Unit) {
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(enabled, lifecycleOwner) {
         if (!enabled) return@DisposableEffect onDispose {}
-        val handler: (Int) -> Unit = { current(it) }
+        val handler: (Int) -> Unit = {
+            com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.TAB)
+            current(it)
+        }
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_RESUME -> StoreXmbInput.onCycle = handler

@@ -53,6 +53,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import com.winlator.star.sound.focusSound
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -156,6 +157,12 @@ internal fun xmbPickHot(areas: FloatArray): Int {
     }
     return best
 }
+
+/**
+ * Whether the highlight moving to [now] makes the move sound: it has to be another item than the last one it was on ([last], null
+ * before the first), and not while a touch hides the outline. UiSounds adds the rest: only a direction press may cause the sound.
+ */
+internal fun xmbTickFor(last: Any?, now: Any?, touch: Boolean): Boolean = !touch && now != null && now !== last
 
 /** [radius] held to what a w x h box can show (half its short side). */
 internal fun xmbCornerClamp(radius: Float, width: Float, height: Float): Float =
@@ -318,6 +325,9 @@ internal class XmbHighlightHost internal constructor(internal val view: View) {
     private var secondaryCorners by mutableStateOf(XmbCorners.None)
     private var lastItem: XmbHighlightItem? = null
 
+    /** The item the highlight was last on, kept through the gaps between two items and through touch: the move sound plays when it changes. */
+    private var lastPicked: XmbHighlightItem? = null
+
     /** Reused by every draw: the outline's rounded box as a path (rounded rects with four different corners need one). */
     private val boxPath = Path()
 
@@ -350,20 +360,26 @@ internal class XmbHighlightHost internal constructor(internal val view: View) {
     private fun refresh() {
         var newHot: XmbHighlightItem? = null
         var newSecondary: XmbHighlightItem? = null
+        var picked: XmbHighlightItem? = null
         val n = focused.size
-        if (n > 0 && !touchMode) {
+        if (n > 0) {
             val areas = FloatArray(n) { focused[it].area() }
             val h = focused[xmbPickHot(areas)]
-            newHot = h
-            val hotArea = h.area()
-            for (i in n - 1 downTo 0) {
-                val c = focused[i]
-                if (c !== h && c.dimWhenInside && c.area() > hotArea) {
-                    newSecondary = c
-                    break
+            picked = h
+            if (!touchMode) {
+                newHot = h
+                val hotArea = h.area()
+                for (i in n - 1 downTo 0) {
+                    val c = focused[i]
+                    if (c !== h && c.dimWhenInside && c.area() > hotArea) {
+                        newSecondary = c
+                        break
+                    }
                 }
             }
         }
+        if (xmbTickFor(lastPicked, picked, touchMode)) com.winlator.star.sound.UiSounds.focusGained()
+        if (picked != null) lastPicked = picked
         val prevHot = hot
         val prevSecondary = secondaryItem
         if (prevHot !== newHot) hot = newHot
@@ -625,7 +641,8 @@ internal fun xmbHighlightHostOrNull(): XmbHighlightHost? {
  * Registers this element as a stop of the highlight. Put it BEFORE the clickable / focusable it observes (the same place as
  * [deckFocusRing]), after the modifiers that size and place the element so the outline gets its real bounds.
  *
- * With a host above it draws nothing itself: the host's outline moves here when the element holds focus. Without a host
+ * With a host above it draws nothing itself: the host's outline moves here when the element holds focus (and makes the move
+ * sound when that is a move to another item, see [xmbTickFor]). Without a host
  * (the XMB shell has not wrapped this screen yet, or a popup window) it falls back to a plain 2 dp accent border, so
  * focus is never invisible. [shape] gives the outline's corners; [tint] an outline colour other than the accent (null =
  * accent); [wholeSubtree] counts focus anywhere inside this element, not only on its own focus target; [dimWhenInside]
@@ -687,6 +704,13 @@ internal fun Modifier.xmbHighlight(
             if (item.focused) host.bump()
         }
 }
+
+/**
+ * The move sound when this element gains focus, in the XMB interface only. For a focus target that draws its own highlight instead of
+ * registering with [xmbHighlight] (which makes the sound itself). Put it before the element's own `onFocusChanged`.
+ */
+@Composable
+internal fun Modifier.xmbFocusSound(): Modifier = if (rememberXmbHome()) this.focusSound() else this
 
 /**
  * Colours the text and icons of one item while it holds the highlight (and a little less while it keeps the dim outline): the

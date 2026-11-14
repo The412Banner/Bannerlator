@@ -171,6 +171,9 @@ internal fun XmbAllGamesPage(
     val stats = remember(games) { readPlayStats(context, games) }
     val sorted = remember(games, stats, sort) { sortGames(games, sort) { gameSortKeyOf(it, stats) } }
     val sel = remember(sorted, selPath) { sorted.indexOfFirst { it.file.path == selPath }.coerceAtLeast(0) }
+    com.winlator.star.sound.MoveSound(sorted.getOrNull(sel)?.file?.path)
+    com.winlator.star.sound.MoveSound(menuSel)
+    com.winlator.star.sound.SoundOnChange(menuOpen) { _, open -> if (open) com.winlator.star.sound.UiCue.OPTIONS else null }
 
     val setView = { v: AllView -> view = v; prefs.edit().putString(PREF_VIEW, v.pref).apply() }
     val setSort = { s: LibrarySort -> sort = s; menuOpen = false; prefs.edit().putString(PREF_SORT, s.name).apply() }
@@ -201,7 +204,9 @@ internal fun XmbAllGamesPage(
     val bottomPad = 16.dp
 
     val gridState = rememberLazyGridState()
-    val moveSel: (Int) -> Unit = { i -> sorted.getOrNull(i)?.let { selPath = it.file.path } }
+    val moveSel: (Int) -> Unit = { i ->
+        if (i == sel) com.winlator.star.sound.edgeSound() else sorted.getOrNull(i)?.let { selPath = it.file.path }
+    }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val avail = maxWidth - padH * 2

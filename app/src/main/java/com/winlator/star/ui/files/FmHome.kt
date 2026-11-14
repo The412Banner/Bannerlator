@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.winlator.star.core.StringUtils
+import com.winlator.star.ui.deck.xmbFocusSound
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
@@ -133,6 +134,7 @@ private fun HomeTile(tile: FmHomeTile, refreshTick: Int, onOpen: (File) -> Unit)
                 .fillMaxWidth()
                 .heightIn(min = if (dense) 88.dp else 132.dp)
                 .fmGlass(RoundedCornerShape(if (dense) 14.dp else 18.dp), focused = focused)
+                .xmbFocusSound()
                 .onFocusChanged { focused = it.isFocused }
                 .clickable { onOpen(tile.dir) }
                 .padding(horizontal = 10.dp, vertical = if (dense) 7.dp else 12.dp),

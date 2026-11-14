@@ -76,6 +76,7 @@ import com.winlator.star.core.StringUtils
 import com.winlator.star.ui.LocalXmbHintInset
 import com.winlator.star.ui.deck.xmbCardFill
 import com.winlator.star.ui.deck.xmbCardLine
+import com.winlator.star.ui.deck.xmbFocusSound
 import com.winlator.star.ui.deck.xmbOnGlass
 import com.winlator.star.ui.screens.outlinedMenuCard
 import com.winlator.star.ui.screens.xmbMenuBack
@@ -269,6 +270,7 @@ internal fun FmRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .fmGlass(RoundedCornerShape(if (dense) 10.dp else if (compact) 10.dp else 14.dp), selected = selected, focused = focused)
+                .xmbFocusSound()
                 .onFocusChanged { focused = it.isFocused }
                 .fmItemKeys(
                     onMenu = menu?.let { { menuOpen = true } },
@@ -342,6 +344,7 @@ internal fun FmTile(
             modifier = Modifier
                 .fillMaxWidth()
                 .fmGlass(RoundedCornerShape(16.dp), selected = selected, focused = focused)
+                .xmbFocusSound()
                 .onFocusChanged { focused = it.isFocused }
                 .fmItemKeys(
                     onMenu = menu?.let { { menuOpen = true } },
@@ -388,6 +391,7 @@ internal fun FmParentRow(compact: Boolean, onUp: () -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = if (dense) 8.dp else 10.dp, vertical = if (dense) 1.dp else if (compact) 2.dp else 3.dp)
             .fmGlass(RoundedCornerShape(if (compact || dense) 10.dp else 14.dp), focused = focused)
+            .xmbFocusSound()
             .onFocusChanged { focused = it.isFocused }
             .clickable(onClick = onUp)
             .padding(horizontal = 12.dp, vertical = if (dense) 8.dp else if (compact) 6.dp else 12.dp),

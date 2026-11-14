@@ -81,15 +81,20 @@ internal fun XmbStoresPage(
         }
     }
     var sel by remember { mutableIntStateOf(0) }
+    com.winlator.star.sound.MoveSound(sel)
+    // The cursor to card [to]; the edge sound where it cannot go on.
+    val goTo: (Int) -> Unit = { to ->
+        if (to == sel) com.winlator.star.sound.edgeSound() else sel = to
+    }
 
     XmbTabsPageKeys(focus) { e ->
         when (e.key) {
-            Key.DirectionLeft -> { sel = xmbStoresMove(rows, sel, -1, 0); true }
-            Key.DirectionRight -> { sel = xmbStoresMove(rows, sel, 1, 0); true }
-            Key.DirectionDown -> { sel = xmbStoresMove(rows, sel, 0, 1); true }
+            Key.DirectionLeft -> { goTo(xmbStoresMove(rows, sel, -1, 0)); true }
+            Key.DirectionRight -> { goTo(xmbStoresMove(rows, sel, 1, 0)); true }
+            Key.DirectionDown -> { goTo(xmbStoresMove(rows, sel, 0, 1)); true }
             Key.DirectionUp -> {
                 val to = xmbStoresMove(rows, sel, 0, -1)
-                if (to == XMB_STORES_TO_BAR) focus.toBar() else sel = to
+                if (to == XMB_STORES_TO_BAR) focus.toBar() else goTo(to)
                 true
             }
             // A held key must not open the store twice.

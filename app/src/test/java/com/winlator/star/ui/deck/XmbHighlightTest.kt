@@ -52,6 +52,35 @@ class XmbHighlightTest {
         assertEquals(XmbHighlightMove.GLIDE, xmbMoveFor(wasHidden = false, itemChanged = false, animating = true))
     }
 
+    // ---- The move sound ----
+
+    @Test
+    fun theHighlightMovingToAnotherItemMakesTheMoveSound() {
+        val a = Any()
+        val b = Any()
+        assertTrue(xmbTickFor(last = a, now = b, touch = false))
+        // The first item of a window counts as a move too: UiSounds keeps it quiet unless a direction press caused it.
+        assertTrue(xmbTickFor(last = null, now = a, touch = false))
+    }
+
+    @Test
+    fun theSameItemClaimedAgainIsNotAMove() {
+        val a = Any()
+        assertTrue(!xmbTickFor(last = a, now = a, touch = false))
+    }
+
+    @Test
+    fun nothingHoldingTheHighlightIsNotAMove() {
+        assertTrue(!xmbTickFor(last = Any(), now = null, touch = false))
+        assertTrue(!xmbTickFor(last = null, now = null, touch = false))
+    }
+
+    @Test
+    fun aTouchHidingTheOutlineMakesNoSound() {
+        assertTrue(!xmbTickFor(last = Any(), now = Any(), touch = true))
+        assertTrue(!xmbTickFor(last = null, now = Any(), touch = true))
+    }
+
     @Test
     fun cornersStayInsideTheBox() {
         assertEquals(12f, xmbCornerClamp(12f, 100f, 60f), 0f)

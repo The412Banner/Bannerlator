@@ -6776,6 +6776,32 @@ private fun HudToggleRow(label: String, checked: Boolean, onCheckedChange: (Bool
 
 
 // ─── VEGAS stock config download sheet ──────────────────────────────────────────
+
+/**
+ * Autonomy: persists the release versions and tags seen in the stock-config feed [rows], so the classifier's known
+ * list grows by itself (no bundled-asset regeneration) and tags seen live stop showing as "unverified".
+ */
+internal fun recordVegasReleaseTails(context: Context, rows: List<VegasStockConfigFetcher.ReleaseConf>) {
+    val prefs = context.getSharedPreferences("vegas_config_ui", Context.MODE_PRIVATE)
+    val existing = prefs.getString("released_tail", "")?.split('|')
+        ?.filter { it.isNotBlank() }?.toMutableSet() ?: mutableSetOf()
+    var added = false
+    for (rel in rows) {
+        val prefix = rel.tag.removePrefix("v").substringBefore('-')
+        for (c in rel.verNames + prefix) {
+            if (c.isNotBlank() && existing.add(c)) added = true
+        }
+    }
+    if (added) prefs.edit().putString("released_tail", existing.joinToString("|")).apply()
+    // Heal catalog tail too — tags seen live become "covered" so "unverified" doesn't stick forever
+    val catExisting = prefs.getString("catalog_tail", "")?.split('|')
+        ?.filter { it.isNotBlank() }?.toMutableSet() ?: mutableSetOf()
+    var catAdded = false
+    for (rel in rows) if (rel.tag.isNotBlank() && catExisting.add(rel.tag)) catAdded = true
+    VegasKeyCatalog.capToMax(catExisting)
+    if (catAdded) prefs.edit().putString("catalog_tail", catExisting.joinToString("|")).apply()
+}
+
 @Composable
 internal fun StockConfigDownloadSheet(
     onDismiss: () -> Unit
@@ -6792,26 +6818,7 @@ internal fun StockConfigDownloadSheet(
         loading = true
         rows = withContext(Dispatchers.IO) { VegasStockConfigFetcher.listReleaseConfigs() }
         loading = false
-        // Autonomy: persist any newly seen release versions so the classifier's
-        // known list grows by itself — no bundled-asset regeneration ever needed.
-        val prefs = context.getSharedPreferences("vegas_config_ui", Context.MODE_PRIVATE)
-        val existing = prefs.getString("released_tail", "")?.split('|')
-            ?.filter { it.isNotBlank() }?.toMutableSet() ?: mutableSetOf()
-        var added = false
-        for (rel in rows) {
-            val prefix = rel.tag.removePrefix("v").substringBefore('-')
-            for (c in rel.verNames + prefix) {
-                if (c.isNotBlank() && existing.add(c)) added = true
-            }
-        }
-        if (added) prefs.edit().putString("released_tail", existing.joinToString("|")).apply()
-        // Heal catalog tail too — tags seen live become "covered" so "unverified" doesn't stick forever
-        val catExisting = prefs.getString("catalog_tail", "")?.split('|')
-            ?.filter { it.isNotBlank() }?.toMutableSet() ?: mutableSetOf()
-        var catAdded = false
-        for (rel in rows) if (rel.tag.isNotBlank() && catExisting.add(rel.tag)) catAdded = true
-        VegasKeyCatalog.capToMax(catExisting)
-        if (catAdded) prefs.edit().putString("catalog_tail", catExisting.joinToString("|")).apply()
+        recordVegasReleaseTails(context, rows)
     }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {

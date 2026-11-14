@@ -472,7 +472,7 @@ private fun EntryRow(
 }
 
 /** Normalized driver identity (lowercase, alphanumerics only) for best-effort installed-matching. */
-private fun normDriver(s: String): String = s.lowercase().filter { it.isLetterOrDigit() }
+internal fun normDriver(s: String): String = s.lowercase().filter { it.isLetterOrDigit() }
 
 @Composable
 private fun CenteredLoading() {
@@ -666,7 +666,7 @@ private fun ManageSourcesDialog(
     )
 }
 
-private fun feedSummary(src: RemoteDriverSource): String =
+internal fun feedSummary(src: RemoteDriverSource): String =
     when (val f = src.feeds.firstOrNull()) {
         is DriverFeed.Json -> f.url
         is DriverFeed.GithubReleases -> "github.com/${f.owner}/${f.repo}"

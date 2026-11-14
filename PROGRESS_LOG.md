@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 05:25 EST — feat/lab-parity-2: touch back buttons + tappable hints (branch, awaiting the user)
+
+- **User:** "these portrait menus need simple back buttons that are touch screen tappable since portrait is more touch screen driven and landscape is more controller navigation also with touch".
+- **52950295:** new `ui/simple/LabTouch.kt` — `LabHint` (a button hint you can tap; it presses that controller button through the window the way a real press goes; an unhandled B is sent as Back), `LabBackButton` (the Lab top line's ← for pages in their own window), `LabCloseButton`. `SimpleLegend` draws every hint as `LabHint`; the hand-drawn hint rows of `SimpleActionSheet`, `SimplePicker`, the sound-pack list and the download lists too. Full-screen Lab pages (`LabOverlay`: glossary, audio fine-tune, VEGAS editor, editor wrapper manager) get the ← arrow; Lab tool dialogs (`LabDialog`) get a ✕. CI 43582411251.
+- **d03ed0da:** a hint whose button acts on the focused item did nothing after touch (nothing focused): `LabHintFallback` lets a page give the default — Home and Library X opens the shown game's menu, audio page X saves, Start explains the chosen preset. CI 43583931789.
+- **Device (Pocket FIT, touch, portrait + landscape, crash buffer empty):** ← on the glossary and audio page; B Close / Cancel / Back hints (glossary, audio page without saving, picker unchanged, Containers → Home); Y New container (left with B Back, nothing created); X Game menu on Home and Library; Start ? on the audio page. Restored: Lab orientation Auto, system rotation. FIT runs d03ed0da (7d56a946). Not merged.
+
 ## 2026-11-14 04:45 EST — feat/lab-parity-2: the 3 small issues (branch, awaiting the user)
 
 - **User:** "fix the 3 small issues first".

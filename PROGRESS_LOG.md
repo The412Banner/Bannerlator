@@ -7,6 +7,7 @@
 - **APK checks:** com.tencent.ig vc106 3.1.9-pre2, cert a40da80a; libxodus_cli.so + libxodus_service.so contain `.xodus-credentials-` (Android credential lock fix); classes4.dex has labFitDensity. Staged /sdcard/Download/Bannerlator-main-175aadd2-pubg.apk sha256 3e3e9ef2…cb7e (host = device).
 - **Before:** FIT base.apk fee7abd9… (fix/lab-auto-fit 084fb2fe, 21:03:08 EST); BL process in background, no game/wine running, Discord in front. Undo = /sdcard/Download/Bannerlator-lab-auto-fit-084fb2fe.apk (hash = installed fee7abd9).
 - **Plan after install:** installed hash == staged, crash buffer; quick check: Xbox store library sync (xbox_diag.txt) + Lab Home/rail at density 345 portrait + landscape. No Xbox game launch (user's Xbox cloud saves are ON). Termux back after.
+- **INSTALLED 21:24:39 EST:** pm install -r Success; installed base.apk sha256 3e3e9ef2…cb7e == staged; crash buffer 0. Density 345, auto-rotate on. Next: open BL (Lab) for the quick check; xbox_diag.txt = /sdcard/Download/Bannerlator/xbox_diag.txt.
 - **Resume point:** if the session dies, compare installed base.apk sha256 to 3e3e9ef2…, `logcat -b crash -d`; restore `wm user-rotation free; wm fixed-to-user-rotation default` if a landscape check was in progress; density stays 345.
 
 ## 2026-11-13 21:10 EST — Pocket FIT reboot (main, resume point)

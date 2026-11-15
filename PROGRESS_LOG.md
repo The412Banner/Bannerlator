@@ -1,5 +1,8 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 18:05 EST — 3.2.1 STABLE CUT (user: "cut it")
+- Backup refs/backup/20261115/main-before-3.2.1 = e9ea9ebd; main fast-forwards to release/3.2.1 (vc 108 / 3.2.1, notes, README); release.yml: tag 3.2.1, title "Bannerlator 3.2.1", number 3.2.1, make_prerelease false. No main pushes until it ends (root-a3, root-36 told).
+
 ## 2026-11-15 18:00 EST — 3.2.1 STABLE PREPARED (release/3.2.1, not published)
 - Why: user 11-15: "build main as artifacts only then prep a stable release for 3.2.1"; "make sure the release description states nas storage streaming is experimental still and a work in progress"; "everything has been tested and works for me added for this release".
 - Main artifacts: CI 43769358474 on e9ea9ebd GREEN ×4 (artifacts only).

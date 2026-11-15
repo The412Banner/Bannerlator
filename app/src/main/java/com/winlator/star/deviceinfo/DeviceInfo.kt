@@ -7,24 +7,53 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import com.winlator.star.contents.AdrenotoolsManager
 import com.winlator.star.contents.LinuxVulkanDriverManager
 import com.winlator.star.contents.WaylandGameDriverManager
-import com.winlator.star.core.FileUtils
 import java.io.File
 import java.util.Locale
 
+/**
+ * A system file's text, or null when it is missing, empty or not readable by the app (many sysfs nodes are not).
+ * Bannerlator's FileUtils.readString throws on a file it cannot read; DroidDeck's returns null, which this code expects.
+ */
+internal fun readSys(path: String): String? = try {
+    File(path).readText().trim().ifEmpty { null }
+} catch (e: Exception) {
+    null
+}
+
 object DeviceInfo {
+    private const val TAG = "DeviceInfo"
+
     class Section(val title: String, val rows: List<Pair<String, String>>)
 
-    /** Every section with something in it. Reads files and asks the Vulkan driver: call off the main thread. */
+    /**
+     * Every section with something in it. Reads files and asks the Vulkan driver: call off the main thread.
+     * Each section is read on its own, so one that fails (logged) does not take the others with it.
+     */
     fun collect(context: Context): List<Section> {
         val vk = VulkanInfo.query()
-        val gpu = GpuInfo.detect()
-        return listOf(
-            chip(), gpu(gpu), cpu(), memory(context), system(context), vulkan(context, vk), drivers(context),
+        val gpu = runCatching { GpuInfo.detect() }.onFailure { Log.w(TAG, "GPU detection failed", it) }.getOrNull()
+        return listOfNotNull(
+            safe("chip") { chip() },
+            safe("gpu") { gpu?.let { gpu(it) } },
+            safe("cpu") { cpu() },
+            safe("memory") { memory(context) },
+            safe("system") { system(context) },
+            safe("vulkan") { vulkan(context, vk) },
+            safe("drivers") { drivers(context) },
         ).filter { it.rows.isNotEmpty() }
     }
+
+    private fun safe(name: String, build: () -> Section?): Section? =
+        try {
+            build()
+        } catch (e: Exception) {
+            Log.w(TAG, "section $name failed", e)
+            null
+        }
 
     /** The sections as plain text, for a bug report. */
     fun text(sections: List<Section>): String = buildString {
@@ -39,7 +68,7 @@ object DeviceInfo {
         if (!value.isNullOrBlank() && value != Build.UNKNOWN) add(key to value.trim())
     }
 
-    private fun read(path: String): String? = FileUtils.readString(File(path))?.trim()?.ifEmpty { null }
+    private fun read(path: String): String? = readSys(path)
 
     private fun prop(name: String): String = GpuInfo.systemProperty(name)
 

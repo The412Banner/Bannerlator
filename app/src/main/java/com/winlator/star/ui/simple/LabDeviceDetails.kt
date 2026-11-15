@@ -60,7 +60,10 @@ private fun LabDeviceDetailsDialog(onDismiss: () -> Unit) {
     var copied by remember { mutableStateOf(false) }
     val copy = remember { FocusRequester() }
     LaunchedEffect(Unit) {
-        sections = withContext(Dispatchers.IO) { runCatching { DeviceInfo.collect(context.applicationContext) }.getOrDefault(emptyList()) }
+        sections = withContext(Dispatchers.IO) {
+            runCatching { DeviceInfo.collect(context.applicationContext) }
+                .onFailure { android.util.Log.w("LabDeviceDetails", "device details not read", it) }.getOrDefault(emptyList())
+        }
     }
     val loaded = sections != null
     LaunchedEffect(loaded) {
@@ -74,6 +77,8 @@ private fun LabDeviceDetailsDialog(onDismiss: () -> Unit) {
         if (list == null) {
             Text(L("Reading the device…"), color = SimpleMuted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 4.dp))
             LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 4.dp))
+        } else if (list.isEmpty()) {
+            Text(L("The device details could not be read."), color = SimpleMuted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 4.dp))
         } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(

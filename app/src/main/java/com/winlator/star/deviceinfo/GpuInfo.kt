@@ -4,7 +4,6 @@
 package com.winlator.star.deviceinfo
 
 import android.os.Build
-import com.winlator.star.core.FileUtils
 import java.io.File
 
 data class GpuInfo(
@@ -18,8 +17,8 @@ data class GpuInfo(
     companion object {
         fun detect(): GpuInfo {
             val adreno = File("/sys/class/kgsl/kgsl-3d0").exists() || File("/vendor/lib64/hw/vulkan.adreno.so").exists()
-            val raw = FileUtils.readString(File("/sys/class/kgsl/kgsl-3d0/gpu_model"))?.trim()
-            val chipId = FileUtils.readString(File("/sys/class/kgsl/kgsl-3d0/gpu_chipid"))?.trim().orEmpty()
+            val raw = readSys("/sys/class/kgsl/kgsl-3d0/gpu_model")
+            val chipId = readSys("/sys/class/kgsl/kgsl-3d0/gpu_chipid").orEmpty()
             val vulkanName = VulkanInfo.cachedOrNull()?.get("device")
             val (model, source) = if (adreno) modelFromNames(raw, { vulkanName }, { platformModel() }) else 0 to ""
             // Mali, named by the vendor's Vulkan driver ("Mali-G720-Immortalis MC12"), by kbase or by its chip.
@@ -62,7 +61,7 @@ data class GpuInfo(
 
         private fun maliName(vulkanName: String?): String =
             vulkanName?.takeIf { it.contains("Mali", ignoreCase = true) }
-                ?: FileUtils.readString(File("/sys/class/misc/mali0/device/gpuinfo"))?.trim()?.takeIf { it.contains("Mali", ignoreCase = true) }
+                ?: readSys("/sys/class/misc/mali0/device/gpuinfo")?.takeIf { it.contains("Mali", ignoreCase = true) }
                     ?.substringBefore(" ")
                 ?: maliOfSoc(socIds())
                 ?: ""

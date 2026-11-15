@@ -7,6 +7,7 @@ import android.os.Build
 import android.util.DisplayMetrics
 import android.view.WindowManager
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -14,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import com.winlator.star.ui.theme.AppThemeState
 import kotlin.math.min
@@ -41,6 +43,23 @@ internal fun xmbAppDensity(shortSidePx: Int, uiScale: Float): Float = xmbBaseDen
 
 /** The XMB's text scale at its own Font size [fontScale] (a share of 100 %); the phone's Font size plays no part. */
 internal fun xmbFontScale(fontScale: Float): Float = XMB_BASE_FONT_BOOST * fontScale
+
+/**
+ * [density] with the XMB's text back at its base Font size, [XMB_BASE_FONT_BOOST], whatever the Font size setting says: the look it
+ * was tuned at. Its dp are untouched, so the Interface scale still applies.
+ */
+internal fun xmbBaseFontDensity(density: Density): Density = Density(density.density, XMB_BASE_FONT_BOOST)
+
+/**
+ * Draws [content] at [xmbBaseFontDensity]: the sizes in sp inside it keep the Font size the XMB was tuned at and follow the
+ * Interface scale alone (the text tabs: part of the look, not text to read at the user's size).
+ */
+@Composable
+internal fun XmbBaseFont(content: @Composable () -> Unit) {
+    val density = LocalDensity.current
+    val base = remember(density) { xmbBaseFontDensity(density) }
+    CompositionLocalProvider(LocalDensity provides base, content = content)
+}
 
 /** [systemDp], a size the phone reports in dp at [systemDensity], as dp at [baseDensity]. */
 internal fun xmbDp(systemDp: Int, systemDensity: Float, baseDensity: Float): Int = (systemDp * systemDensity / baseDensity).roundToInt()
@@ -86,10 +105,12 @@ internal fun xmbConfiguration(context: Context): Configuration {
 
 /**
  * What the XMB is drawn at: [density] is the app's own (its Interface scale and Font size on the fixed scale, before the Deck
- * style's [DECK_UI_SCALE]) and [configuration] the window in dp of that scale.
+ * style's [DECK_UI_SCALE]) and [configuration] the window in dp of that scale. [uiScale] is the Interface scale setting again, for
+ * the sizes a layout works out as shares of the screen in dp (the Home's covers): the density divides the measured box by [uiScale],
+ * so a share of that box shrinks by it, and multiplying the size by [uiScale] is what makes it follow the setting.
  */
 @Immutable
-internal class XmbScale(val density: Density, val configuration: Configuration)
+internal class XmbScale(val density: Density, val configuration: Configuration, val uiScale: Float)
 
 /**
  * Set by WinlatorTheme while the XMB is on, null otherwise. A dialog or popup window starts again from the phone's own density and
@@ -118,6 +139,6 @@ internal fun rememberXmbScale(uiScale: Float, fontScale: Float): XmbScale? {
         if (!xmb) return@remember null
         val shortSidePx = xmbShortSidePx(context)
         val text = xmbFontScale(fontScale)
-        XmbScale(Density(xmbAppDensity(shortSidePx, uiScale), text), xmbConfiguration(system, shortSidePx, text))
+        XmbScale(Density(xmbAppDensity(shortSidePx, uiScale), text), xmbConfiguration(system, shortSidePx, text), uiScale)
     }
 }

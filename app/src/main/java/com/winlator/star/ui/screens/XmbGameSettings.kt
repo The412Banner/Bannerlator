@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Label
@@ -19,15 +20,26 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShortText
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.ViewCarousel
+import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.winlator.star.R
 import com.winlator.star.container.Container
 import com.winlator.star.container.GameDetails
 import com.winlator.star.container.Shortcut
 import com.winlator.star.core.MoveGameToContainer
 import com.winlator.star.store.SteamStoreSearch
+import com.winlator.star.ui.simple.ArtChoice
+import com.winlator.star.ui.simple.LabArt
+import com.winlator.star.ui.simple.keepFile
+import com.winlator.star.ui.simple.sgdbChoices
+import com.winlator.star.ui.simple.steamChoices
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -98,6 +110,131 @@ private fun removeCustomCover(xmb: XmbScope, s: Shortcut) {
     }
 }
 
+/** Where one of the game's art slots (the wide cover or the background) comes from, short enough for a row's value. */
+private fun artSource(context: Context, v: String): String = when {
+    v.contains("steamgriddb", ignoreCase = true) -> "SteamGridDB"
+    v.startsWith("http") -> "Steam"
+    else -> context.getString(R.string.xmb_backdrop_yours)
+}
+
+/**
+ * One art picker: the art slot it writes ("bg" for the background, "wide" for the wide cover) and the few words that
+ * differ between the two rows. The lookups, the thumbnails, the file browser and the reset are the same for both, so
+ * the picker itself is written once.
+ */
+private class XmbArtPicker(
+    val slot: String,
+    val icon: ImageVector,
+    val title: String,
+    val inUse: String,
+    val loading: String,
+    val automatic: String,
+    val browserTitle: String,
+)
+
+/** The wide hero the Home screen draws behind the game, in the slot Lab's Background uses. */
+private fun backgroundArt(context: Context) = XmbArtPicker(
+    slot = "bg", icon = Icons.Filled.Wallpaper, title = "Background",
+    inUse = "Background in use", loading = "Looking for backgrounds…",
+    automatic = "Steam's hero, or the cover blurred",
+    browserTitle = context.getString(R.string.xmb_backdrop_browser_title),
+)
+
+/** The wide card the Home screen draws for the game, in the slot Lab's Wide cover uses. */
+private fun wideCoverArt(context: Context) = XmbArtPicker(
+    slot = "wide", icon = Icons.Filled.ViewCarousel, title = "Wide cover",
+    inUse = "Wide cover in use", loading = "Looking for wide covers…",
+    automatic = "Steam's header, or the background behind it",
+    browserTitle = context.getString(R.string.xmb_wide_browser_title),
+)
+
+/**
+ * "Add your own background" and "Add your own wide cover": the art the Home screen draws for this game — Steam's for
+ * the linked app, SteamGridDB's, or a picture from storage — saved in the slot [picker] names, the same slots Lab's
+ * Background and Wide cover write, so both show it. The pick is a URL or a copy in the app's own art folder
+ * ([keepFile]), never a path that could move.
+ */
+private fun artPickerMenu(xmb: XmbScope, s: Shortcut, picker: XmbArtPicker): XmbMenu {
+    val ctx = xmb.context
+    val slot = picker.slot
+    val thumbs = mutableStateMapOf<String, ImageBitmap>()   // the pictures' thumbnails, added as they arrive
+    var choices by mutableStateOf<List<ArtChoice>>(emptyList())
+    var loading by mutableStateOf(true)
+    var saving by mutableStateOf(false)
+    val me = XmbOpen()
+
+    // Both lookups are network calls: off the composition thread, thumbnails one by one rather than all at the end.
+    val job = xmb.scope.launch {
+        val found = withContext(Dispatchers.IO) {
+            val steam = LabArt.appId(s)?.let { id -> runCatching { steamChoices(id, slot) }.getOrDefault(emptyList()) }.orEmpty()
+            steam + runCatching { sgdbChoices(ctx, s, slot) }.getOrDefault(emptyList())
+        }
+        choices = found.distinctBy { it.url }
+        loading = false
+        for (c in choices) {
+            val bmp = withContext(Dispatchers.IO) { xmbDownloadBitmap(c.thumb, 10000, 10000) } ?: continue
+            thumbs[c.url] = bmp.asImageBitmap()
+        }
+    }
+
+    /** Saves [value] (null = automatic) and goes back to Game Details, which reads the new value. */
+    fun save(value: String?) {
+        LabArt.putGame(s, LabArt.slotKey(slot), value)
+        me.close(xmb)
+        // The list is re-read from the file, as the cover rows do: the art behind the XMB is drawn from the game's
+        // extra data as the list holds it (LabArt.tick then drops the art it had memoised for this game).
+        xmb.saved(); xmb.refresh(); xmb.reloadGames()
+    }
+
+    fun pickFile() {
+        if (saving) return
+        xmb.push(imageBrowserMenu(xmb, picker.browserTitle) { f ->
+            if (!saving) {
+                saving = true
+                // The browser collapses to its one remaining column: closing it now is exact, and the copy runs with the
+                // picker (and its "Saving…") back on top.
+                xmb.pop()
+                xmb.scope.launch {
+                    val kept = withContext(Dispatchers.IO) { keepFile(ctx, f.path, s, slot) }
+                    saving = false
+                    if (kept == null) {
+                        xmb.toast(ctx.getString(R.string.xmb_backdrop_failed))
+                    } else {
+                        LabArt.putGame(s, LabArt.slotKey(slot), kept)
+                        me.close(xmb)
+                        xmb.saved(); xmb.refresh(); xmb.reloadGames()
+                    }
+                }
+            }
+        })
+    }
+
+    return XmbMenu(picker.title, picker.icon, onClose = { me.isOpen = false; job.cancel() }) {
+        val current = LabArt.pick(s, slot)
+        buildList<XmbRow> {
+            if (current != null) add(XmbRow.Info("current", picker.inUse, picker.icon, value = artSource(ctx, current)))
+            if (loading) add(XmbRow.Info("loading", picker.loading, Icons.Filled.HourglassEmpty))
+            listOf("Steam", "SteamGridDB").forEach { group ->
+                val inGroup = choices.filter { it.group == group }
+                if (inGroup.isEmpty()) return@forEach
+                add(XmbRow.Header("h:$group", group))
+                inGroup.forEachIndexed { i, c ->
+                    add(
+                        XmbRow.Action(
+                            key = "c:${c.url}", label = c.label ?: "$group ${i + 1}", icon = picker.icon,
+                            value = if (c.url == current) "✓" else null,
+                            disabledReason = if (saving) "Saving…" else null, thumbnail = thumbs[c.url],
+                        ) { save(c.url) }
+                    )
+                }
+            }
+            if (!loading && choices.isEmpty()) add(XmbRow.Info("none", "No Steam or SteamGridDB art found for this game.", Icons.Filled.Info))
+            add(XmbRow.Action("file", "Pick from storage…", Icons.Filled.Folder, subtitle = "An image from your device") { pickFile() })
+            add(XmbRow.Action("auto", "Use automatic art", Icons.Filled.Refresh, subtitle = picker.automatic) { save(null) })
+        }
+    }
+}
+
 // ── Game Details ────────────────────────────────────────────────────────────────────────────────────
 
 internal fun xmbGameDetailsMenu(xmb: XmbScope, s: Shortcut): XmbMenu {
@@ -117,10 +254,20 @@ internal fun xmbGameDetailsMenu(xmb: XmbScope, s: Shortcut): XmbMenu {
             val nb = xmbSafeName(v)
             if (nb.isNotEmpty() && nb != s.name) renameAndReturn(xmb, s, nb)
         }
-        // Next to the cover a game gets from Scrape cover: the user's own image, and the way back from it.
+        // The art rows: the cover the user picked, then the wide cover and the background, then the way back from the cover.
         val coverCtx = xmb.context
         rows += XmbRow.Link("coverAdd", coverCtx.getString(R.string.xmb_cover_add), Icons.Filled.Image,
             subtitle = coverCtx.getString(R.string.xmb_cover_add_hint)) { coverPickerMenu(xmb, s) }
+        // The wide card the Home screen draws for the game, in its own art slot (the background is its fallback).
+        val wide = LabArt.pick(s, "wide")
+        rows += XmbRow.Link("wide", coverCtx.getString(R.string.xmb_wide_add), Icons.Filled.ViewCarousel,
+            value = wide?.let { artSource(coverCtx, it) },
+            subtitle = coverCtx.getString(R.string.xmb_wide_add_hint)) { artPickerMenu(xmb, s, wideCoverArt(coverCtx)) }
+        // The wide hero the Home screen draws behind the game, from the same art slot Lab's Background uses.
+        val backdrop = LabArt.pick(s, "bg")
+        rows += XmbRow.Link("backdrop", coverCtx.getString(R.string.xmb_backdrop_add), Icons.Filled.Wallpaper,
+            value = backdrop?.let { artSource(coverCtx, it) },
+            subtitle = coverCtx.getString(R.string.xmb_backdrop_add_hint)) { artPickerMenu(xmb, s, backgroundArt(coverCtx)) }
         if (CustomCover.isCustom(s)) {
             rows += XmbRow.Action("coverRemove", coverCtx.getString(R.string.xmb_cover_remove), Icons.Filled.Delete,
                 subtitle = coverCtx.getString(R.string.xmb_cover_remove_hint)) { removeCustomCover(xmb, s) }

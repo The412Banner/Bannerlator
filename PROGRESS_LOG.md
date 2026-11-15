@@ -1,5 +1,17 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 00:25 EST — feat/network-games-spike: copy AND stream NAS games in one build (branch, CI running)
+
+- **User:** "both go" (Add to Games by copying: must ask where to copy, also on NAS folder menus; streaming spike) → "make both options available to test both in one apk".
+- **Branch:** feat/network-games-spike off feat/fm-network-drives (6f947bf2 = Network drives + Add to Games copy, CI 43678806335 green ×4). Code e924b017.
+- **Copy (6f947bf2):** NAS exe/folder ⋮ → Add to Games… → game folder (exe: GameIdentifier.gameFolderOf rule; every level up to 6 pickable), size, How, Copy to (each volume's Winlator/Games or a chosen folder), container → copy in the app scope (leaving the file manager doesn't stop it; Cancel; rerun fetches only what's missing) → exe added to Games (the one started on, else GameFolderScanner.gameIn).
+- **Stream (e924b017):** How = Stream from the network (test) → stand-in in files/netgames/<Game> (folders + sparse files at real sizes + dates; exes/dlls/files ≤ 4 MB fetched whole) → drive letter for files/netgames added to the container once (WinePath.ensureDrive) → exe added to Games; registry netdrives/streams.json. Launch: GuestProgramLauncherComponent → NetStream.launchEnv → rcd (now --rc-serve) + private stream.conf (port, prefix, auth) → libnetfs.so in LD_PRELOAD with BLNETFS_ROOT/BLNETFS_CONF.
+- **libnetfs.so (cpp/winlator/netfs.c):** hooks read/pread(64)/readv/preadv(64)/mmap(64)/write*/close/dup2/dup3; fds classified by fstat + /proc/self/fd (wineserver's socket-passed fds work); holes found with SEEK_HOLE; missing 8 MB chunks fetched as up to 8 parallel ranged GETs and pwritten into the sparse file (shared by all processes); 2-chunk read-ahead (≤ 4 background threads); writes fetch the whole file first; retries ~15 s then EIO; atfork resets locks.
+- **Proof so far (Pocket FIT proot, glibc build of netfs.c + rclone rcd --rc-serve + Nighthawk NAS):** pread / read / mmap at 5 offsets of Bayonetta data10.cpk (853 MB, sparse stand-in) == the NAS's bytes (FNV-64 match); only fetched chunks use disk; sequential 28.8 MB/s (one 8 MB GET alone ~7 MB/s; NAS raw 33.8 MB/s).
+- **CI:** build-artifacts 43679956619 (headSha e924b017 asserted) — running.
+- **Not done / limits:** NOT device-tested in the app; x86_64 (Box64) containers unproven (arm64ec first); new files the game writes into its folder stay local; removing a streamed game leaves its stand-in (files/netgames); the NAS must stay reachable while playing (a fetch that fails for ~15 s gives the game a read error).
+- **Resume:** worktree /root/src/Bannerlator-wt/network-games; test = FIT, pubg APK, file manager → NAS → Bayonetta.exe → Add to Games → Stream → launch → game log lines "netfs: …".
+
 ## 2026-11-14 23:22 EST — feat/fm-network-drives: Network drives in the file manager (branch, CI running)
 
 - **User:** "so what now, how do we add a network drives section to the app file manager that will download the required package and automatically scan home networks for open Nas and an option to add NAS drives or storage" + "it should automatically detect and list available open network storage drives if detected after being added and downloading as an outside package" → plan given → "yes go".

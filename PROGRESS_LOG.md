@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 17:26 EST — PR #671 (MGamer404) MERGED into main (cd897954)
+- What: XMB Game Details "Add your own wide cover" / "Add your own background" (Steam, SteamGridDB, a file from storage, automatic; Lab's "wide"/"bg" slots); the XMB Home's covers and opened game view follow Interface scale; XMB tab labels keep the tuned Font size. Lab: four LabGameDetails helpers made internal.
+- Review (root-27): at 100 % the layout is unchanged (old 1280x800 test still holds); thumbnails decode then shrink (fitCoverArt, no crop); minor: picker sub-menu strings are hardcoded English; build-artifacts runs no unit tests, so the two new tests are not run by CI.
+- Checks: PR CI 43757468548 green ×4; merged onto main 4eeb94f0 on feat/pr671-check, CI 43768105475 green ×4; no file overlap with 45ca9b3b (device-info pop-up).
+- Merge: user "yes merge it"; GitHub merge commit (author credit kept); backup refs/backup/20261115/main-before-pr671 = 45ca9b3b. Not device-tested by us.
+
 ## 2026-11-15 17:24 EST — feat/device-info-popup MERGED into main (7b63e6ff), DEVICE-PROVEN on the Pocket FIT
 
 - **User:** "merge it" with screenshots 17:23:30 (portrait drawer) and 17:23:43 (landscape top line): the pop-up shows Chip (SoC) (Snapdragon 8 Gen 3 family, SG8350P, QTI, pineapple, qcom, 682 · SG_PINEAPPLE, Snapdragon), GPU (Adreno 750, Adreno 7xx, model from the Vulkan driver, kernel name Adreno33v2, 231–1050 MHz 14 steps, load, 53 °C), CPU and the rest below.

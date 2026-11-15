@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 23:51 EST — fix/wayland-desktop-resize installed on the Pocket FIT (branch, device test next)
+
+- **User:** "Yes, install now". Installed 23:51:04 EST, base.apk sha256 2bfa4ab7… == staged APK. Replaced the parallel session's fm-network-drives e0baf52a (sessions told).
+- **Test:** the user launches Streets of Rage Remake with the game resolution left at 1280x720 (so the fix itself is tested) and tries Fit / Stretch. Pass = wayland log shows `resized to 640x480: old 1280x720 viewport dropped` and `desktop  size 640x480`, the picture fills the screen per mode, no crash in the crash buffer / exit reasons.
+- **Resume:** read the newest wayland log + screenshots; undo = reinstall e0baf52a or main.
+
 ## 2026-11-14 23:48 EST — fix/wayland-desktop-resize: CI green, APK staged (branch, awaiting install go)
 
 - **CI:** compositor-only 43677919630 success; full APK 43677922141 success ×4 (headSha 6f7f0929). No compiler warnings from compositor.c (the 5 warnings are adrenotools).

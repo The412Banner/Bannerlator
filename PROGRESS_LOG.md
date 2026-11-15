@@ -8,6 +8,7 @@
 - Also seen: GTA V with its small files filled by hand ran, streamed rpf data, then crashed twice at GTA5.exe+0x121fa24 (maybe the same bug: read() data came back empty) — retest on cc371af1.
 - Test leftovers on the FIT (undo!): imagefs/usr/lib/libnetfs.so = test build, chattr +i; tracefs instance instances/netfs; /data/local/tmp/ino. Lessons: a preloaded library that hooks a call must forward it with RTLD_NEXT, never a raw syscall, or later preloads are skipped; check every preload's exports (llvm-readelf) before trusting a hook.
 - Device test 11-15 14:36 EST on cc371af1 (installed 14:35, sha256 7f330349): LD_PRELOAD starts with libnetfs.so; Darksiders passes the Steam check; kernel trace of every read of the stand-in files checked against holes afterwards: **3685 reads, 0 on a hole**. Darksiders still sits on its title logo (no prompt) — not a streaming fault.
+- A/B 14:48 EST: the user's full local copy of Darksiders (no streaming) freezes on the title video the same way → a Darksiders/Bannerlator video issue, not streaming. Also found: adding the same game by Copy and by Stream gives both shortcuts the same name, so the later add replaces the earlier one (to fix).
 - Resume: FIT has cc371af1. Test tools left on the FIT: tracefs instance instances/netfs, /data/local/tmp/ino (holecheck, ino, fan), /sdcard/Download/ino.
 
 ## 2026-11-15 — GTA V streamed launch A/B (feat/network-games-spike, testing)

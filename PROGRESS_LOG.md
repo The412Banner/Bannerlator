@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 15:52 EST — fix/store-switcher-close CI GREEN, APK staged (branch, awaiting install go)
+
+- **CI:** build-artifacts 43757794950, headSha 43fc9e31, pubg/standard/ludashi/antutu success; no compiler warnings in StoreSectionHost.kt.
+- **Staged:** `/sdcard/Download/Bannerlator-store-switcher-close-43fc9e31.apk` (pubg), sha256 bd0882d4… host == device.
+- **Note:** the FIT runs root-27's 58aa6260 (network-games-spike, 21 commits not on main); this APK replaces it. Bannerlator was open on screen at 15:52.
+- **Next:** user's yes → install → test the ✕ in each store's menu.
+
 ## 2026-11-15 15:30 EST — fix/store-switcher-close: close button in the store menu (branch, CI next)
 
 - **Why:** user (screenshot 15:13, Steam store, portrait): the store menu under the top-left store name ("Steam ▾": Steam / GOG / Epic Games / Amazon Games / Xbox) "lacks a close button". Lab rule: every pop-up needs a tappable close.

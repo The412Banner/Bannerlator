@@ -347,6 +347,10 @@ add_library(gpuclock SHARED
         gpuclock/kgsl_busy.c
 )
 
+# The phone's own Vulkan driver for the device details pop-up (deviceinfo/VulkanInfo.kt). Ported from DroidDeck.
+add_library(deviceinfo SHARED deviceinfo/vkinfo.c)
+target_link_libraries(deviceinfo dl)
+
 # Embedded Wayland compositor (experimental parallel runtime) — see waylandcomp/CMakeLists.txt.
 add_subdirectory(waylandcomp)
 

@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 17:22 EST — feat/device-info-popup 18b50320 (fix + main 4eeb94f0) CI GREEN, installing (user: "install when done")
+
+- **CI:** build-artifacts 43767835605, headSha 18b50320, ×4 success; no compiler warnings in the changed files; libdeviceinfo.so in the APK. (43767472392 and 43767759407 on 12d2bddc cancelled by me.)
+- **Staged:** `/sdcard/Download/Bannerlator-device-info-popup-18b50320.apk` (pubg), sha256 6de2fb27… host == device.
+- **Before install:** FIT ran root-27's c81d9869 (contained in this build); Discord in front, Bannerlator not on screen. Peers told.
+- **Resume:** user taps the device name again; check every section shows, Copy, ✕ / B; logcat DeviceInfo warnings name any section that failed.
+
 ## 2026-11-15 17:15 EST — feat/lab-start-screen-home-row MERGED into main
 - User: "works, merge it to main" (after installing c81d9869 on the FIT, 17:07 EST).
 - What: Lab "Open the app on" offers Home / Library / Containers and opens that page ("games" = Library, "home" or never set = Home); Home's library row starts at the game played last.
@@ -10,6 +17,27 @@
 - Found: AppSettingsRegistry "app.general.landing" (Games/Containers/Big Picture, hint "In the Deck interface, Games and Big Picture both open on Home"); MainActivity → Screen.Games.route → DeckShell keeps Deck home for Games. Home row LazyRow had no state: the list arrives after the page opens and the row keeps its only item ("Add a game") in view.
 - Built: c81d9869 — labDefs override labLanding() (Home "home" / Library "games" / Containers "containers", no hint, never-set = Home); MainActivity: Lab + "games" → LabRoutes.LIBRARY; Classic shell sanitises lab_ routes; Classic radio treats "home" as games; LabHome row rememberLazyListState + scrollToItem(0) when the list changes.
 - CI: 43766218001. Not device-tested.
+
+## 2026-11-15 17:07 EST — feat/device-info-popup: fix for the empty pop-up (branch, CI next)
+
+- **Device test (user, screenshots 17:04:28 portrait / 17:04:57 landscape):** tapping "Pocket FIT" opens the pop-up (title, ✕, Copy) but NO sections. User: "I see no info".
+- **Cause:** BL `FileUtils.readString(File)` = `new String(read(file))` throws NullPointerException when the file cannot be read; DroidDeck's returns null and the ported code expects that, so one unreadable sysfs node failed `DeviceInfo.collect` and my `runCatching` hid it (empty list). The native lib loaded (no VulkanInfo warning in logcat).
+- **Fix:** 39157150a — `readSys()` (null on missing/unreadable), used everywhere in deviceinfo/; each section built on its own (`safe()`, failures logged as DeviceInfo warnings); the dialog logs a total failure and shows "The device details could not be read." instead of an empty panel.
+- **Lesson:** when porting, check the helpers the code calls behave the same in the target app (null vs throw); never swallow an exception without a log.
+
+## 2026-11-15 17:03 EST — feat/device-info-popup CI GREEN, installing on the FIT (user: "install when done")
+
+- **CI:** build-artifacts 43765983107, headSha c0989e10, pubg/standard/ludashi/antutu success; no compiler warnings in the changed files; lib/arm64-v8a/libdeviceinfo.so (8904 B) in the APK.
+- **Staged:** `/sdcard/Download/Bannerlator-device-info-popup-c0989e10.apk` (pubg), sha256 b6b9dfad… host == device.
+- **Before install:** FIT ran root-27's 3ded5770 (contained in this build); Termux in front, Bannerlator not on screen. Peers told.
+- **Resume:** after install → user taps the device name (landscape top line / portrait drawer); check every section, Copy, ✕ / B, logcat FATAL.
+
+## 2026-11-15 16:51 EST — feat/device-info-popup: tap the device's name for device details (branch, CI next)
+
+- **Why:** user (screenshots 16:26 / 16:26 / 16:27): tap the device name at the top (Lab landscape top line, Lab portrait drawer) to open a pop-up with all the device's information, like DroidDeck's GPU card details. User: "build it on a new branch off main".
+- **Built:** eeaa89f79 — ui/simple/LabDeviceDetails.kt (LabDeviceName tile, LabDeviceDetailsHost in LabTopLine, LabDialog wide: title = Build.MODEL, ✕, Copy + "Copy these details into a bug report.", sections as focusable tiles); LabFrame.kt: both names → LabDeviceName. deviceinfo/ (DeviceInfo, SocNames, VulkanInfo, GpuInfo trimmed) + cpp/deviceinfo/vkinfo.c + CMake add_library(deviceinfo). Last section = BL's installed Graphics / Linux runtime / Wayland game drivers; System adds the Bannerlator version.
+- **Credit:** ported from DroidDeck (GPL-3.0, same as BL): The412Banner #295, Kurt Himebauch, Danbro007, ASEbrahim, openMali, MaxsTechReview.
+- **Next:** CI, stage APK, ask before install; test: tap the name (landscape top line + portrait drawer), every section filled on the FIT, Copy pastes the text, ✕ / B close, controller focus, logcat FATAL check.
 
 ## 2026-11-15 17:05 EST — feat/lab-library-tile-outline MERGED into main
 - User: "works, merge it to main" (after installing 3ded5770 on the FIT, 16:45 EST).

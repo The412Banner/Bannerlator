@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 15:50 EST — Add to Games picks the game exe (user can choose), setup skips installers, true cache size (feat/network-games-spike 95335172, CI)
+- Why: user 11-15 "do 1 2 and 3 … let the user select game exe files found if multiple are present".
+- Built: 95335172 — GameFolderScanner.rankListed (same scoring as a local scan, from a drive listing); AddReq lists the folder's exes on open / folder change, picks the best (a clicked launcher gives way to a game exe ranked above it), "Game program" line with the others to choose (Classic + Lab); prefetch skips installer/uninstaller exes; cachedBytes counts a ≤1-block file only when SEEK_DATA finds data.
+- CI: 43758966389. Not device-tested yet. User: "install it when done".
+- Note: the exe picker and installer rules also help Copy (merged to main without them); port to main when the user wants.
+
 ## 2026-11-15 15:35 EST — Streaming: Cyberpunk 2077 plays from the NAS (feat/network-games-spike dc05ae85 = FIT 58aa6260)
 - User: "cyberpunk worked" — streamed (Keep what's loaded), 311 loads from the NAS at ~14 MB/s in the first 2 minutes; read check 6680 reads, 0 on a hole.
 - GTA V (re-added with the *.vdf prefetch): same crash at GTA5.exe+0x121fa24; read check 1625 reads, 0 on a hole → the game's own issue; user: drop it. Darksiders: title video freezes with a full local copy too → not streaming.

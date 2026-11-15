@@ -39,6 +39,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/uio.h>
+#include <signal.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -64,6 +65,9 @@ typedef void *(*mmap_fn)(void *, size_t, int, int, int, off_t);
 typedef int (*close_fn)(int);
 typedef int (*dup2_fn)(int, int);
 typedef int (*dup3_fn)(int, int, int);
+typedef int (*fstat_fn)(int, struct stat *);
+typedef int (*stat_fn)(const char *, struct stat *);
+typedef int (*fstatat_fn)(int, const char *, struct stat *, int);
 
 static struct {
     read_fn read;
@@ -77,6 +81,9 @@ static struct {
     close_fn close;
     dup2_fn dup2;
     dup3_fn dup3;
+    fstat_fn fstat;
+    stat_fn stat, lstat;
+    fstatat_fn fstatat;
 } real;
 
 static pthread_once_t once = PTHREAD_ONCE_INIT;
@@ -128,6 +135,10 @@ static void resolve_real(void)
     real.close = (close_fn)dlsym(RTLD_NEXT, "close");
     real.dup2 = (dup2_fn)dlsym(RTLD_NEXT, "dup2");
     real.dup3 = (dup3_fn)dlsym(RTLD_NEXT, "dup3");
+    real.fstat = (fstat_fn)dlsym(RTLD_NEXT, "fstat");
+    real.stat = (stat_fn)dlsym(RTLD_NEXT, "stat");
+    real.lstat = (stat_fn)dlsym(RTLD_NEXT, "lstat");
+    real.fstatat = (fstatat_fn)dlsym(RTLD_NEXT, "fstatat");
     if (!real.pread64) real.pread64 = real.pread;
     if (!real.preadv64) real.preadv64 = real.preadv;
     if (!real.pwrite64) real.pwrite64 = real.pwrite;
@@ -172,7 +183,7 @@ static void init_env(void)
     }
     if (!r || !*r || !p || !pre || !a) return;
     struct stat sb;
-    if (stat(r, &sb) != 0 || !S_ISDIR(sb.st_mode)) return;
+    if (real.stat(r, &sb) != 0 || !S_ISDIR(sb.st_mode)) return;
     if (strlen(r) >= sizeof root || strlen(pre) >= sizeof prefix || strlen(a) >= sizeof auth) return;
     strcpy(root, r);
     root_len = strlen(root);
@@ -229,7 +240,7 @@ static int classify(int fd)
     int ns = FD_PLAIN;
     char *r = NULL;
     struct stat sb;
-    if (fstat(fd, &sb) == 0 && S_ISREG(sb.st_mode) && sb.st_dev == root_dev) {
+    if (real.fstat(fd, &sb) == 0 && S_ISREG(sb.st_mode) && sb.st_dev == root_dev) {
         char link[48], buf[PATH_MAX];
         snprintf(link, sizeof link, "/proc/self/fd/%d", fd);
         ssize_t n = readlink(link, buf, sizeof buf - 1);
@@ -340,16 +351,19 @@ static double now_ms(void)
 /* One ranged GET of [start, end) of [r] into [h] at the same offsets. 0 when all of it arrived. */
 static int fetch_once(const char *r, int h, off_t start, off_t end)
 {
-    char req[PATH_MAX * 3 + 9000];
-    char path_enc[PATH_MAX * 3];
-    if (!url_encode(r, path_enc, sizeof path_enc)) return -1;
-    int n = snprintf(req, sizeof req,
+    /* Heap, not stack: this runs on the helper's own threads, but keep their stacks small anyway. */
+    enum { REQ_CAP = PATH_MAX * 3 + 9000, ENC_CAP = PATH_MAX * 3, BUF_CAP = 256 * 1024 };
+    char *req = malloc(REQ_CAP), *path_enc = malloc(ENC_CAP), *buf = malloc(BUF_CAP);
+    int s = -1, rc = -1;
+    if (!req || !path_enc || !buf) goto out;
+    if (!url_encode(r, path_enc, ENC_CAP)) goto out;
+    int n = snprintf(req, REQ_CAP,
                      "GET %s%s HTTP/1.1\r\nHost: 127.0.0.1\r\nAuthorization: %s\r\nRange: bytes=%lld-%lld\r\nConnection: close\r\n\r\n",
                      prefix, path_enc, auth, (long long)start, (long long)(end - 1));
-    if (n <= 0 || n >= (int)sizeof req) return -1;
+    if (n <= 0 || n >= REQ_CAP) goto out;
 
-    int s = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
-    if (s < 0) return -1;
+    s = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
+    if (s < 0) goto out;
     struct timeval tv = { .tv_sec = 30, .tv_usec = 0 };
     setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
     struct sockaddr_in a;
@@ -357,15 +371,13 @@ static int fetch_once(const char *r, int h, off_t start, off_t end)
     a.sin_family = AF_INET;
     a.sin_port = htons((uint16_t)port);
     a.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    int rc = -1;
     if (connect(s, (struct sockaddr *)&a, sizeof a) != 0 || send_all(s, req, (size_t)n) != 0) goto out;
 
-    static __thread char buf[256 * 1024];
     size_t have = 0;
     char *body = NULL;
     while (!body) {
-        if (have >= sizeof buf - 1) goto out;
-        ssize_t k = recv(s, buf + have, sizeof buf - 1 - have, 0);
+        if (have >= BUF_CAP - 1) goto out;
+        ssize_t k = recv(s, buf + have, BUF_CAP - 1 - have, 0);
         if (k < 0 && errno == EINTR) continue;
         if (k <= 0) goto out;
         have += (size_t)k;
@@ -386,7 +398,7 @@ static int fetch_once(const char *r, int h, off_t start, off_t end)
     if (first && real.pwrite(h, body, first, start) != (ssize_t)first) goto out;
     got = (off_t)first;
     while (got < want) {
-        size_t cap = sizeof buf;
+        size_t cap = BUF_CAP;
         if ((off_t)cap > want - got) cap = (size_t)(want - got);
         ssize_t k = recv(s, buf, cap, 0);
         if (k < 0 && errno == EINTR) continue;
@@ -396,7 +408,10 @@ static int fetch_once(const char *r, int h, off_t start, off_t end)
     }
     rc = 0;
 out:
-    real.close(s);
+    if (s >= 0) real.close(s);
+    free(req);
+    free(path_enc);
+    free(buf);
     return rc;
 }
 
@@ -407,6 +422,27 @@ static int fetch_retry(const char *r, int h, off_t start, off_t end)
         if (fetch_once(r, h, start, end) == 0) return 0;
     }
     return -1;
+}
+
+/*
+ * Starts one of the helper's threads with every signal blocked and its own 256 KB stack. Wine sends signals to
+ * threads it knows and its handlers expect a Wine thread; and the hooks are called on Wine's small unix-side stack,
+ * so all network work runs here, never on the game's thread (11-15: Streets of Rage Remake crashed in the Wine heap
+ * only while chunks were being fetched).
+ */
+static int spawn(pthread_t *t, int detached, void *(*fn)(void *), void *arg)
+{
+    pthread_attr_t at;
+    sigset_t all, old;
+    pthread_attr_init(&at);
+    pthread_attr_setstacksize(&at, 256 * 1024);
+    if (detached) pthread_attr_setdetachstate(&at, PTHREAD_CREATE_DETACHED);
+    sigfillset(&all);
+    pthread_sigmask(SIG_SETMASK, &all, &old);
+    int rc = pthread_create(t, &at, fn, arg);
+    pthread_sigmask(SIG_SETMASK, &old, NULL);
+    pthread_attr_destroy(&at);
+    return rc;
 }
 
 struct part { const char *r; int h; off_t start, end; int rc; };
@@ -435,10 +471,12 @@ static int fetch(const char *r, int h, off_t start, off_t end, int background)
     for (off_t o = start; o < end && count < PARTS; o += step) {
         struct part *p = &parts[count];
         p->r = r; p->h = h; p->start = o; p->end = o + step < end ? o + step : end; p->rc = -1;
-        started[count] = count > 0 && pthread_create(&tids[count], NULL, part_main, p) == 0;
+        started[count] = spawn(&tids[count], 0, part_main, p) == 0;
         count++;
     }
-    /* The first part runs on this thread (and any part whose thread didn't start). */
+    /* Every part runs on a helper thread; the caller (a game thread) only waits. A part whose thread didn't start
+     * gets one more try, then runs here as a last resort. */
+    for (int i = 0; i < count; i++) if (!started[i]) started[i] = spawn(&tids[i], 0, part_main, &parts[i]) == 0;
     for (int i = 0; i < count; i++) if (!started[i]) part_main(&parts[i]);
     int rc = 0;
     for (int i = 0; i < count; i++) {
@@ -527,7 +565,7 @@ static void *ahead_main(void *arg)
         if (h >= 0) {
             if (h < MAXFD) __atomic_store_n(&state[h], FD_PLAIN, __ATOMIC_RELEASE);
             struct stat sb;
-            if (fstat(h, &sb) == 0) {
+            if (real.fstat(h, &sb) == 0) {
                 for (int i = 0; i < a->chunks; i++) {
                     off_t c = a->from + (off_t)i * CHUNK;
                     if (c >= sb.st_size) break;
@@ -556,13 +594,9 @@ static void read_ahead(const char *r, int h, off_t next, off_t size)
     struct ahead *a = malloc(sizeof *a);
     char *copy = strdup(r);
     pthread_t t;
-    pthread_attr_t at;
     if (!a || !copy) goto fail;
     a->r = copy; a->from = next; a->chunks = AHEAD;
-    pthread_attr_init(&at);
-    pthread_attr_setdetachstate(&at, PTHREAD_CREATE_DETACHED);
-    if (pthread_create(&t, &at, ahead_main, a) == 0) { pthread_attr_destroy(&at); return; }
-    pthread_attr_destroy(&at);
+    if (spawn(&t, 1, ahead_main, a) == 0) return;
 fail:
     free(copy);
     free(a);
@@ -578,7 +612,7 @@ static int ensure(int fd, off_t off, size_t len, int whole)
     int rc = 0;
     int h = helper_of(fd, r);
     struct stat sb;
-    if (h < 0 || fstat(h, &sb) != 0) goto done;
+    if (h < 0 || real.fstat(h, &sb) != 0) goto done;
     off_t size = sb.st_size;
     if (whole) { off = 0; len = (size_t)size; }
     if (size <= 0 || off >= size || len == 0) goto done;
@@ -722,4 +756,67 @@ EXPORT int dup3(int oldfd, int newfd, int flags)
     ready();
     if (enabled && oldfd != newfd) forget(newfd);
     return real.dup3(oldfd, newfd, flags);
+}
+
+/*
+ * File info: a stand-in file reports the disk space of the whole file (st_blocks), as the real file would. Wine hands
+ * st_blocks * 512 to Windows programs as the file's allocation size, and a stand-in that is mostly holes looked
+ * almost empty on disk (11-15: Streets of Rage Remake took another start-up path with a mostly-empty SorR.dat, went
+ * windowed and crashed in SDL; with the same file full of zeros it ran). Only regular files under the root that are
+ * short of blocks are touched; everything else is passed on unchanged.
+ */
+static int under_root_path(int dirfd, const char *path)
+{
+    char link[48], buf[PATH_MAX];
+    int f = openat(dirfd, path, O_PATH | O_CLOEXEC);
+    if (f < 0) return 0;
+    snprintf(link, sizeof link, "/proc/self/fd/%d", f);
+    ssize_t n = readlink(link, buf, sizeof buf - 1);
+    if (f < MAXFD) __atomic_store_n(&state[f], FD_UNKNOWN, __ATOMIC_RELEASE);
+    real.close(f);
+    if (n <= 0) return 0;
+    buf[n] = 0;
+    return (size_t)n > root_len + 1 && memcmp(buf, root, root_len) == 0 && buf[root_len] == '/';
+}
+
+static inline int short_of_blocks(const struct stat *sb)
+{
+    return enabled && S_ISREG(sb->st_mode) && sb->st_dev == root_dev && (off_t)sb->st_blocks * 512 < sb->st_size;
+}
+
+static inline void full_blocks(struct stat *sb) { sb->st_blocks = (sb->st_size + 4095) / 4096 * 8; }
+
+EXPORT int fstat(int fd, struct stat *sb)
+{
+    ready();
+    int rc = real.fstat(fd, sb);
+    if (rc == 0 && short_of_blocks(sb) && classify(fd) >= FD_NET) full_blocks(sb);
+    return rc;
+}
+
+EXPORT int stat(const char *path, struct stat *sb)
+{
+    ready();
+    int rc = real.stat(path, sb);
+    if (rc == 0 && short_of_blocks(sb) && under_root_path(AT_FDCWD, path)) full_blocks(sb);
+    return rc;
+}
+
+EXPORT int lstat(const char *path, struct stat *sb)
+{
+    ready();
+    int rc = real.lstat(path, sb);
+    if (rc == 0 && short_of_blocks(sb) && under_root_path(AT_FDCWD, path)) full_blocks(sb);
+    return rc;
+}
+
+EXPORT int fstatat(int dirfd, const char *path, struct stat *sb, int flags)
+{
+    ready();
+    int rc = real.fstatat(dirfd, path, sb, flags);
+    if (rc == 0 && short_of_blocks(sb)) {
+        int under = (flags & AT_EMPTY_PATH) && (!path || !*path) ? classify(dirfd) >= FD_NET : under_root_path(dirfd, path);
+        if (under) full_blocks(sb);
+    }
+    return rc;
 }

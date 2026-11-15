@@ -2835,6 +2835,14 @@ trying for speed, <b>notemplates</b> if you get driver crashes.
     <string name="xmb_cover_remove_hint">Back to the cover this game had before</string>
     <string name="xmb_cover_removed">Cover removed.</string>
     <string name="xmb_cover_remove_failed">Couldn\'t remove the cover.</string>
+    <string name="xmb_backdrop_add">Add your own background</string>
+    <string name="xmb_backdrop_add_hint">Pick a wide hero image</string>
+    <string name="xmb_backdrop_browser_title">Select background image</string>
+    <string name="xmb_backdrop_yours">Your image</string>
+    <string name="xmb_backdrop_failed">Couldn\'t use that image.</string>
+    <string name="xmb_wide_add">Add your own wide cover</string>
+    <string name="xmb_wide_add_hint">Pick a wide capsule image</string>
+    <string name="xmb_wide_browser_title">Select wide cover image</string>
     <string name="xmb_kb_esc">Esc</string>
     <string name="xmb_kb_up">Up</string>
     <string name="xmb_kb_down">Down</string>

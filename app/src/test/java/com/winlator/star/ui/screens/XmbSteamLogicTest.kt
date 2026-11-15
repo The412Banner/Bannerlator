@@ -124,6 +124,46 @@ class XmbSteamLogicTest {
         assertEquals(l.fH * XMB_STEAM_WIDE_RATIO, l.wideW, delta)
     }
 
+    @Test fun layout_coversFollowTheInterfaceScale() {
+        // On a device BoxWithConstraints hands the layout the box it measured in dp of a density the setting already divided by ui:
+        // w = baseW / ui and h = baseH / ui, and a dp size is drawn ui times larger (drawn pixels = size * ui). So the covers must
+        // keep their dp (their share of the 100 % box) and grow in pixels with the Interface scale.
+        val plain = XmbSteamLayout(w = 851f, h = 393f, clipTop = 50f, bottomClear = 46f, k = 1f, rowH = 40f, extra = 6f)
+        val one = XmbSteamLayout(w = 851f, h = 393f, clipTop = 50f, bottomClear = 46f, k = 1f, rowH = 40f, extra = 6f, ui = 1f)
+        // 100 %: the same layout, and an explicit 1 changes nothing.
+        assertEquals(plain.cardTop, one.cardTop, delta)
+        assertEquals(plain.fH, one.fH, delta)
+        assertEquals(plain.fW, one.fW, delta)
+        assertEquals(plain.wideW, one.wideW, delta)
+        assertEquals(plain.cardBottom, one.cardBottom, delta)
+        assertEquals(plain.colTop, one.colTop, delta)
+        assertEquals(plain.lift, one.lift, delta)
+
+        val px = mutableListOf<Float>()
+        for (ui in listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f)) {
+            val l = XmbSteamLayout(
+                w = 851f / ui, h = 393f / ui,
+                clipTop = 50f, bottomClear = 46f, k = 1f, rowH = 40f, extra = 6f, ui = ui,
+            )
+            // The same dp at every setting of the slider. At 150 % the room under the top bar stops the growth at about 139 dp
+            // (3.7 dp under the plain height), hence the tolerances.
+            assertEquals(plain.fH, l.fH, 5f)
+            assertEquals(plain.fW, l.fW, 4f)
+            assertEquals(plain.gap, l.gap, delta)
+            assertEquals(plain.edge, l.edge, delta)
+            // The covers sit right above the title block, which ends above the tabs' text (bottomLift0 is 0 in landscape).
+            assertEquals(l.tabsCentre - XMB_STEAM_TAB_TEXT_H / 2f - XMB_STEAM_TABS_GAP - XMB_STEAM_TITLE_H, l.cardBottom, delta)
+            assertEquals(l.cardBottom + XMB_STEAM_TITLE_GAP, l.titleY, delta)
+            // The resting card stays below the floating tab bar.
+            assertTrue(l.cardTop >= 50f + 8f - delta)
+            assertTrue(l.colTop <= l.colBottom + delta)
+            // What the user sees: the drawn pixels grow with the setting.
+            px.add(l.fH * ui)
+        }
+        // At 150 % the room under the top bar tapers it: 139 * 1.5 = 208.6 drawn against 178.5 at 125 %, still larger.
+        assertTrue(px[0] < px[1] && px[1] < px[2] && px[2] < px[3] && px[3] < px[4])
+    }
+
     @Test fun layout_tallScreenKeepsTheCoverTopsAtHalfTheScreen() {
         val l = XmbSteamLayout(w = 1280f, h = 800f, clipTop = 50f, bottomClear = 46f, k = 1f, rowH = 40f, extra = 6f)
         assertEquals(400f, l.cardTop, delta)

@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck
 
+import androidx.compose.ui.unit.Density
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -55,6 +56,22 @@ class XmbScaleTest {
         }
         assertEquals(3.0229f, xmbAppDensity(1080, 1f), DELTA)
         assertEquals(4.4784f, xmbAppDensity(1600, 1f), DELTA)
+    }
+
+    @Test
+    fun theTabLabelsKeepTheTunedFontSizeWhateverTheSetting() {
+        // The text tabs are drawn at the XMB's base Font size: 100 % is exactly the 1.05 the look was tuned at, so nothing changes there.
+        val at100 = Density(3f, xmbFontScale(1f))
+        val labelBase = xmbBaseFontDensity(at100)
+        assertEquals(XMB_BASE_FONT_BOOST, labelBase.fontScale, DELTA)
+        assertEquals(at100.density * at100.fontScale, labelBase.density * labelBase.fontScale, DELTA)
+        // Any other Font size leaves them alone (the setting is 1.05 * 0.5 .. 1.05 * 1.5 here), and the density still carries the
+        // Interface scale.
+        for (fontScale in listOf(0.5f, 0.75f, 1.25f, 1.5f)) {
+            val label = xmbBaseFontDensity(Density(3f, xmbFontScale(fontScale)))
+            assertEquals(3f, label.density, DELTA)
+            assertEquals(XMB_BASE_FONT_BOOST, label.fontScale, DELTA)
+        }
     }
 
     @Test

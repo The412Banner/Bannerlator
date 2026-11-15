@@ -793,7 +793,7 @@ internal fun xmbScrapeCoverMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
 }
 
 /** GET [url] and decode it; null on any failure. Blocking. */
-private fun xmbDownloadBitmap(url: String, connectTimeout: Int, readTimeout: Int): Bitmap? = try {
+internal fun xmbDownloadBitmap(url: String, connectTimeout: Int, readTimeout: Int): Bitmap? = try {
     val conn = URL(url).openConnection() as HttpURLConnection
     conn.connectTimeout = connectTimeout
     conn.readTimeout = readTimeout

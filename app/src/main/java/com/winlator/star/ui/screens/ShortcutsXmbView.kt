@@ -129,6 +129,7 @@ import com.winlator.star.inputcontrols.ExternalController
 import com.winlator.star.ui.LocalTopBarOverlayInset
 import com.winlator.star.ui.LocalXmbHintInset
 import com.winlator.star.ui.deck.LocalDeckActions
+import com.winlator.star.ui.deck.LocalXmbScale
 import com.winlator.star.ui.deck.XmbStoreMark
 import com.winlator.star.ui.deck.rememberScreenScale
 import com.winlator.star.ui.deck.storeMarkOf
@@ -441,6 +442,9 @@ internal fun ShortcutsXmbView(
     // Steam home: the room the host's floating tab bar takes at the top, which the lifted card keeps clear of, scaled with the screen
     // as that bar is.
     val ss = rememberScreenScale()
+    // Steam home: the covers are shares of this box in dp, which a larger Interface scale shrinks, so they need the factor to grow.
+    // Only the XMB has one (LocalXmbScale): elsewhere it is 1 and the covers stay as they were.
+    val steamUi = LocalXmbScale.current?.uiScale ?: 1f
     val clipTop = ss.dp(XMB_PEEK_CLIP).value
     // Steam home: the room the shell's Back / Search hints take at the bottom, which the tabs sit above.
     val hintInset = LocalXmbHintInset.current
@@ -449,8 +453,8 @@ internal fun ShortcutsXmbView(
         val m = remember(maxWidth, maxHeight, topInset) { XmbMetrics(maxWidth.value, maxHeight.value - topInset.value) }
         // The Steam home's option rows are at least 48 dp tall, a touch target; the other looks keep their own row height.
         val rowH = if (steam) m.rowH.coerceAtLeast(XMB_STEAM_MIN_ROW) else m.rowH
-        val sl = remember(m, clipTop, hintInset, ss, rowH) {
-            XmbSteamLayout(m.w, m.h, clipTop, max(hintInset.value, 16f * ss.factor), ss.factor, rowH, m.extra)
+        val sl = remember(m, clipTop, hintInset, ss, rowH, steamUi) {
+            XmbSteamLayout(m.w, m.h, clipTop, max(hintInset.value, 16f * ss.factor), ss.factor, rowH, m.extra, ui = steamUi)
         }
         // Where the options column and the info pane beside it start: under the focused card of the Steam home, which has glided to the
         // left margin by then (the column is left aligned with it), else at the usual place.

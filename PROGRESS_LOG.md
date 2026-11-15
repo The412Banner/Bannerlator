@@ -1,20 +1,25 @@
 # Star-Compose — Progress Log
 
-## 2026-11-15 15:58 EST — fix/store-switcher-close MERGED into main (75d304a7), NOT device-tested
+## 2026-11-15 15:49 EST — Correction: wrong times on six of my entries today (log only)
+
+- **Mistake:** I wrote times in six headings from guesses instead of reading the clock. The commit times (local, `git log --date=format-local`) are: dd-driver-import built 14:01 (written 13:50), CI green 14:14 (14:20), merged 15:02 (14:45); store-switcher-close built 15:23 (15:30), CI green 15:34 (15:52), merged 15:40 (15:58). Headings fixed in place, each marked "corrected". No code change.
+- **Lesson:** run `date` right before writing a time into the log or memory; same slip as the 11-14 Streets of Rage entries.
+
+## 2026-11-15 15:40 EST (corrected; first written as 15:58) — fix/store-switcher-close MERGED into main (75d304a7), NOT device-tested
 
 - **User:** "merge to main" (after "Not now" to installing the test APK). Merged before a device test by the user's choice.
 - **Merge:** backup `refs/backup/20261115/main-before-store-switcher-close` = 4af0e8d5 (pushed); `--no-ff` merge 75d304a7 (parents 4af0e8d5 + 64ef7656); merged tree == branch tip; code == CI-tested 43fc9e31 (only PROGRESS_LOG.md differs). No release workflow running.
 - **Proof level:** CI-green (43757794950, ×4); NOT device-tested. Main CI starts on this push.
 - **Open:** device test (✕ in each store's menu closes it, picking still switches, B still closes). Branch kept.
 
-## 2026-11-15 15:52 EST — fix/store-switcher-close CI GREEN, APK staged (branch, awaiting install go)
+## 2026-11-15 15:34 EST (corrected; first written as 15:52) — fix/store-switcher-close CI GREEN, APK staged (branch, awaiting install go)
 
 - **CI:** build-artifacts 43757794950, headSha 43fc9e31, pubg/standard/ludashi/antutu success; no compiler warnings in StoreSectionHost.kt.
 - **Staged:** `/sdcard/Download/Bannerlator-store-switcher-close-43fc9e31.apk` (pubg), sha256 bd0882d4… host == device.
 - **Note:** the FIT runs root-27's 58aa6260 (network-games-spike, 21 commits not on main); this APK replaces it. Bannerlator was open on screen at 15:52.
 - **Next:** user's yes → install → test the ✕ in each store's menu.
 
-## 2026-11-15 15:30 EST — fix/store-switcher-close: close button in the store menu (branch, CI next)
+## 2026-11-15 15:23 EST (corrected; first written as 15:30) — fix/store-switcher-close: close button in the store menu (branch, CI next)
 
 - **Why:** user (screenshot 15:13, Steam store, portrait): the store menu under the top-left store name ("Steam ▾": Steam / GOG / Epic Games / Amazon Games / Xbox) "lacks a close button". Lab rule: every pop-up needs a tappable close.
 - **Built:** b044de50a — StoreSectionHost.kt StoreSwitcher: a header row with LabCloseButton (✕, not focusable, the controller keeps B) and a divider above the stores. One shared menu: Steam (SteamMainActivity) and GOG/Epic/Amazon/Xbox (StoreSectionHost) all get it.
@@ -45,14 +50,14 @@
 - **CI:** build-artifacts 43676398104 (headSha e0baf52a asserted) — running.
 - **Open / next:** green CI → stage APK in /sdcard/Download with sha256 → ASK before install → device test on the FIT against the NAS (setup download, auto-find, browse, copy both ways, greyed when the NAS is unplugged, Lab + Classic). Known limits: copies stop if the file manager page is left (same as local copies); SFTP host keys not checked; mDNS/sweep only on Wi-Fi/Ethernet.
 - **Resume:** worktree /root/src/Bannerlator-wt/fm-network-drives, branch feat/fm-network-drives.
-## 2026-11-15 14:45 EST — feat/dd-driver-import MERGED into main (a8c7a987), NOT device-tested
+## 2026-11-15 15:02 EST (corrected; first written as 14:45) — feat/dd-driver-import MERGED into main (a8c7a987), NOT device-tested
 
 - **User:** "merge to main" (after "Not now" to installing the test APK). The user chose to merge before a device test; recorded here as their decision.
 - **Merge:** backup `refs/backup/20261115/main-before-dd-driver-import` = 6fab62da (pushed); `--no-ff` merge a8c7a987 (parents 6fab62da + 93a0b9e5); merged tree == branch tip; code == CI-tested 82d85c13 (only PROGRESS_LOG.md differs). No release workflow running.
 - **Proof level:** CI-green (43750239230, ×4); NOT device-tested. Main CI starts on this push.
 - **Open:** device test (DroidDeck list → download → picker Android only / both / Cancel; install from file `/sdcard/Download/DD-Turnip-v0.7.0.zip`; Lab + Classic; Linux runtime import of the DD zip; logcat FATAL check). Branch feat/dd-driver-import kept.
 
-## 2026-11-15 14:20 EST — feat/dd-driver-import CI GREEN, APK staged (branch, awaiting install go)
+## 2026-11-15 14:14 EST (corrected; first written as 14:20) — feat/dd-driver-import CI GREEN, APK staged (branch, awaiting install go)
 
 - **Correction:** CI 43750095575 (361e72c6) cancelled by me before it finished: two Kotlin 2.0.21 compile risks in the new code (`catch (_: …)`, an early `return@key` in a composable). Fixed in 82d85c13.
 - **CI:** build-artifacts 43750239230, headSha 82d85c13, standard/antutu/ludashi/pubg all success; no compiler warnings in the changed files.
@@ -60,7 +65,7 @@
 - **Note:** the FIT now runs root-27's network-games test build 4bf309cf (not on main); this APK replaces it.
 - **Next:** user's yes → install → test plan in the previous entry.
 
-## 2026-11-15 13:50 EST — feat/dd-driver-import: DroidDeck drivers in the lists + Android/Linux pick (branch, CI next)
+## 2026-11-15 14:01 EST (corrected; first written as 13:50) — feat/dd-driver-import: DroidDeck drivers in the lists + Android/Linux pick (branch, CI next)
 
 - **Why:** user asked whether BL can use DroidDeck's drivers: DD-Turnip zips (android/ + linux/ + manifest.json) were refused ("No meta.json in the zip"). User: "android ticked by default, call it DroidDeck, build it".
 - **Built:** 3d1f5a2a — built-in driver source "DroidDeck" (Droid-Deck/Drivers releases, DD-Turnip-v*.zip); a manifest.json bundle asks which parts on every DriverInstaller.install (downloads + install from file, Classic + Lab: one host in MainActivity, Lab look in Lab), Android ticked, Linux not; Android → Graphics Driver list, Linux → Linux runtime drivers (same-name refused / replaced under the same id); AdrenoTools refuses glibc libraries; the Linux importer picks the glibc library out of several; the Wayland importer refuses bundles; per-URL records hold every part.

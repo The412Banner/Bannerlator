@@ -125,7 +125,11 @@ object NetStream {
                     gate.acquire()
                     try {
                         val f = File(dir, e.path)
+                        // The stand-in has the real size and date, so rclone would call it "unchanged" and skip it
+                        // (11-15: every prefetch was a no-op). Remove it first; the date is put back after.
+                        f.delete()
                         NetFs.transfer(app, NetFs.Side.Remote(drive, NetFs.join(remotePath, e.path)), NetFs.Side.Local(f), isDir = false, move = false) { _, _ -> }
+                        if (f.length() != e.size) throw java.io.IOException("${e.name} didn't arrive whole")
                         if (e.modified > 0) f.setLastModified(e.modified)
                         val n = doneFiles.incrementAndGet()
                         onProgress("Fetching the game's exe and dll files ($n/${whole.size})", doneBytes.addAndGet(e.size).toFloat() / total)

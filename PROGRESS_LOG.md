@@ -1,5 +1,15 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 23:25 EST — Streets of Rage Remake: controller not found (logs read, no code change)
+
+- **User:** controls did not work in Streets of Rage Remake (Pocket FIT, main code d2e208d3); screenshot 23:15:30 shows the game's "GAMEPAD 1 NOT FOUND".
+- **Cause:** the game (BennuGD + SDL 1.2, 32-bit) reads pads only through winmm `joyGetPosEx` (SDL.dll imports), and Wine's winmm joystick code sits on DirectInput8 (dlls/winmm/joystick.c). The game's own extras `exclusiveXInput=1 inputType=4` = "DirectInput games can see the controller" off → `Joysticks` = "disabled" hides the pad from winmm too. SDL 1.2 counts pads once at start, so the in-game switch (run 1, +35.6 s on, +55.3 s off) could not help.
+- **App side fine:** run 1 (22:46, 90 s) app sent 1889 updates, Wine read 367 frames; run 2 (23:15) same picture with DirectInput off throughout.
+- **Told the user:** turn the switch on in the game's settings (Controls › Controllers, Advanced) and relaunch. Nothing changed on the device.
+- **Seen, not looked at:** the picture only fills the top-left ~960x720 of the screen after the game switches to 640x480. The game's envVars carry a WINEDLLOVERRIDES list the game folder has no DLLs for (no effect).
+- **Idea:** controller.txt could name winmm games (SDL 1.2) in its XINPUT/DINPUT hints, or BL could turn DirectInput on for them.
+- **Resume:** user's result after the relaunch; if still not found, read the new controller.txt (DINPUT line should say "no entry") + wine_debug.log.
+
 ## 2026-11-14 14:15 EST — fix/lab-test-fixes MERGED into main (d33d619e)
 
 - **User:** "merge it".

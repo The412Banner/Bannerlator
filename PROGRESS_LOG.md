@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 15:20 EST — feat/fm-network-drives: the NAS part, ready to merge on its own (branch, CI running)
+- Why: user 11-15: merge "add NAS, browse and copy games to device from NAS" into main; streaming continues separately on feat/network-games-spike.
+- Built: backup refs/backup/20261115/feat-fm-network-drives-before-main-merge-887201c6 = 6f947bf2; merged main 887201c6 (ff236200; only PROGRESS_LOG conflicted, both kept; main's files identical); cherry-picked "Name (2)" for a second copy (1c14bcc6 = b760d5a4); Copy to first + last place remembered (00f79eac = the copy half of 91d807bc). No streaming code (no NetStream/libnetfs/launcher changes).
+- CI: 43756467755.
+- Device proof so far: network drives browse + SFTP login (user, 11-14/15), Add to Games dialog (user video). To do before merge: Add to Games → Copy of a small game on this build, launch it.
+- Next: install (ask), test, merge to main (backup main first), then merge main into feat/network-games-spike.
+
 ## 2026-11-14 23:22 EST — feat/fm-network-drives: Network drives in the file manager (branch, CI running)
 
 - **User:** "so what now, how do we add a network drives section to the app file manager that will download the required package and automatically scan home networks for open Nas and an option to add NAS drives or storage" + "it should automatically detect and list available open network storage drives if detected after being added and downloading as an outside package" → plan given → "yes go".

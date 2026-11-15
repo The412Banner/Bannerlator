@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 18:00 EST — 3.2.1 STABLE PREPARED (release/3.2.1, not published)
+- Why: user 11-15: "build main as artifacts only then prep a stable release for 3.2.1"; "make sure the release description states nas storage streaming is experimental still and a work in progress"; "everything has been tested and works for me added for this release".
+- Main artifacts: CI 43769358474 on e9ea9ebd GREEN ×4 (artifacts only).
+- Built: release/3.2.1 off main e9ea9ebd — 758905d8 vc 107→108 / versionName 3.2.1; f4e59c6b + 9b62beb6 + d1096d93 docs/releases/3.2.1.md (everything since 3.2.0; NAS streaming experimental/work in progress in the badge, intro, its section and a warning; device-tested per the user) + README (version row, contents, 3.2.1 section, credits). RC build CI 43769491336 GREEN ×4. Size scan tmp/size-3.2.1 (CI 43770400048): 3.2.0→3.2.1 patch 17.7 MB (pubg 17,739,021 / standard 17,749,093 bytes), full 602.8 MB, rebuild byte-exact. Local scripts/release_notes.py 3.2.1: layout OK, 25 changes appended.
+- Next: the user's "cut it" → backup main, cut log, FF main to release/3.2.1, release.yml (tag 3.2.1, make_prerelease false), verify; delete tmp/size-3.2.1 on the user's word. root-a3 holds main merges until then.
+
 ## 2026-11-15 17:26 EST — PR #671 (MGamer404) MERGED into main (cd897954)
 - What: XMB Game Details "Add your own wide cover" / "Add your own background" (Steam, SteamGridDB, a file from storage, automatic; Lab's "wide"/"bg" slots); the XMB Home's covers and opened game view follow Interface scale; XMB tab labels keep the tuned Font size. Lab: four LabGameDetails helpers made internal.
 - Review (root-27): at 100 % the layout is unchanged (old 1280x800 test still holds); thumbnails decode then shrink (fitCoverArt, no crop); minor: picker sub-menu strings are hardcoded English; build-artifacts runs no unit tests, so the two new tests are not run by CI.

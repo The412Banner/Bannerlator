@@ -32,25 +32,29 @@ object DriverPartsPrompt {
     fun ask(name: String, parts: List<DriverInstaller.Place>): Set<DriverInstaller.Place>? {
         if (parts.size < 2) return parts.toSet()
         if (Looper.myLooper() == Looper.getMainLooper() || hosts.get() <= 0) return defaultParts(parts)
-        synchronized(lock) {
+        return synchronized(lock) {
             val reply = CompletableFuture<Set<DriverInstaller.Place>?>()
             val req = Request(name, parts, reply)
             _request.value = req
             try {
-                // A window that goes away for good (not a rotation) leaves the default.
-                var noHostSeconds = 0
-                while (true) {
-                    try {
-                        return reply.get(1, TimeUnit.SECONDS)
-                    } catch (_: TimeoutException) {
-                        noHostSeconds = if (hosts.get() <= 0) noHostSeconds + 1 else 0
-                        if (noHostSeconds >= 10) return defaultParts(parts)
-                    }
-                }
+                await(reply) ?: if (reply.isDone) null else defaultParts(parts)
             } finally {
                 _request.compareAndSet(req, null)
             }
         }
+    }
+
+    /** The answer, or null when there is none: Cancel, or no window for 10 s (one that goes away for good, not a rotation). */
+    private fun await(reply: CompletableFuture<Set<DriverInstaller.Place>?>): Set<DriverInstaller.Place>? {
+        var noHostSeconds = 0
+        while (!reply.isDone && noHostSeconds < 10) {
+            try {
+                reply.get(1, TimeUnit.SECONDS)
+            } catch (e: TimeoutException) {
+                noHostSeconds = if (hosts.get() <= 0) noHostSeconds + 1 else 0
+            }
+        }
+        return if (reply.isDone) reply.get() else null
     }
 
     /** The window's answer: the parts ticked, or null for Cancel. */

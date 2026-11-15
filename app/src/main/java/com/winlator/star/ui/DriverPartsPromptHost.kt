@@ -51,12 +51,21 @@ fun DriverPartsPromptHost() {
     key(r) {
         var picked by remember { mutableStateOf(DriverPartsPrompt.defaultParts(r.parts)) }
         var answered by remember { mutableStateOf(false) }
-        if (answered) return@key
         val toggle = { p: Place -> picked = if (p in picked) picked - p else picked + p }
-        val install = { if (picked.isNotEmpty()) { answered = true; DriverPartsPrompt.answer(r, picked) } }
-        val cancel = { answered = true; DriverPartsPrompt.answer(r, null) }
-        if (AppThemeState.simpleLook) LabParts(r, picked, toggle, install, cancel)
-        else ClassicParts(r, picked, toggle, install, cancel)
+        val install = {
+            if (picked.isNotEmpty()) {
+                answered = true
+                DriverPartsPrompt.answer(r, picked)
+            }
+        }
+        val cancel = {
+            answered = true
+            DriverPartsPrompt.answer(r, null)
+        }
+        if (!answered) {
+            if (AppThemeState.simpleLook) LabParts(r, picked, toggle, install, cancel)
+            else ClassicParts(r, picked, toggle, install, cancel)
+        }
     }
 }
 

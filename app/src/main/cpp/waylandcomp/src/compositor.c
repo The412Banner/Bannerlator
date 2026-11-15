@@ -1357,9 +1357,31 @@ static void surface_set_opaque(struct wl_client *c, struct wl_resource *r,
 static void surface_set_input(struct wl_client *c, struct wl_resource *r,
                               struct wl_resource *region) {}
 
+/* The Windows virtual desktop (banner_desktop_v1) sets the scene size. Wine paints the desktop window
+ * through a wp_viewport (source and destination at the desktop size), but when a game changes the
+ * display mode, winewayland's wayland_desktop_resize attaches a buffer of the new size and leaves the
+ * viewport alone. The old viewport then holds the scene at the old size: a 640x480 game sits in the
+ * top-left of a 1280x720 scene, and every Fit-to-screen mode scales that scene. A desktop commit that
+ * changes the buffer size without viewport requests, or whose viewport source no longer fits the
+ * buffer (out_of_buffer in the protocol), drops the viewport; the next desktop paint sets a new one. */
+static void desktop_drop_stale_viewport(struct surface *s, int viewport_req, int old_w, int old_h) {
+    if ((!s->src_set && !s->dst_set) || s->buf_w <= 0 || s->buf_h <= 0) return;
+    int resized = !viewport_req && old_w > 0 && (s->buf_w != old_w || s->buf_h != old_h);
+    int out_of_buffer = s->src_set && (s->src[0] + s->src[2] > s->buf_w + 0.5f ||
+                                       s->src[1] + s->src[3] > s->buf_h + 0.5f);
+    if (!resized && !out_of_buffer) return;
+    int vw, vh;
+    surface_size(s, &vw, &vh);
+    s->src_set = s->dst_set = 0;
+    banner_log("desktop", "resized to %dx%d: old %dx%d viewport dropped (%s)", s->buf_w, s->buf_h, vw, vh,
+               out_of_buffer ? "it no longer fits the buffer" : "new size, no new viewport");
+}
+
 static void surface_commit(struct wl_client *c, struct wl_resource *r) {
     struct surface *s = wl_resource_get_user_data(r);
     struct surface *child;
+    const int viewport_req = s->pending_src_set || s->pending_dst_set;
+    const int old_buf_w = s->buf_w, old_buf_h = s->buf_h;
 
     if (s->pending_src_set) {
         s->src_set = s->pending_src[2] > 0;
@@ -1410,6 +1432,7 @@ static void surface_commit(struct wl_client *c, struct wl_resource *r) {
             if (buffer) wl_buffer_send_release(buffer);
         }
     }
+    if (s->role == ROLE_DESKTOP) desktop_drop_stale_viewport(s, viewport_req, old_buf_w, old_buf_h);
 
     /* Subsurface positions are applied when the parent commits. */
     wl_list_for_each(child, &s->children, child_link) {
@@ -2544,6 +2567,23 @@ static void add_surface(struct draw_list *dl, struct surface *s, int ox, int oy)
     if (s->src_set) { sx = s->src[0]; sy = s->src[1]; sw = s->src[2]; sh = s->src[3]; }
     surface_size(s, &dw, &dh);
     if (dw <= 0 || dh <= 0 || sw <= 0 || sh <= 0) return;
+    const int blend = surface_translucent(s, dw, dh);
+    /* On the Windows desktop the scene is the desktop, and a window part outside it is off-screen on
+     * Windows too: cut it off here, or it shows in the letterbox bars (a game's console window that
+     * is wider than its 640x480 desktop, say). A window wholly outside is not drawn, and its
+     * feedback is discarded like any surface outside the scene. */
+    if (g_desktop && g_scene_w > 0 && g_scene_h > 0) {
+        int x0 = ox > 0 ? ox : 0, y0 = oy > 0 ? oy : 0;
+        int x1 = ox + dw < g_scene_w ? ox + dw : g_scene_w;
+        int y1 = oy + dh < g_scene_h ? oy + dh : g_scene_h;
+        if (x1 <= x0 || y1 <= y0) return;
+        if (x0 != ox || y0 != oy || x1 != ox + dw || y1 != oy + dh) {
+            const float kx = sw / (float)dw, ky = sh / (float)dh;
+            sx += (float)(x0 - ox) * kx; sw = (float)(x1 - x0) * kx;
+            sy += (float)(y0 - oy) * ky; sh = (float)(y1 - y0) * ky;
+            ox = x0; oy = y0; dw = x1 - x0; dh = y1 - y0;
+        }
+    }
     if (dl->n == dl->cap) {
         int cap = dl->cap ? dl->cap * 2 : 32;
         struct vkp_draw *d = realloc(dl->d, (size_t)cap * sizeof(*d));
@@ -2551,8 +2591,7 @@ static void add_surface(struct draw_list *dl, struct surface *s, int ox, int oy)
         dl->d = d;
         dl->cap = cap;
     }
-    dl->d[dl->n++] = (struct vkp_draw){img, sx, sy, sw, sh, ox, oy, dw, dh,
-                                      surface_translucent(s, dw, dh)};
+    dl->d[dl->n++] = (struct vkp_draw){img, sx, sy, sw, sh, ox, oy, dw, dh, blend};
     s->drawn = 1;
 }
 

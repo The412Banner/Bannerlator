@@ -108,7 +108,10 @@ static void say(const char *fmt, ...)
     if (real.write) real.write(2, line, (size_t)n);
 }
 
-static void init(void)
+extern char **environ;
+
+/* The next definitions of the hooked calls (libc's, or another preloaded library's). Safe at any time. */
+static void resolve_real(void)
 {
     real.read = (read_fn)dlsym(RTLD_NEXT, "read");
     real.pread = (pread_fn)dlsym(RTLD_NEXT, "pread");
@@ -129,23 +132,42 @@ static void init(void)
     if (!real.preadv64) real.preadv64 = real.preadv;
     if (!real.pwrite64) real.pwrite64 = real.pwrite;
     if (!real.mmap64) real.mmap64 = real.mmap;
+}
 
+/*
+ * Reads the settings. NOT from the library's constructor: on Android a preloaded library's constructor runs before
+ * libc sets up the environment, so getenv() finds nothing there (11-15 device test: the library stayed off in every
+ * game). It runs on the first hooked call made once the environment exists.
+ */
+static void init_env(void)
+{
     const char *r = getenv("BLNETFS_ROOT"), *p = getenv("BLNETFS_PORT");
     const char *pre = getenv("BLNETFS_PREFIX"), *a = getenv("BLNETFS_AUTH");
     static char cport[32], cprefix[8192], cauth[1024];
     const char *conf = getenv("BLNETFS_CONF");
     if (conf && *conf) {
-        FILE *f = fopen(conf, "re");
-        if (f) {
-            static char line[9000];
-            while (fgets(line, sizeof line, f)) {
-                size_t n = strlen(line);
-                while (n && (line[n - 1] == '\n' || line[n - 1] == '\r')) line[--n] = 0;
-                if (!strncmp(line, "port=", 5) && n - 5 < sizeof cport) { strcpy(cport, line + 5); p = cport; }
-                else if (!strncmp(line, "prefix=", 7) && n - 7 < sizeof cprefix) { strcpy(cprefix, line + 7); pre = cprefix; }
-                else if (!strncmp(line, "auth=", 5) && n - 5 < sizeof cauth) { strcpy(cauth, line + 5); a = cauth; }
+        /* Plain reads through libc's read (not stdio, whose reads would come back into these hooks). */
+        static char text[12000];
+        int f = open(conf, O_RDONLY | O_CLOEXEC);
+        ssize_t got = 0;
+        if (f >= 0) {
+            while (got < (ssize_t)sizeof text - 1) {
+                ssize_t k = real.read(f, text + got, sizeof text - 1 - (size_t)got);
+                if (k < 0 && errno == EINTR) continue;
+                if (k <= 0) break;
+                got += k;
             }
-            fclose(f);
+            real.close(f);
+        }
+        text[got > 0 ? got : 0] = 0;
+        for (char *line = text, *next; line && *line; line = next) {
+            next = strchr(line, '\n');
+            if (next) *next++ = 0;
+            size_t n = strlen(line);
+            while (n && line[n - 1] == '\r') line[--n] = 0;
+            if (!strncmp(line, "port=", 5) && n - 5 < sizeof cport) { strcpy(cport, line + 5); p = cport; }
+            else if (!strncmp(line, "prefix=", 7) && n - 7 < sizeof cprefix) { strcpy(cprefix, line + 7); pre = cprefix; }
+            else if (!strncmp(line, "auth=", 5) && n - 5 < sizeof cauth) { strcpy(cauth, line + 5); a = cauth; }
         }
     }
     if (!r || !*r || !p || !pre || !a) return;
@@ -168,14 +190,35 @@ static void fork_prepare(void);
 static void fork_parent(void);
 static void fork_child(void);
 
+static int env_done;
+static pthread_mutex_t env_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_t env_owner;
+static int env_busy;
+
 __attribute__((constructor)) static void ctor(void)
 {
-    pthread_once(&once, init);
+    pthread_once(&once, resolve_real);
     /* A fork while another thread holds the lock (or fetches a chunk) must not leave the child waiting forever. */
     pthread_atfork(fork_prepare, fork_parent, fork_child);
 }
 
-static inline void ready(void) { pthread_once(&once, init); }
+/* Every hook starts here: the real calls are known; the settings are read once the environment exists. */
+static inline void ready(void)
+{
+    pthread_once(&once, resolve_real);
+    if (__atomic_load_n(&env_done, __ATOMIC_ACQUIRE)) return;
+    if (!environ || !environ[0]) return;   /* too early: pass through, try again on the next call */
+    if (env_busy && pthread_equal(env_owner, pthread_self())) return;   /* a call made while reading them */
+    pthread_mutex_lock(&env_lock);
+    if (!env_done) {
+        env_owner = pthread_self();
+        env_busy = 1;
+        init_env();
+        env_busy = 0;
+        __atomic_store_n(&env_done, 1, __ATOMIC_RELEASE);
+    }
+    pthread_mutex_unlock(&env_lock);
+}
 
 /* What [fd] is: a stand-in file under the root (FD_NET), anything else (FD_PLAIN). Worked out once per descriptor. */
 static int classify(int fd)

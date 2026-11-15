@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.graphicsLayer
 import com.winlator.star.ui.simple.SimpleRowDivider
+import com.winlator.star.ui.simple.LabCloseButton
 import com.winlator.star.ui.simple.labPanel
 import com.winlator.star.ui.simple.SimpleShape
 import androidx.compose.ui.draw.clip
@@ -297,6 +298,11 @@ internal fun StoreSwitcher(storeName: String, modifier: Modifier = Modifier) {
             // The store's own dark panel with the thin outline, and a line between the stores.
             modifier = Modifier.labPanel(),
         ) {
+            // A ✕ for touch (B, Back and a tap outside close it too).
+            Row(Modifier.fillMaxWidth().padding(end = 4.dp), horizontalArrangement = Arrangement.End) {
+                LabCloseButton(onClose = { open = false })
+            }
+            SimpleRowDivider()
             stores.forEachIndexed { i, (label, cls) ->
                 if (i > 0) SimpleRowDivider()
                 val here = (ctx as? android.app.Activity)?.javaClass == cls

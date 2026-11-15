@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 17:07 EST — feat/device-info-popup: fix for the empty pop-up (branch, CI next)
+
+- **Device test (user, screenshots 17:04:28 portrait / 17:04:57 landscape):** tapping "Pocket FIT" opens the pop-up (title, ✕, Copy) but NO sections. User: "I see no info".
+- **Cause:** BL `FileUtils.readString(File)` = `new String(read(file))` throws NullPointerException when the file cannot be read; DroidDeck's returns null and the ported code expects that, so one unreadable sysfs node failed `DeviceInfo.collect` and my `runCatching` hid it (empty list). The native lib loaded (no VulkanInfo warning in logcat).
+- **Fix:** 39157150a — `readSys()` (null on missing/unreadable), used everywhere in deviceinfo/; each section built on its own (`safe()`, failures logged as DeviceInfo warnings); the dialog logs a total failure and shows "The device details could not be read." instead of an empty panel.
+- **Lesson:** when porting, check the helpers the code calls behave the same in the target app (null vs throw); never swallow an exception without a log.
+
 ## 2026-11-15 17:03 EST — feat/device-info-popup CI GREEN, installing on the FIT (user: "install when done")
 
 - **CI:** build-artifacts 43765983107, headSha c0989e10, pubg/standard/ludashi/antutu success; no compiler warnings in the changed files; lib/arm64-v8a/libdeviceinfo.so (8904 B) in the APK.

@@ -40,6 +40,8 @@ object NetDaemon {
     private var idleStop: Job? = null
     @Volatile private var process: Process? = null
     @Volatile private var client: RcClient? = null
+    /** "Basic …" for the running daemon (network games' libnetfs.so reads files through its file server). */
+    @Volatile private var basicAuth: String? = null
     private val tail = ArrayDeque<String>()
 
     fun retain(tag: String) = synchronized(holders) {
@@ -68,6 +70,13 @@ object NetDaemon {
         val app = ctx.applicationContext
         if (!NetEngine.isInstalled(app)) throw IOException("The network engine isn't installed")
         withContext(Dispatchers.IO) { start(app) }
+    }
+
+    /** Port and "Basic …" auth of the running daemon, or null. */
+    fun serveInfo(): Pair<Int, String>? {
+        val c = client ?: return null
+        val a = basicAuth ?: return null
+        return if (process?.isAlive == true) c.port to a else null
     }
 
     fun stopNow() {
@@ -101,6 +110,8 @@ object NetDaemon {
         val pb = ProcessBuilder(
             NetEngine.binary(app).absolutePath, "rcd",
             "--rc-addr", "127.0.0.1:$port",
+            // GET /[remote]/path serves files (ranged): how a streamed network game reads its files.
+            "--rc-serve",
             // Keep finished jobs around long enough for a slow poller to read their result.
             "--rc-job-expire-duration", "1h",
             "--config", config.absolutePath,
@@ -152,6 +163,7 @@ object NetDaemon {
                 rc.call("rc/noop", JSONObject(), readTimeoutMs = 2_000)
                 process = proc
                 client = rc
+                basicAuth = "Basic " + android.util.Base64.encodeToString("$user:$pass".toByteArray(Charsets.UTF_8), android.util.Base64.NO_WRAP)
                 Log.i(TAG, "rcd running on ${rc.baseUrl}")
                 return rc
             } catch (e: Exception) {

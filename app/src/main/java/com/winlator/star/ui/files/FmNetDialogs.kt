@@ -206,27 +206,34 @@ internal fun NetAddGameDialog(net: FmNetOps, req: FmNetOps.AddReq, containers: L
                     }
                 } else Text(req.name, fontSize = 14.sp)
                 Text(addSizeText(req.size), color = cs.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
-                Heading("Copy to")
-                targets.forEach { (label, dir) ->
-                    Choice(req.target == dir, "$label · Winlator/Games", "${StringUtils.formatBytes(net.freeSpace(dir))} free") { req.target = dir }
+                Heading("How")
+                Choice(!req.stream, "Copy to this device", "Plays without the network") { req.stream = false }
+                Choice(req.stream, "Stream from the network (test)", "Nothing copied first: parts are fetched as the game reads them; the drive must stay on") { req.stream = true }
+                if (!req.stream) {
+                    Heading("Copy to")
+                    targets.forEach { (label, dir) ->
+                        Choice(req.target == dir, "$label · Winlator/Games", "${StringUtils.formatBytes(net.freeSpace(dir))} free") { req.target = dir }
+                    }
+                    val custom = req.target?.takeIf { t -> targets.none { it.second == t } }
+                    if (custom != null) Choice(true, custom.name.ifBlank { custom.absolutePath }, custom.absolutePath) { }
+                    TextButton(onClick = { chooseFolder("Copy the game to") { req.target = it } }) { Text("Choose a folder…") }
+                } else {
+                    Text("What the game reads is kept in app storage (internal): ${StringUtils.formatBytes(net.appFree())} free", color = cs.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
                 }
-                val custom = req.target?.takeIf { t -> targets.none { it.second == t } }
-                if (custom != null) Choice(true, custom.name.ifBlank { custom.absolutePath }, custom.absolutePath) { }
-                TextButton(onClick = { chooseFolder("Copy the game to") { req.target = it } }) { Text("Choose a folder…") }
                 if (containers.size > 1) {
                     Heading("Container")
                     containers.forEach { c -> Choice(req.container == c, c.name) { req.container = c } }
                 }
                 val t = req.target
                 val sz = req.size
-                if (t != null) {
+                if (t != null && !req.stream) {
                     Text("${t.absolutePath}/${req.name}", color = cs.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
                     if (sz != null && sz > 0 && sz > net.freeSpace(t)) Text("Not enough free space there", color = cs.error, fontSize = 13.sp)
                 }
                 if (containers.isEmpty()) Text("No container yet: create one first", color = cs.error, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
             }
         },
-        confirmButton = { TextButton(onClick = { net.confirmAdd(req) }, enabled = req.target != null && req.container != null) { Text("Copy and add") } },
+        confirmButton = { TextButton(onClick = { net.confirmAdd(req) }, enabled = (req.stream || req.target != null) && req.container != null) { Text(if (req.stream) "Add" else "Copy and add") } },
         dismissButton = { TextButton(onClick = { net.addReq = null }) { Text("Cancel") } },
     )
 }

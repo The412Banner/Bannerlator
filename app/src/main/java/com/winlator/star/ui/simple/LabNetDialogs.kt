@@ -75,27 +75,34 @@ internal fun LabNetAddGameDialog(net: FmNetOps, req: FmNetOps.AddReq, containers
             }
         } else LabPropLine(L("Folder"), req.name)
         LabPropLine(L("Size"), L(addSizeText(req.size)))
-        LabToolHeading(L("Copy to"))
-        targets.forEach { (label, dir) ->
-            LabToolRow("${L(label)} · Winlator/Games", sub = L("%1\$s free", StringUtils.formatBytes(net.freeSpace(dir))), selected = req.target == dir) { req.target = dir }
+        LabToolHeading(L("How"))
+        LabToolRow(L("Copy to this device"), sub = L("Plays without the network"), selected = !req.stream) { req.stream = false }
+        LabToolRow(L("Stream from the network (test)"), sub = L("Nothing copied first: parts are fetched as the game reads them; the drive must stay on"), selected = req.stream) { req.stream = true }
+        if (!req.stream) {
+            LabToolHeading(L("Copy to"))
+            targets.forEach { (label, dir) ->
+                LabToolRow("${L(label)} · Winlator/Games", sub = L("%1\$s free", StringUtils.formatBytes(net.freeSpace(dir))), selected = req.target == dir) { req.target = dir }
+            }
+            val custom = req.target?.takeIf { t -> targets.none { it.second == t } }
+            if (custom != null) LabToolRow(custom.name.ifBlank { custom.absolutePath }, sub = custom.absolutePath, selected = true) { }
+            LabToolRow(L("Choose a folder…")) { chooseFolder(L("Copy the game to")) { req.target = it } }
+        } else {
+            LabDialogText(L("What the game reads is kept in app storage (internal): %1\$s free", StringUtils.formatBytes(net.appFree())), muted = true)
         }
-        val custom = req.target?.takeIf { t -> targets.none { it.second == t } }
-        if (custom != null) LabToolRow(custom.name.ifBlank { custom.absolutePath }, sub = custom.absolutePath, selected = true) { }
-        LabToolRow(L("Choose a folder…")) { chooseFolder(L("Copy the game to")) { req.target = it } }
         if (containers.size > 1) {
             LabToolHeading(L("Container"))
             containers.forEach { c -> LabToolRow(c.name, selected = req.container == c) { req.container = c } }
         }
         val t = req.target
         val sz = req.size
-        if (t != null) {
+        if (t != null && !req.stream) {
             LabDialogText("${t.absolutePath}/${req.name}", muted = true)
             if (sz != null && sz > 0 && sz > net.freeSpace(t)) LabDialogText(L("Not enough free space there"), error = true)
         }
         if (containers.isEmpty()) LabDialogText(L("No container yet: create one first"), error = true)
         LabDialogButtons {
             LabButton(L("Cancel")) { net.addReq = null }
-            if (req.target != null && req.container != null) LabButton(L("Copy and add"), primary = true) { net.confirmAdd(req) }
+            if ((req.stream || req.target != null) && req.container != null) LabButton(if (req.stream) L("Add") else L("Copy and add"), primary = true) { net.confirmAdd(req) }
         }
     }
 }

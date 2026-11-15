@@ -110,7 +110,7 @@ internal class FmNetOps(private val context: Context, private val scope: Corouti
                     NetHub.copying?.let { c ->
                         add(FmHomeTile(
                             c.name, HomeIcons.networkSetup, tint, File("/"),
-                            subtitle = "Copying to Games" + (c.progress?.let { " · ${(it * 100).toInt()} %" } ?: "…"),
+                            subtitle = "Adding to Games" + (c.progress?.let { " · ${(it * 100).toInt()} %" } ?: "…"),
                             action = { }, id = "net:copying",
                         ))
                     }
@@ -268,6 +268,8 @@ internal class FmNetOps(private val context: Context, private val scope: Corouti
         var size by mutableStateOf<Long?>(null)
         var target by mutableStateOf<File?>(null)
         var container by mutableStateOf<com.winlator.star.container.Container?>(null)
+        /** Stream from the drive (test) instead of copying first. */
+        var stream by mutableStateOf(false)
         val name: String get() = NetFs.nameOf(level).ifEmpty { drive.name }
         val exeRel: String? get() = exePath?.let { p -> if (level.isEmpty()) p else p.removePrefix(level.trimEnd('/') + "/") }
 
@@ -288,6 +290,9 @@ internal class FmNetOps(private val context: Context, private val scope: Corouti
             .filter { it.removable && it.readable }
             .forEach { add(it.label.ifBlank { it.dir.name } to File(it.dir, "Winlator/Games")) }
     }
+
+    /** Free space of the app's own storage (where streamed games keep what they read). */
+    fun appFree(): Long = freeSpace(context.filesDir)
 
     fun freeSpace(dir: File): Long {
         var d: File? = dir
@@ -324,8 +329,9 @@ internal class FmNetOps(private val context: Context, private val scope: Corouti
 
     /** The dialog's Copy: copies the game folder into [AddReq.target], then adds its exe to Games in the chosen container. */
     fun confirmAdd(req: AddReq) {
-        val base = req.target ?: return
         val container = req.container ?: run { ops.toast("No container yet: create one first"); return }
+        if (req.stream) { confirmStream(req, container); return }
+        val base = req.target ?: return
         addReq = null
         val gameDir = File(base, req.name)
         val exeRel = req.exeRel
@@ -354,6 +360,52 @@ internal class FmNetOps(private val context: Context, private val scope: Corouti
                 throw e
             } catch (e: Exception) {
                 say("Couldn't copy ${req.name}: ${e.message ?: "error"}")
+            }
+        }
+        if (!started) ops.toast("A game is already being copied")
+    }
+
+    /**
+     * The dialog's Add with Stream picked (test): builds the game's stand-in in app storage (folders and empty files
+     * at their real sizes; exes, dlls and small files fetched whole), then adds its exe to Games. The game then fetches
+     * the rest from the drive as it reads it (netdrive/NetStream.kt + libnetfs.so).
+     */
+    private fun confirmStream(req: AddReq, container: com.winlator.star.container.Container) {
+        addReq = null
+        val app = context.applicationContext
+        var drive = req.drive
+        if (drive.id.startsWith("found:")) {
+            // A share found on the network but not saved: save it, the game needs it at every launch.
+            val saved = drive.copy(id = NetDrive.newId())
+            if (runCatching { NetHub.save(app, saved) }.isSuccess) drive = saved
+        }
+        val d = drive
+        val dir = com.winlator.star.netdrive.NetStream.newDir(app, req.name)
+        val exeRel = req.exeRel
+        val started = NetHub.startGameCopy(req.name) { c ->
+            fun say(msg: String) = android.os.Handler(android.os.Looper.getMainLooper()).post { android.widget.Toast.makeText(app, msg, android.widget.Toast.LENGTH_LONG).show() }
+            try {
+                com.winlator.star.netdrive.NetStream.create(app, d, req.level, dir) { line, f ->
+                    c.label = "${req.name}: $line"
+                    c.progress = f
+                }
+                c.label = "Adding ${req.name} to Games"
+                c.progress = null
+                val added = withContext(Dispatchers.IO) {
+                    if (!com.winlator.star.netdrive.NetStream.ensureDrive(app, container)) return@withContext null
+                    val exe = exeRel?.let { File(dir, it) }?.takeIf { it.isFile }
+                        ?: com.winlator.star.core.GameFolderScanner.gameIn(dir)?.exe
+                        ?: return@withContext null
+                    val id = runCatching { com.winlator.star.core.GameIdentifier.identify(exe) }.getOrNull()
+                    val display = id?.let { com.winlator.star.core.GameIdentifier.displayName(it, exe, dir) } ?: req.name
+                    runCatching { com.winlator.star.ui.screens.ExeShortcutImporter.addToShortcuts(app, container, exe, display, id?.appId).nameWithoutExtension }.getOrNull()
+                }
+                say(if (added != null) "Added \"$added\" to Games (streams from ${d.name})" else "Made ${req.name}'s stand-in, but no game .exe was found in it")
+            } catch (e: CancellationException) {
+                say("Stopped setting up ${req.name}")
+                throw e
+            } catch (e: Exception) {
+                say("Couldn't set up ${req.name}: ${e.message ?: "error"}")
             }
         }
         if (!started) ops.toast("A game is already being copied")

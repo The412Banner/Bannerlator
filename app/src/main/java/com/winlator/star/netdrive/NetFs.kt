@@ -149,6 +149,22 @@ object NetFs {
         e.message ?: "Couldn't connect"
     }
 
+    /** Everything under [path] (folders and files, every level), paths relative to [path]. */
+    suspend fun listAll(ctx: Context, d: NetDrive, path: String): List<Entry> = withRc(ctx) { rc ->
+        val o = withContext(Dispatchers.IO) {
+            rc.call("operations/list", JSONObject().put("fs", fsAt(rc, d, path)).put("remote", "")
+                .put("opt", JSONObject().put("recurse", true)), readTimeoutMs = 600_000)
+        }
+        val arr = o.optJSONArray("list") ?: JSONArray()
+        (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let(::parseEntry) }
+    }
+
+    /** The daemon's URL path for [path] on the drive ("/%5B<remote>%5D/"), for its file server. */
+    suspend fun servePrefix(ctx: Context, d: NetDrive, path: String): String = withRc(ctx) { rc ->
+        val fs = fsAt(rc, d, path)
+        "/%5B" + java.net.URLEncoder.encode(fs, "UTF-8").replace("+", "%20") + "%5D/"
+    }
+
     /** Bytes and file count of everything under [path] (a folder walk on the server). */
     suspend fun size(ctx: Context, d: NetDrive, path: String): Pair<Long, Long> = withRc(ctx) { rc ->
         val o = withContext(Dispatchers.IO) { rc.call("operations/size", JSONObject().put("fs", fsAt(rc, d, path)), readTimeoutMs = 300_000) }

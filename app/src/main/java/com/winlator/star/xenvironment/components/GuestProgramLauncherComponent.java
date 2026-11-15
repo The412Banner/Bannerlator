@@ -792,6 +792,28 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
                     + (DInputVibration.effective(container, shortcut) ? "on" : "off") + ")");
         }
 
+        // Network games that stream (test, netdrive/NetStream.kt): the game sits in a stand-in folder of sparse files;
+        // libnetfs.so fetches each part from the network drive as the game reads it. Only for those games.
+        if (shortcut != null && container != null) {
+            java.util.Map<String, String> netEnv = com.winlator.star.netdrive.NetStream.launchEnv(environment.getContext(), container, shortcut.path);
+            if (netEnv != null) {
+                File netfsDest = new File(imageFs.getLibDir(), "libnetfs.so");
+                File netfsSrc = new File(nativeLibDir, "libnetfs.so");
+                try {
+                    if (netfsSrc.exists()) FileUtils.copy(netfsSrc, netfsDest);
+                    else if (!netfsDest.exists()) Log.e("GuestLauncher", "libnetfs.so NOT FOUND in APK: " + netfsSrc.getAbsolutePath());
+                } catch (Exception e) {
+                    Log.e("GuestLauncher", "Failed to copy libnetfs.so: " + e.getMessage());
+                }
+                if (netfsDest.exists()) {
+                    if (!ld_preload.isEmpty()) ld_preload += ":";
+                    ld_preload += netfsDest.getAbsolutePath();
+                    for (java.util.Map.Entry<String, String> e : netEnv.entrySet()) envVars.put(e.getKey(), e.getValue());
+                    Log.i("GuestLauncher", "Network game: streaming " + netEnv.get("BLNETFS_ROOT"));
+                }
+            }
+        }
+
         Log.d("GuestLauncher", "Final LD_PRELOAD: " + ld_preload);
         // winewayland.so (unixlib) dlopens libwayland-client/-egl/xkbcommon/xkbregistry. These resolve
         // from imagefs/usr/lib via LD_LIBRARY_PATH exactly like winex11.so's libX11/libXext deps do

@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 — GTA V streamed launch A/B (feat/network-games-spike, testing)
+- Why: the user's streamed GTA V (03:54 EST) quit at start: `"steam_api64.dll" failed to initialize`, c0000142. Only exe/dll were in the stand-in; its small settings files (steam_api.ini, steam*.wow, …) were never fetched.
+- Test: the 7 small top-level files filled from the NAS (sha1 match, mtime kept), relaunch. Past the error → libnetfs misses the crack's reads; same error → not streaming.
+- Also seen: create() prefetched 129 MB of "Social club" installer exes → skip installer folders.
+- Resume: FIT has 4bf309cf (a8c1a9be). Temp files /sdcard/Download/gta-small-tmp.
+
 ## 2026-11-15 00:25 EST — feat/network-games-spike: copy AND stream NAS games in one build (branch, CI running)
 
 - **User:** "both go" (Add to Games by copying: must ask where to copy, also on NAS folder menus; streaming spike) → "make both options available to test both in one apk".

@@ -94,7 +94,10 @@ internal object ExeShortcutImporter {
                 if (artAppId != null) {
                     val details = runCatching { SteamStoreSearch.fetchDetails(artAppId) }.getOrNull()
                     var finalBase = base
+                    // Another game already called that (e.g. the same game added twice, one copy streamed from a
+                    // network drive): the next free "Name (2)", as writeExeShortcut does, not the exe's name.
                     val better = betterSteamName(base, details?.name ?: SteamStoreSearch.resolveName(artAppId))
+                        ?.let { freeBase(desktopDir, it, base) }
                     // Race guard: only rename while the shortcut is still at its original name.
                     // If the user already Saved a different name via the confirm dialog, the
                     // original .desktop is gone and we leave their choice alone.
@@ -139,6 +142,18 @@ internal object ExeShortcutImporter {
             metacritic = current.metacritic ?: details?.metacritic,
         ).writeTo(shortcut)
         return true
+    }
+
+    /** [name], or the next free "[name] (2)", "(3)"… when another shortcut has it; null when [current] already is that. */
+    private fun freeBase(desktopDir: File, name: String, current: String): String? {
+        var candidate = name
+        var n = 2
+        while (File(desktopDir, "$candidate.desktop").exists()) {
+            if (candidate == current) return null
+            candidate = "$name ($n)"
+            n++
+        }
+        return candidate
     }
 
     /**

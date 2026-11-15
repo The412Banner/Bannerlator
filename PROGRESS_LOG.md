@@ -52,6 +52,11 @@
 - **Why:** user feedback on the ✕ from 75d304a7 (on the FIT in root-27's a6ef5dce = main d115c396), relayed by root-27: "I see the close button but it just closes the menu not the store".
 - **Built:** 01eb2ccee — StoreSectionHost.kt StoreSwitcher: the ✕ closes the list and finishes the store's Activity (= every store's onClose: Steam, GOG, Epic, Amazon, Xbox); B and a tap outside still close only the list. Only this file (root-27 is in store/*Activity.kt etc. on fix/store-uninstall-shortcuts).
 - **Next:** CI, stage APK, ask before install; test: ✕ in each store leaves it back to Bannerlator, picking a store still switches, B closes the list only.
+## 2026-11-15 16:15 EST — fix/store-uninstall-shortcuts: a store page's Uninstall removes the game's shortcuts (branch, CI running)
+- Why: user 11-15: "when a game is downloaded from one of the app stores and creates a shortcut, after uninstalling that game it leaves the game shortcut behind". Verified: only DownloadActions.uninstall removed shortcuts; SteamLibraryTab.uninstall, XboxDownloads.uninstall (Xbox page), Epic/GOG pages, Amazon list + page did not. FIT library check found 6 such dead shortcuts (Among Us, 5 Steam NFS) + 1 hand-added (RE2, folder gone) + 2 empty leftovers; removed with the user's yes (backups in Download/Bannerlator-backup/removed-shortcuts-20261115).
+- Built: d9d79936 — StoreShortcutCleanup (DownloadActions' removal moved out; real-path comparison) called from every store uninstall; Xbox confirm text updated.
+- CI: 43762035530. Not device-tested.
+- Not mine: the store menu ✕ closing only the menu (user report) — root-a3 is fixing it on fix/store-close-leaves-store.
 
 ## 2026-11-15 15:49 EST — Correction: wrong times on six of my entries today (log only)
 

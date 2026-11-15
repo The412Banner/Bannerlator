@@ -271,7 +271,7 @@ internal class DownloadActions(
             // The game's shortcuts go with it. A folder kept for another game still holds exes that game's shortcuts run, so then only
             // the ones tagged with this game's own id go; a failed delete or an imported game removes none.
             val removal = shortcutRemovalFor(ok, kept, imported)
-            if (removal != ShortcutRemoval.NONE) removeShortcutsOf(entry, removal)
+            StoreShortcutCleanup.remove(activity, entry.store, entry.id, entry.installPath, removal)
             uninstallingName = null
             notice = when {
                 imported -> activity.getString(R.string.steam_lib_uninstall_kept, entry.name)
@@ -279,40 +279,6 @@ internal class DownloadActions(
                 else -> "Couldn't fully remove ${entry.name}"
             }
         }
-    }
-
-    /**
-     * Deletes the shortcuts of an uninstalled game (see [DownloadShortcutMatch] for which ones belong to it), off the UI thread, the
-     * same way the game's own Remove does (the .desktop file, its .lnk, the launcher pin), then lets every game list reload.
-     * [mode] [ShortcutRemoval.BY_ID_ONLY] matches by the game's store id alone (its folder is shared), ALL also by the install folder.
-     */
-    private fun removeShortcutsOf(entry: DownloadEntry, mode: ShortcutRemoval) {
-        val ctx = activity.applicationContext
-        val installPath = entry.installPath
-        Thread {
-            val removed = runCatching {
-                var count = 0
-                for (s in com.winlator.star.container.ContainerManager(ctx).loadShortcuts()) {
-                    val mine = if (mode == ShortcutRemoval.BY_ID_ONLY) {
-                        DownloadShortcutMatch.belongsById(entry.store, entry.id) { s.getExtra(it) }
-                    } else {
-                        // The exe as an Android path: a shortcut may hold a drive path (A:\..., Z:\...) that its container maps somewhere.
-                        val exeAndroid = if (s.path.startsWith("/")) s.path
-                        else runCatching { com.winlator.star.core.CopyGameToDriveC.parse(s).exeAndroid?.absolutePath }.getOrNull()
-                        DownloadShortcutMatch.belongs(entry.store, entry.id, installPath, exeAndroid) { s.getExtra(it) }
-                    }
-                    if (!mine) continue
-                    val lnk = File(s.file.path.substringBeforeLast('.') + ".lnk")
-                    if (s.file.delete()) {
-                        if (lnk.exists()) lnk.delete()
-                        com.winlator.star.ui.screens.ShortcutsViewModel.disableOnScreen(ctx, s)
-                        count++
-                    }
-                }
-                count
-            }.getOrDefault(0)
-            if (removed > 0) com.winlator.star.ui.screens.ShortcutsViewModel.notifyContainersChanged()
-        }.start()
     }
 
     /**

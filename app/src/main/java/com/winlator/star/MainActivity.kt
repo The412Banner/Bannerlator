@@ -291,6 +291,9 @@ class MainActivity : AppCompatActivity() {
                         onNavigateToGames = { pendingRoute.value = Screen.Games.route },
                     )
 
+                    // Which drivers of a zip that holds several (DroidDeck's Android + Linux) to install.
+                    com.winlator.star.ui.DriverPartsPromptHost()
+
                     // The Deck first-run covers the app (and owns the install screen as its step 5) while it is due or re-run from Tools.
                     val uiStyle by AppThemeState.uiStyle.collectAsState()
                     val showDeckOnboarding = uiStyle == AppThemeState.UI_STYLE_DECK &&

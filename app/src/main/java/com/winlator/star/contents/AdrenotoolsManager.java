@@ -217,6 +217,8 @@ public class AdrenotoolsManager {
         public static final String BAD_META = "bad-meta";
         public static final String LINUX_KIND = "linux-kind";
         public static final String WAYLAND_KIND = "wayland-kind";
+        /** The library links glibc: a Linux driver, which the Android loader cannot use. */
+        public static final String GLIBC = "glibc";
         public static final String NO_LIBRARY = "no-library";
         public static final String LIBRARY_MISSING = "library-missing";
         public static final String BUILT_IN = "built-in";
@@ -306,9 +308,19 @@ public class AdrenotoolsManager {
         }
     }
 
-    /** The folder holding meta.json: the zip's top level, or its only folder when everything sits in one. */
+    /**
+     * The folder holding meta.json: the zip's top level, its only folder when everything sits in one, or the
+     * Android folder of a zip with several drivers ({@link DriverInstaller#parseBundle}: DroidDeck's android/ + linux/).
+     */
     private static File driverRoot(File dir) {
         if (new File(dir, "meta.json").isFile()) return dir;
+        File manifest = new File(dir, "manifest.json");
+        if (manifest.isFile()) {
+            String text = FileUtils.readString(manifest);
+            DriverInstaller.Bundle bundle = text != null ? DriverInstaller.parseBundle(text) : null;
+            String path = bundle != null ? bundle.getPaths().get(DriverInstaller.Place.ANDROID) : null;
+            if (path != null && new File(new File(dir, path), "meta.json").isFile()) return new File(dir, path);
+        }
         File only = null;
         int count = 0;
         File[] kids = dir.listFiles();
@@ -355,7 +367,10 @@ public class AdrenotoolsManager {
         if ("linux-vulkan-icd".equals(kind)) return InstallResult.fail(InstallResult.LINUX_KIND, null);
         if ("wayland-game-driver".equals(kind)) return InstallResult.fail(InstallResult.WAYLAND_KIND, null);
         if (libraryName.isEmpty()) return InstallResult.fail(InstallResult.NO_LIBRARY, null);
-        if (!new File(dir, libraryName).isFile()) return InstallResult.fail(InstallResult.LIBRARY_MISSING, libraryName);
+        File library = new File(dir, libraryName);
+        if (!library.isFile()) return InstallResult.fail(InstallResult.LIBRARY_MISSING, libraryName);
+        // glibc's libc soname is versioned ("libc.so.6"), bionic's is not: a Linux build named like an Android one.
+        if (LinuxVulkanDriverManager.containsAscii(library, "libc.so.6")) return InstallResult.fail(InstallResult.GLIBC, libraryName);
         return null;
     }
 

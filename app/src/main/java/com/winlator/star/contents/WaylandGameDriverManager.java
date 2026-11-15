@@ -132,6 +132,7 @@ public class WaylandGameDriverManager {
         try {
             String soName = null;
             boolean hasDrm = false;
+            boolean bundle = false;
             JSONObject zipMeta = null;
             try (InputStream is = context.getContentResolver().openInputStream(zipUri);
                  ZipInputStream zis = new ZipInputStream(is)) {
@@ -148,6 +149,8 @@ public class WaylandGameDriverManager {
                             Files.copy(zis, new File(tmpDir, LIB_NAME).toPath(), StandardCopyOption.REPLACE_EXISTING);
                             soName = base;
                         }
+                    } else if (entry.getName().equals("manifest.json")) {
+                        bundle = DriverInstaller.parseBundle(new String(readAll(zis), StandardCharsets.UTF_8)) != null;
                     } else if (base.equals(LIBDRM_NAME)) {
                         Files.copy(zis, new File(tmpDir, LIBDRM_NAME).toPath(), StandardCopyOption.REPLACE_EXISTING);
                         hasDrm = true;
@@ -160,6 +163,10 @@ public class WaylandGameDriverManager {
                     }
                     // Anything else (vulkan.adXXXX.so, READMEs, …) is deliberately dropped.
                 }
+            }
+            if (bundle) {
+                throw new IllegalArgumentException("This zip holds an Android and a Linux driver (DroidDeck), "
+                        + "not a Wayland game driver. Install it as a GPU driver to pick which.");
             }
             if (soName == null) {
                 throw new IllegalArgumentException("No libvulkan_freedreno*.so in this zip. A Turnip zip made for "

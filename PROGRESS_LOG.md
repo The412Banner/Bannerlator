@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 16:18 EST — fix/store-close-leaves-store MERGED into main (9b98c499), NOT device-tested
+
+- **User:** "merge to main if green". CI 43761896820 (c3f2999a) success ×4, no compiler warnings in StoreSectionHost.kt.
+- **Merge:** backup `refs/backup/20261115/main-before-store-close-leaves-store` = d115c396 (pushed); `--no-ff` merge 9b98c499 (parents d115c396 + c3f2999a); merged tree == branch tip == the CI-tested commit. No release workflow running.
+- **Proof level:** CI-green; NOT device-tested. Main CI starts on this push. root-27 will build main + fix/store-uninstall-shortcuts into its streaming branch for the FIT.
+- **Open:** device test (✕ in each store's menu leaves the store; B / tap outside close only the list). Branch kept.
+
 ## 2026-11-15 16:07 EST — fix/store-close-leaves-store: the store menu's ✕ closes the store (branch, CI next)
 
 - **Why:** user feedback on the ✕ from 75d304a7 (on the FIT in root-27's a6ef5dce = main d115c396), relayed by root-27: "I see the close button but it just closes the menu not the store".

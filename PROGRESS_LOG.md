@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 15:35 EST — Streaming: Cyberpunk 2077 plays from the NAS (feat/network-games-spike dc05ae85 = FIT 58aa6260)
+- User: "cyberpunk worked" — streamed (Keep what's loaded), 311 loads from the NAS at ~14 MB/s in the first 2 minutes; read check 6680 reads, 0 on a hole.
+- GTA V (re-added with the *.vdf prefetch): same crash at GTA5.exe+0x121fa24; read check 1625 reads, 0 on a hole → the game's own issue; user: drop it. Darksiders: title video freezes with a full local copy too → not streaming.
+- Open: adding a whole folder picked Cyberpunk's REDprelauncher.exe over bin/x64/Cyberpunk2077.exe (prefer the game exe); installer exes prefetched (GTA's "Social club", 129 MB); the cache total counts 4 KB per tiny empty file; remove the test tools from the FIT (tracefs instance netfs, /data/local/tmp/ino, /sdcard/Download/ino). Streaming stays a test branch until the user says merge.
+
 ## 2026-11-15 — Streamed games: the missed-read bug found and fixed (feat/network-games-spike, CI)
 - Why: GTA V and Darksiders (both Steam-emulator copies) stopped at start ("steam_api.dll failed to initialize"); their steam_api.ini was never fetched.
 - Found: inotify showed the game READ steam_api.ini; trace builds of libnetfs (read/pread/mmap/open/recvmsg/sendfile/copy_file_range/splice/fread/_chk hooks) saw no read; fanotify = ENOSYS; tracefs f2fs_dataread_start named darksiders1.exe (4096 + 2326-byte reads). Cause: **libfakeinput.so (earlier in LD_PRELOAD) exports read() and sends every non-controller read to syscall(SYS_read)** — libnetfs never saw read(). Same cause behind SoRR needing the whole SorR.dat.

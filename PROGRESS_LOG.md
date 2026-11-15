@@ -1,6 +1,13 @@
 # Star-Compose — Progress Log
 
-## 2026-11-14 23:55 EST — fix/wayland-desktop-resize: desktop follows a game's display-mode change (branch, CI running)
+## 2026-11-14 23:48 EST — fix/wayland-desktop-resize: CI green, APK staged (branch, awaiting install go)
+
+- **CI:** compositor-only 43677919630 success; full APK 43677922141 success ×4 (headSha 6f7f0929). No compiler warnings from compositor.c (the 5 warnings are adrenotools).
+- **Staged:** `/sdcard/Download/Bannerlator-wayland-desktop-resize-6f7f0929.apk` (pubg), sha256 2bfa4ab7… host == device; its libbannerwayland.so carries the new "viewport dropped" log text.
+- **Device test:** not yet; install needs the user's yes (the FIT has a parallel session's fm-network-drives e0baf52a build).
+- **Correction:** the entry below was written at about 23:35 EST, not 23:55 (header fixed).
+
+## 2026-11-14 23:35 EST — fix/wayland-desktop-resize: desktop follows a game's display-mode change (branch, CI running)
 
 - **Why:** Streets of Rage Remake switches to 640x480; the picture stayed in the top-left of a 1280x720 scene and no Fit-to-screen mode could fill the screen (entries below).
 - **Cause (code-read):** on the virtual desktop explorer paints the desktop window through a wayland window surface, which sets a wp_viewport at the desktop size (wayland_surface_reconfigure_size + attach_shm). winewayland's `wayland_desktop_resize` later attaches a buffer of the new size without viewport requests, and the game window covers the desktop so it never repaints: the compositor keeps the old viewport, so `scene_size` stays 1280x720.

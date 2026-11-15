@@ -1,5 +1,37 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 23:55 EST — fix/wayland-desktop-resize DEVICE-PROVEN on the Pocket FIT (branch, awaiting the user)
+
+- **Run:** user, 23:52:26-23:53:12 EST, Streets of Rage Remake, game resolution 1280x720 unchanged.
+- **Log:** `23:52:28.861 desktop resized to 640x480: old 1280x720 viewport dropped (it no longer fits the buffer)` then `desktop size 640x480`. Modes: Original/Fit 1440x1080 at 240,0; Stretch 1920x1080; Fill 1920x1440 at 0,-180; Pixel-perfect 1280x960 at 320,60. The 5 screenshots (23:52:48-23:53:06) show the same.
+- **Crash check:** crash buffer empty for the app; newest tombstone is from 11-13 (qcrosvm, unrelated); exit reason EXIT_SELF code 0.
+- **Leftover (pre-existing, cosmetic):** the game's console window (665x434) sticks out past the right edge of the 640x480 desktop, so a small strip with its title-bar buttons shows in the black bars (Original/Fit/Pixel-perfect). The compositor does not clip windows to the desktop; possible follow-up.
+- **Not tested:** other games that change resolution; X11 sessions are not touched by this change.
+- **Next:** merge to main on the user's go.
+
+## 2026-11-14 23:51 EST — fix/wayland-desktop-resize installed on the Pocket FIT (branch, device test next)
+
+- **User:** "Yes, install now". Installed 23:51:04 EST, base.apk sha256 2bfa4ab7… == staged APK. Replaced the parallel session's fm-network-drives e0baf52a (sessions told).
+- **Test:** the user launches Streets of Rage Remake with the game resolution left at 1280x720 (so the fix itself is tested) and tries Fit / Stretch. Pass = wayland log shows `resized to 640x480: old 1280x720 viewport dropped` and `desktop  size 640x480`, the picture fills the screen per mode, no crash in the crash buffer / exit reasons.
+- **Resume:** read the newest wayland log + screenshots; undo = reinstall e0baf52a or main.
+
+## 2026-11-14 23:48 EST — fix/wayland-desktop-resize: CI green, APK staged (branch, awaiting install go)
+
+- **CI:** compositor-only 43677919630 success; full APK 43677922141 success ×4 (headSha 6f7f0929). No compiler warnings from compositor.c (the 5 warnings are adrenotools).
+- **Staged:** `/sdcard/Download/Bannerlator-wayland-desktop-resize-6f7f0929.apk` (pubg), sha256 2bfa4ab7… host == device; its libbannerwayland.so carries the new "viewport dropped" log text.
+- **Device test:** not yet; install needs the user's yes (the FIT has a parallel session's fm-network-drives e0baf52a build).
+- **Correction:** the entry below was written at about 23:35 EST, not 23:55 (header fixed).
+
+## 2026-11-14 23:35 EST — fix/wayland-desktop-resize: desktop follows a game's display-mode change (branch, CI running)
+
+- **Why:** Streets of Rage Remake switches to 640x480; the picture stayed in the top-left of a 1280x720 scene and no Fit-to-screen mode could fill the screen (entries below).
+- **Cause (code-read):** on the virtual desktop explorer paints the desktop window through a wayland window surface, which sets a wp_viewport at the desktop size (wayland_surface_reconfigure_size + attach_shm). winewayland's `wayland_desktop_resize` later attaches a buffer of the new size without viewport requests, and the game window covers the desktop so it never repaints: the compositor keeps the old viewport, so `scene_size` stays 1280x720.
+- **Built:** 6f7f0929 — compositor.c `desktop_drop_stale_viewport`: a desktop commit that changes the buffer size without viewport requests, or whose source no longer fits the buffer, drops the viewport. Log: `desktop  resized to 640x480: old 1280x720 viewport dropped (...)`.
+- **CI:** compositor-only 43677919630, full APK 43677922141 (headSha 6f7f0929 both).
+- **Device test:** not yet. Plan: stage pubg APK, ask the user before install (FIT has a parallel session's fm-network-drives e0baf52a test build), launch SorR, check the two log lines + full-screen picture in each Fit mode, logcat FATAL check.
+- **Open:** a Wine-side fix (reset the viewport in wayland_desktop_resize) would need a new Proton layer; not done.
+- **Correction:** the "23:45 EST" entry below was written at about 23:28 EST.
+
 ## 2026-11-14 23:35 EST — Streets of Rage Remake: in-game Fit to screen modes do not help (logs read, no code change)
 
 - **User:** 5 screenshots 23:22-23:31 (run 23:30:47-23:31:47): cycled Fit to screen Original/Fit/Stretch/Fill/Pixel-perfect.

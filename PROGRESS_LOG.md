@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 15:58 EST — fix/store-switcher-close MERGED into main (75d304a7), NOT device-tested
+
+- **User:** "merge to main" (after "Not now" to installing the test APK). Merged before a device test by the user's choice.
+- **Merge:** backup `refs/backup/20261115/main-before-store-switcher-close` = 4af0e8d5 (pushed); `--no-ff` merge 75d304a7 (parents 4af0e8d5 + 64ef7656); merged tree == branch tip; code == CI-tested 43fc9e31 (only PROGRESS_LOG.md differs). No release workflow running.
+- **Proof level:** CI-green (43757794950, ×4); NOT device-tested. Main CI starts on this push.
+- **Open:** device test (✕ in each store's menu closes it, picking still switches, B still closes). Branch kept.
+
 ## 2026-11-15 15:52 EST — fix/store-switcher-close CI GREEN, APK staged (branch, awaiting install go)
 
 - **CI:** build-artifacts 43757794950, headSha 43fc9e31, pubg/standard/ludashi/antutu success; no compiler warnings in StoreSectionHost.kt.

@@ -273,7 +273,8 @@ private fun SectionRail(
 }
 
 /**
- * The store's name, which opens the list of stores: picking one opens that store in place of this one.
+ * The store's name, which opens the list of stores: picking one opens that store in place of this one. The ✕ at the
+ * top of the list closes the store (every store's onClose is finishing its Activity); B or a tap outside closes the list.
  */
 @Composable
 internal fun StoreSwitcher(storeName: String, modifier: Modifier = Modifier) {
@@ -298,9 +299,12 @@ internal fun StoreSwitcher(storeName: String, modifier: Modifier = Modifier) {
             // The store's own dark panel with the thin outline, and a line between the stores.
             modifier = Modifier.labPanel(),
         ) {
-            // A ✕ for touch (B, Back and a tap outside close it too).
+            // A ✕ for touch that leaves the store (B and a tap outside close only the list).
             Row(Modifier.fillMaxWidth().padding(end = 4.dp), horizontalArrangement = Arrangement.End) {
-                LabCloseButton(onClose = { open = false })
+                LabCloseButton(onClose = {
+                    open = false
+                    (ctx as? android.app.Activity)?.finish()
+                })
             }
             SimpleRowDivider()
             stores.forEachIndexed { i, (label, cls) ->

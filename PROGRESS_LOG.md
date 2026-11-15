@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 23:45 EST — Streets of Rage Remake: picture not full screen (logs read, no code change)
+
+- **User:** "why isn't it full screen?" (same game, Pocket FIT, main code).
+- **Seen:** the game switches to 640x480. Wine logs `winewayland: virtual desktop resized to 640x480` (run 23:20: 640x480 → 1280x720 → 640x480), but the compositor's wayland log never logs a new desktop size: the scene stays 1280x720 (container Game resolution), so the 640x480 game sits at 0,0 and is scaled 1.5x = 960x720 in the top-left (matches the 23:15:30 screenshot).
+- **Code read:** proton-wine proton_11.12.3-DroidDeck window.c `wayland_desktop_resize` attaches a fresh 640x480 shm buffer to the desktop surface; compositor.c `scene_size` takes the desktop's surface size (viewport destination/source first, else the buffer size). Where the new size is lost is not pinned yet.
+- **Workaround offered (untested):** this game's Game resolution = 640x480 (+ Fill the screen Fit/Stretch), relaunch.
+- **Controls:** the user turned the game's DirectInput switch on (inputType=12) and played 23:20-23:22; result not reported yet.
+- **Resume:** user's go to find + fix the desktop-resize path (compositor + winewayland), or result of the workaround.
+
 ## 2026-11-14 23:25 EST — Streets of Rage Remake: controller not found (logs read, no code change)
 
 - **User:** controls did not work in Streets of Rage Remake (Pocket FIT, main code d2e208d3); screenshot 23:15:30 shows the game's "GAMEPAD 1 NOT FOUND".

@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 00:22 EST — fix/wayland-desktop-clip DEVICE-PROVEN on the Pocket FIT (branch, awaiting the user)
+
+- **Run:** user, 00:20:35-00:21:20 EST, Streets of Rage Remake. Wayland log still shows the 640x480 resize being followed.
+- **Screenshots:** Fit (00:21:04) picture 240-1680 with plain black beyond, no console strip; Stretch (00:21:09) full screen; Pixel-perfect (00:21:14) 320-1600, no strip.
+- **Crash check:** crash buffer empty for the app; no new tombstone; exit EXIT_SELF code 0.
+- **Next:** merge to main on the user's go.
+
 ## 2026-11-15 00:08 EST — fix/wayland-desktop-clip installed on the Pocket FIT (branch, device test next)
 
 - **CI:** compositor-only 43679223288 success; full APK 43679225801 success ×4 (ac39da17), no compositor.c warnings. Main CI 43679054889 (2ead3b84) success ×4.

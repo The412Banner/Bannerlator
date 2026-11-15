@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 23:35 EST — Streets of Rage Remake: in-game Fit to screen modes do not help (logs read, no code change)
+
+- **User:** 5 screenshots 23:22-23:31 (run 23:30:47-23:31:47): cycled Fit to screen Original/Fit/Stretch/Fill/Pixel-perfect.
+- **Log:** every mode is applied to a "1280x720 scene"; the game stays in that scene's top-left 640x480 corner (Pixel-perfect: scene 1280x720 at 320,180). Confirms the 23:45 diagnosis: the desktop never follows the game's 640x480 switch.
+- **Device:** game exited itself 23:31:47; a parallel session then installed feat/fm-network-drives e0baf52a (23:31:49). Workaround (Game resolution 640x480) still untried.
+
 ## 2026-11-14 23:45 EST — Streets of Rage Remake: picture not full screen (logs read, no code change)
 
 - **User:** "why isn't it full screen?" (same game, Pocket FIT, main code).

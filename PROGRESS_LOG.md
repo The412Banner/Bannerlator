@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 16:51 EST — feat/device-info-popup: tap the device's name for device details (branch, CI next)
+
+- **Why:** user (screenshots 16:26 / 16:26 / 16:27): tap the device name at the top (Lab landscape top line, Lab portrait drawer) to open a pop-up with all the device's information, like DroidDeck's GPU card details. User: "build it on a new branch off main".
+- **Built:** eeaa89f79 — ui/simple/LabDeviceDetails.kt (LabDeviceName tile, LabDeviceDetailsHost in LabTopLine, LabDialog wide: title = Build.MODEL, ✕, Copy + "Copy these details into a bug report.", sections as focusable tiles); LabFrame.kt: both names → LabDeviceName. deviceinfo/ (DeviceInfo, SocNames, VulkanInfo, GpuInfo trimmed) + cpp/deviceinfo/vkinfo.c + CMake add_library(deviceinfo). Last section = BL's installed Graphics / Linux runtime / Wayland game drivers; System adds the Bannerlator version.
+- **Credit:** ported from DroidDeck (GPL-3.0, same as BL): The412Banner #295, Kurt Himebauch, Danbro007, ASEbrahim, openMali, MaxsTechReview.
+- **Next:** CI, stage APK, ask before install; test: tap the name (landscape top line + portrait drawer), every section filled on the FIT, Copy pastes the text, ✕ / B close, controller focus, logcat FATAL check.
+
 ## 2026-11-15 17:05 EST — feat/lab-library-tile-outline MERGED into main
 - User: "works, merge it to main" (after installing 3ded5770 on the FIT, 16:45 EST).
 - What: a 1 dp outline (strong ink at 35 %) round each Library card in all three styles; the focus ring stays on top.

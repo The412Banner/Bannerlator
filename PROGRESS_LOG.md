@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 16:45 EST — feat/network-games-spike MERGED into main (f8a58bc9)
+- User: "works, merge it to main" → asked what; user picked "Everything incl. streaming".
+- What: streaming games from a network drive (Add to Games → Stream (test): a stand-in folder of sparse files, libnetfs.so first in LD_PRELOAD fetching parts as the game reads them, whole small files / folder batches, "Loading from NAS" tag, Streamed games window with size limit, Free up space and per-game keep mode, *.vdf install scripts prefetched, installers skipped); Add to Games program picker (game exe over a launcher, user can choose); store-page Uninstall removes the game's shortcuts (fix/store-uninstall-shortcuts); plus main's store ✕ leaves the store (already on main).
+- Merge: backup refs/backup/20261115/main-before-network-games = bb8dcfaa; --no-ff; merged tree == 87cb84fb (CI 43763031266 green ×4, installed on the FIT 16:28 EST).
+- Device proof: Cyberpunk 2077 streamed to its menu, Darksiders/SoRR start streamed, read checks 0 empty reads (11-15); user tested the combined build ("works": store ✕, uninstall shortcut removal). Not device-tested: installer skip, cache-size fix, every store's uninstall path.
+- Known game issues (not streaming): GTA V crash GTA5.exe+0x121fa24, Darksiders title video freeze.
+
 ## 2026-11-15 15:50 EST — Add to Games picks the game exe (user can choose), setup skips installers, true cache size (feat/network-games-spike 95335172, CI)
 - Why: user 11-15 "do 1 2 and 3 … let the user select game exe files found if multiple are present".
 - Built: 95335172 — GameFolderScanner.rankListed (same scoring as a local scan, from a drive listing); AddReq lists the folder's exes on open / folder change, picks the best (a clicked launcher gives way to a game exe ranked above it), "Game program" line with the others to choose (Classic + Lab); prefetch skips installer/uninstaller exes; cachedBytes counts a ≤1-block file only when SEEK_DATA finds data.

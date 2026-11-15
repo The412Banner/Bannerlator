@@ -617,11 +617,13 @@ internal fun LabIconCard(s: Shortcut, modifier: Modifier, iconModifier: Modifier
 @Composable
 internal fun LabGridCard(s: Shortcut, modifier: Modifier, line: String? = null, picked: Boolean? = null) {
     val chips = rememberCardChips(s)
+    // A thin outline round each game's art, so it stands apart from the page's backdrop (user 11-15); the focus ring is drawn over it.
+    val outline = SimpleStrong.copy(alpha = 0.35f)
     when (LabArt.cards) {
-        LabArt.WIDE -> LabBadged(s, modifier.aspectRatio(460f / 215f), picked) { LabWideCard(s, it, title = true, line = line, chips = chips) }
+        LabArt.WIDE -> LabBadged(s, modifier.aspectRatio(460f / 215f).border(1.dp, outline, SimpleShape), picked) { LabWideCard(s, it, title = true, line = line, chips = chips) }
         // Small icons have no room for a second line.
-        LabArt.ICONS -> LabIconCard(s, modifier, Modifier.fillMaxWidth().aspectRatio(1f), badges = true, line = line.takeIf { LabArt.cardSize != "s" }, picked = picked, chips = chips)
-        else -> LabBadged(s, modifier.aspectRatio(3f / 4f), picked) { LabCoverCard(s, it, line, chips = chips) }
+        LabArt.ICONS -> LabIconCard(s, modifier, Modifier.fillMaxWidth().aspectRatio(1f).border(1.dp, outline, RoundedCornerShape(18)), badges = true, line = line.takeIf { LabArt.cardSize != "s" }, picked = picked, chips = chips)
+        else -> LabBadged(s, modifier.aspectRatio(3f / 4f).border(1.dp, outline, SimpleShape), picked) { LabCoverCard(s, it, line, chips = chips) }
     }
 }
 

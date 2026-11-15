@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 17:22 EST — feat/device-info-popup 18b50320 (fix + main 4eeb94f0) CI GREEN, installing (user: "install when done")
+
+- **CI:** build-artifacts 43767835605, headSha 18b50320, ×4 success; no compiler warnings in the changed files; libdeviceinfo.so in the APK. (43767472392 and 43767759407 on 12d2bddc cancelled by me.)
+- **Staged:** `/sdcard/Download/Bannerlator-device-info-popup-18b50320.apk` (pubg), sha256 6de2fb27… host == device.
+- **Before install:** FIT ran root-27's c81d9869 (contained in this build); Discord in front, Bannerlator not on screen. Peers told.
+- **Resume:** user taps the device name again; check every section shows, Copy, ✕ / B; logcat DeviceInfo warnings name any section that failed.
+
 ## 2026-11-15 17:15 EST — feat/lab-start-screen-home-row MERGED into main
 - User: "works, merge it to main" (after installing c81d9869 on the FIT, 17:07 EST).
 - What: Lab "Open the app on" offers Home / Library / Containers and opens that page ("games" = Library, "home" or never set = Home); Home's library row starts at the game played last.

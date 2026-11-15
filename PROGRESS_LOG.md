@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 00:05 EST — fix/wayland-desktop-clip: windows cut off at the desktop edge (branch, CI running)
+
+- **Why:** user "fix the console strip too": Streets of Rage Remake's console window (665x434) sticks out past its 640x480 desktop, a strip with title-bar buttons in the letterbox bars (Original/Fit/Pixel-perfect).
+- **Built:** ac39da17 — compositor.c `add_surface`: with a desktop, each draw is clipped to the scene (the desktop), the source rectangle cut by the same share; a window wholly outside is not drawn (its feedback is discarded like any surface outside the scene). Translucency is decided on the full size before the cut. layer_candidate is unaffected (it needs a draw that covers the whole scene uncut).
+- **CI:** compositor-only 43679223288, full APK 43679225801 (headSha ac39da17).
+- **Test plan:** stage pubg APK, ask before install, SorR in Fit + Pixel-perfect: strip gone, picture unchanged; crash check.
+
 ## 2026-11-14 23:59 EST — fix/wayland-desktop-resize MERGED into main (2ead3b84)
 
 - **User:** "merge it and fix the console strip too".

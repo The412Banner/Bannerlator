@@ -28,6 +28,7 @@ import com.winlator.star.netdrive.NetFs
 import com.winlator.star.netdrive.NetHub
 import com.winlator.star.netdrive.NetKind
 import com.winlator.star.netdrive.NetScan
+import com.winlator.star.netdrive.NetStream
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -60,6 +61,9 @@ internal class FmNetOps(private val context: Context, private val scope: Corouti
     var deleteTargets by mutableStateOf<List<FmItem.Net>>(emptyList())
     /** The "Add to Games" dialog: which game folder on which drive, and where it goes. */
     var addReq by mutableStateOf<AddReq?>(null)
+    /** The "Streamed games" dialog (space used, limit, how each game is kept). */
+    var streamsOpen by mutableStateOf(false)
+    var removeStreamReq by mutableStateOf<NetStream.Game?>(null)
 
     fun copy(items: List<FmItem.Net>) {
         ops.clipboard = emptyList()
@@ -114,6 +118,12 @@ internal class FmNetOps(private val context: Context, private val scope: Corouti
                             action = { }, id = "net:copying",
                         ))
                     }
+                    if (NetHub.streams.isNotEmpty()) add(FmHomeTile(
+                        "Streamed games", HomeIcons.networkSetup, tint, File("/"),
+                        subtitle = StringUtils.formatBytes(NetHub.streamsTotal) + " of " + limitLabel(NetStream.limit(context)),
+                        action = { streamsOpen = true; NetHub.refreshStreams() },
+                        id = "net:streams",
+                    ))
                     add(FmHomeTile(
                         "Search again", HomeIcons.networkSearch, tint, File("/"),
                         subtitle = when {
@@ -270,6 +280,8 @@ internal class FmNetOps(private val context: Context, private val scope: Corouti
         var container by mutableStateOf<com.winlator.star.container.Container?>(null)
         /** Stream from the drive (test) instead of copying first. */
         var stream by mutableStateOf(false)
+        /** What a streamed game keeps between sessions. */
+        var streamMode by mutableStateOf(NetStream.Mode.KEEP)
         /** The game-folder levels list is open (it starts closed: one line with the picked folder). */
         var levelsOpen by mutableStateOf(false)
         val name: String get() = NetFs.nameOf(level).ifEmpty { drive.name }
@@ -402,9 +414,18 @@ internal class FmNetOps(private val context: Context, private val scope: Corouti
         val started = NetHub.startGameCopy(req.name) { c ->
             fun say(msg: String) = android.os.Handler(android.os.Looper.getMainLooper()).post { android.widget.Toast.makeText(app, msg, android.widget.Toast.LENGTH_LONG).show() }
             try {
-                com.winlator.star.netdrive.NetStream.create(app, d, req.level, dir) { line, f ->
+                val mode = req.streamMode
+                NetStream.create(app, d, req.level, dir, mode) { line, f ->
                     c.label = "${req.name}: $line"
                     c.progress = f
+                }
+                if (mode == NetStream.Mode.FULL) {
+                    NetStream.games(app).firstOrNull { it.dir == dir.canonicalFile }?.let { g ->
+                        NetStream.fetchAll(app, g) { done, total ->
+                            c.label = "${req.name}: fetching all of it"
+                            c.progress = (done.toFloat() / total).coerceIn(0f, 1f)
+                        }
+                    }
                 }
                 c.label = "Adding ${req.name} to Games"
                 c.progress = null
@@ -426,6 +447,60 @@ internal class FmNetOps(private val context: Context, private val scope: Corouti
             }
         }
         if (!started) ops.toast("A game is already being copied")
+    }
+
+    // ── Streamed games: what they keep on the device ──
+
+    val limitChoices: List<Long> = listOf(5L shl 30, 10L shl 30, 20L shl 30, 50L shl 30, 0L)
+    fun limitLabel(bytes: Long): String = if (bytes <= 0) "no limit" else "${bytes shr 30} GB"
+
+    private fun streamsJob(label: String, block: suspend () -> String?) {
+        scope.launch {
+            val msg = withContext(Dispatchers.IO) { runCatching { block() }.getOrElse { it.message ?: "$label failed" } }
+            NetHub.refreshStreams()
+            msg?.let(ops::toast)
+        }
+    }
+
+    fun setLimit(bytes: Long) = streamsJob("Limit") {
+        NetStream.setLimit(context, bytes)
+        NetStream.enforceLimit(context)
+        null
+    }
+
+    fun setStreamMode(game: NetStream.Game, mode: NetStream.Mode) {
+        if (game.mode == mode) return
+        NetStream.setMode(context, game, mode)
+        when (mode) {
+            // Nothing stays between sessions: empty it now (it isn't running while this page is open).
+            NetStream.Mode.STREAM -> streamsJob("Emptying") { "${game.name}: ${StringUtils.formatBytes(NetStream.clear(context, game))} freed" }
+            NetStream.Mode.FULL -> {
+                val app = context.applicationContext
+                val started = NetHub.startGameCopy(game.name) { c ->
+                    try {
+                        c.label = "${game.name}: fetching all of it"
+                        NetStream.fetchAll(app, game) { done, total -> c.progress = (done.toFloat() / total).coerceIn(0f, 1f) }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        android.os.Handler(android.os.Looper.getMainLooper()).post { android.widget.Toast.makeText(app, "Couldn't fetch all of ${game.name}: ${e.message}", android.widget.Toast.LENGTH_LONG).show() }
+                    } finally {
+                        NetHub.refreshStreams()
+                    }
+                }
+                if (!started) ops.toast("A game is already being copied")
+            }
+            NetStream.Mode.KEEP -> NetHub.refreshStreams()
+        }
+    }
+
+    fun emptyStream(game: NetStream.Game) = streamsJob("Emptying") { "${game.name}: ${StringUtils.formatBytes(NetStream.clear(context, game))} freed" }
+
+    fun freeUpStreams() = streamsJob("Free up space") { "${StringUtils.formatBytes(NetStream.freeUp(context))} freed" }
+
+    fun removeStream(game: NetStream.Game) {
+        removeStreamReq = null
+        streamsJob("Remove") { NetStream.remove(context, game); "Removed ${game.name}" }
     }
 
     // ── Copying between drives and this device ──

@@ -79,7 +79,11 @@ internal fun LabNetAddGameDialog(net: FmNetOps, req: FmNetOps.AddReq, containers
             if (custom != null) LabToolRow(custom.name.ifBlank { custom.absolutePath }, sub = custom.absolutePath + " · " + L("%1\$s free", StringUtils.formatBytes(net.freeSpace(custom))), selected = true) { }
             LabToolRow(L("Choose a folder…")) { chooseFolder(L("Copy the game to")) { req.target = it } }
         } else {
-            LabDialogText(L("What the game reads is kept in app storage (internal): %1\$s free", StringUtils.formatBytes(net.appFree())), muted = true)
+            LabToolHeading(L("Keep on this device"))
+            com.winlator.star.netdrive.NetStream.Mode.values().forEach { m ->
+                LabToolRow(L(m.label), sub = L(com.winlator.star.ui.files.streamModeHint(m)), selected = req.streamMode == m) { req.streamMode = m }
+            }
+            LabDialogText(L("Kept in app storage (internal): %1\$s free", StringUtils.formatBytes(net.appFree())), muted = true)
         }
         LabToolHeading(L("Game folder"))
         LabToolRow(req.name, sub = L(addSizeText(req.size)) + if (req.levels.size > 1) " · " + (if (req.levelsOpen) L("tap to close") else L("tap to change")) else "", selected = true) {
@@ -111,10 +115,50 @@ internal fun LabNetAddGameDialog(net: FmNetOps, req: FmNetOps.AddReq, containers
     }
 }
 
+/** "Streamed games" as Classic's: space used and the limit, how each game is kept, empty / remove, free up space. */
+@Composable
+internal fun LabNetStreamsDialog(net: FmNetOps) {
+    val hub = com.winlator.star.netdrive.NetHub
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val limit = com.winlator.star.netdrive.NetStream.limit(ctx)
+    LabDialog(L("Streamed games"), onDismiss = { net.streamsOpen = false }) {
+        LabPropLine(L("Used"), "${StringUtils.formatBytes(hub.streamsTotal)} / ${net.limitLabel(limit)}")
+        LabToolHeading(L("Size limit"))
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            net.limitChoices.forEach { b -> LabButton(if (b <= 0) L("None") else "${b shr 30} GB", primary = limit == b) { net.setLimit(b) } }
+        }
+        LabDialogText(L("Over the limit, the games played longest ago are emptied first."), muted = true)
+        hub.streams.forEach { info ->
+            val g = info.game
+            LabToolHeading("${g.name} · ${StringUtils.formatBytes(info.bytes)}")
+            com.winlator.star.netdrive.NetStream.Mode.values().forEach { m -> LabToolRow(L(m.label), selected = g.mode == m) { net.setStreamMode(g, m) } }
+            LabToolRow(L("Empty now")) { net.emptyStream(g) }
+            LabToolRow(L("Remove"), danger = true) { net.removeStreamReq = g }
+        }
+        if (hub.streams.isEmpty()) LabDialogText(L("No streamed games yet."), muted = true)
+        LabDialogButtons {
+            LabButton(L("Close")) { net.streamsOpen = false }
+            LabButton(L("Free up space"), primary = true) { net.freeUpStreams() }
+        }
+    }
+}
+
 /** Every network dialog FmNetOps can ask for, Lab-drawn. */
 @Composable
 internal fun LabNetDialogs(net: FmNetOps, containers: List<com.winlator.star.container.Container>, chooseFolder: (String, (java.io.File) -> Unit) -> Unit, clearSelections: () -> Unit) {
     net.addReq?.let { LabNetAddGameDialog(net, it, containers, chooseFolder) }
+    if (net.streamsOpen) LabNetStreamsDialog(net)
+    net.removeStreamReq?.let { g ->
+        SimpleActionSheet(
+            L("Remove \"%1\$s\"?", g.name),
+            listOf(
+                MenuAction(L("Remove"), { net.removeStream(g) }, danger = true),
+                MenuAction(L("Cancel"), { net.removeStreamReq = null }),
+            ),
+            onDismiss = { net.removeStreamReq = null },
+            message = L("Removes it from Games and deletes what it keeps on this device. Nothing on the network drive is touched."),
+        ) { it.run() }
+    }
     net.editReq?.let { d ->
         LabNetDriveDialog(d, net.editIsNew, net.testing, net.testError, onDismiss = { net.editReq = null; net.testError = null }) { drive, anyway -> net.submit(drive, anyway) }
     }
@@ -163,4 +207,4 @@ internal fun LabNetDialogs(net: FmNetOps, containers: List<com.winlator.star.con
 
 /** True while one of the network dialogs is up (Lab's page then leaves the controller focus alone). */
 internal fun netDialogOpen(net: FmNetOps): Boolean =
-    net.addReq != null || net.editReq != null || net.removeReq != null || net.newFolderIn != null || net.renameTarget != null || net.deleteTargets.isNotEmpty()
+    net.streamsOpen || net.removeStreamReq != null || net.addReq != null || net.editReq != null || net.removeReq != null || net.newFolderIn != null || net.renameTarget != null || net.deleteTargets.isNotEmpty()

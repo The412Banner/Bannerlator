@@ -66,6 +66,24 @@ object NetHub {
         copyJob?.cancel()
     }
 
+    /** A streamed game and the bytes its stand-in takes now. */
+    class StreamInfo(val game: NetStream.Game, val bytes: Long)
+    var streams by mutableStateOf<List<StreamInfo>>(emptyList())
+        private set
+    var streamsTotal by mutableStateOf(0L)
+        private set
+    private var streamsJob: Job? = null
+
+    /** Re-reads the streamed games and how much each keeps (a walk of their stand-ins, off the main thread). */
+    fun refreshStreams() {
+        if (!::app.isInitialized || streamsJob?.isActive == true) return
+        streamsJob = scope.launch {
+            val list = NetStream.games(app).map { StreamInfo(it, NetStream.cachedBytes(it)) }
+            streams = list
+            streamsTotal = list.sumOf { it.bytes }
+        }
+    }
+
     private var loaded = false
     private var lastScan = 0L
     private var scanJob: Job? = null
@@ -91,6 +109,7 @@ object NetHub {
         if (!::app.isInitialized) return
         NetEngine.refresh(app)
         if (!loaded) { saved = NetDriveStore.list(app); loaded = true }
+        refreshStreams()
         if (NetEngine.state != NetEngine.State.Installed) return
         checkReach()
         val now = System.currentTimeMillis()

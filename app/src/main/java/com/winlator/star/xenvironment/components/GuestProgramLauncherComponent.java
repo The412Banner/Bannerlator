@@ -909,6 +909,8 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             synchronized (lock) {
                 pid = -1;
             }
+            // A streamed network game set to "Stream only" is emptied again once it has closed.
+            if (shortcut != null) com.winlator.star.netdrive.NetStream.onGameExit(environment.getContext(), container, shortcut.path);
 
             if (terminationCallback != null)
                 terminationCallback.call(status);

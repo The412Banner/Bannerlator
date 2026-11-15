@@ -627,6 +627,14 @@ static int present(int h, off_t c, off_t ce) { return lseek(h, c, SEEK_HOLE) >= 
 
 #define WHOLE_KEY ((off_t)-1)
 
+/* Puts back the file's date after fetched data was written (Bannerlator's cleanup empties only files whose date is
+ * still the drive's; a file the game wrote to keeps its new date and is left alone). */
+static void keep_date(int h, const struct stat *before)
+{
+    struct timespec ts[2] = { { 0, UTIME_OMIT }, before->st_mtim };
+    futimens(h, ts);
+}
+
 /* Fetches chunk [c, ce) unless it is there already or another thread has it. */
 static int fill_chunk(const char *r, int h, dev_t dev, ino_t ino, off_t c, off_t ce, int background)
 {
@@ -635,7 +643,10 @@ static int fill_chunk(const char *r, int h, dev_t dev, ino_t ino, off_t c, off_t
         if (!claim(dev, ino, WHOLE_KEY)) continue;
         unclaim(dev, ino, WHOLE_KEY);
         if (!claim(dev, ino, c)) continue;
+        struct stat before;
+        int have = real.fstat(h, &before) == 0;
         int rc = present(h, c, ce) ? 0 : fetch(r, h, c, ce, background);
+        if (rc == 0 && have) keep_date(h, &before);
         unclaim(dev, ino, c);
         return rc;
     }
@@ -655,6 +666,8 @@ static int fill_whole(const char *r, int h, dev_t dev, ino_t ino, off_t size)
         enum { MAXR = 4096 };
         off_t (*ranges)[2] = malloc(sizeof(off_t[2]) * MAXR);
         int n = 0, rc = -1;
+        struct stat before;
+        int have = real.fstat(h, &before) == 0;
         if (ranges) {
             off_t pos = 0;
             while (pos < size && n < MAXR) {
@@ -666,6 +679,7 @@ static int fill_whole(const char *r, int h, dev_t dev, ino_t ino, off_t size)
                 pos = data;
             }
             rc = n ? fetch_ranges(r, h, ranges, n, (off_t)4 << 20, 0) : 0;
+            if (rc == 0 && n && have) keep_date(h, &before);
             free(ranges);
         }
         unclaim(dev, ino, WHOLE_KEY);

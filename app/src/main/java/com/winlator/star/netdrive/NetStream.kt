@@ -47,9 +47,24 @@ object NetStream {
             (name.startsWith("goggame-") && name.endsWith(".info") && e.size < 1L shl 20)
     }
 
-    /** One streamed game: where its stand-in is, and which folder of which drive it stands in for. */
-    class Game(val dir: File, val driveId: String, val remotePath: String) {
+    /** What a streamed game keeps on the device between sessions. */
+    enum class Mode(val key: String, val label: String) {
+        /** What it has loaded stays (up to the size limit; the games played longest ago are emptied first). */
+        KEEP("keep", "Keep what's loaded"),
+        /** Emptied again when the game closes: nothing stays between sessions. */
+        STREAM("stream", "Stream only"),
+        /** Everything fetched and kept; never emptied by the limit. */
+        FULL("full", "Keep a full copy");
+
+        companion object { fun of(key: String?) = values().firstOrNull { it.key == key } ?: KEEP }
+    }
+
+    /** One streamed game: where its stand-in is, which folder of which drive it stands in for, and how it is kept. */
+    class Game(val dir: File, val driveId: String, val remotePath: String, val mode: Mode = Mode.KEEP, val lastPlayed: Long = 0L) {
+        val name: String get() = dir.name
         fun toJson(): JSONObject = JSONObject().put("dir", dir.absolutePath).put("drive", driveId).put("path", remotePath)
+            .put("mode", mode.key).put("lastPlayed", lastPlayed)
+        fun with(mode: Mode = this.mode, lastPlayed: Long = this.lastPlayed) = Game(dir, driveId, remotePath, mode, lastPlayed)
     }
 
     /** Where libnetfs.so writes what the game is waiting for (NetStreamTag shows it). */
@@ -67,7 +82,9 @@ object NetStream {
         runCatching {
             val a = JSONArray(f.readText())
             (0 until a.length()).mapNotNull { i ->
-                a.optJSONObject(i)?.let { o -> Game(File(o.getString("dir")), o.getString("drive"), o.optString("path")) }
+                a.optJSONObject(i)?.let { o ->
+                    Game(File(o.getString("dir")), o.getString("drive"), o.optString("path"), Mode.of(o.optString("mode")), o.optLong("lastPlayed", 0L))
+                }
             }
         }.getOrDefault(emptyList())
     }
@@ -98,7 +115,7 @@ object NetStream {
      * Builds the stand-in of [remotePath] on [drive] in [dir] and registers it. [onProgress] gets a line and a
      * share (null = unknown). Throws with the reason when the drive can't be listed.
      */
-    suspend fun create(ctx: Context, drive: NetDrive, remotePath: String, dir: File, onProgress: (String, Float?) -> Unit) {
+    suspend fun create(ctx: Context, drive: NetDrive, remotePath: String, dir: File, mode: Mode, onProgress: (String, Float?) -> Unit) {
         val app = ctx.applicationContext
         onProgress("Listing the game's files", null)
         val all = NetFs.listAll(app, drive, remotePath)
@@ -143,7 +160,8 @@ object NetStream {
                 }
             }
         }
-        val game = Game(dir.canonicalFile, drive.id, remotePath)
+        val game = Game(dir.canonicalFile, drive.id, remotePath, mode)
+        writeManifest(app, game, all.filter { !it.isDir })
         saveGames(app, games(app).filter { it.dir != game.dir } + game)
         Log.i(TAG, "stand-in ready: ${dir.name}, ${all.size} entries, ${whole.size} files fetched whole")
     }
@@ -175,10 +193,164 @@ object NetStream {
             conf.writeText("port=$port\nprefix=$prefix\nauth=$auth\nstatus=${status.absolutePath}\n")
             conf.setReadable(false, false); conf.setReadable(true, true)
             Log.i(TAG, "streaming ${game.dir.name} from ${drive.name}")
+            update(app, game.with(lastPlayed = System.currentTimeMillis()))
+            // Over the limit: the other games played longest ago are emptied, off the launch thread.
+            Thread({ runCatching { enforceLimit(app, except = game.dir) } }, "netstream-limit").start()
             mapOf("BLNETFS_ROOT" to game.dir.absolutePath, "BLNETFS_CONF" to conf.absolutePath)
         } catch (t: Throwable) {
             Log.w(TAG, "stream setup failed: ${NetFs.scrub(t.message ?: t.toString())}")
             null
         }
+    }
+
+    // ── What stays on the device ──
+
+    private fun prefs(ctx: Context) = androidx.preference.PreferenceManager.getDefaultSharedPreferences(ctx.applicationContext)
+
+    /** The most all streamed games may keep, in bytes; 0 = no limit. */
+    fun limit(ctx: Context): Long = prefs(ctx).getLong("netStreamLimit", 20L shl 30)
+    fun setLimit(ctx: Context, bytes: Long) { prefs(ctx).edit().putLong("netStreamLimit", bytes).apply() }
+
+    private fun update(ctx: Context, game: Game) {
+        synchronized(lock) { saveGames(ctx, games(ctx).map { if (it.dir == game.dir) game else it }) }
+    }
+
+    fun setMode(ctx: Context, game: Game, mode: Mode) = update(ctx, games(ctx).firstOrNull { it.dir == game.dir }?.with(mode = mode) ?: game.with(mode = mode))
+
+    private fun manifestFile(ctx: Context, game: Game) = File(NetEngine.dir(ctx), "streams/" + game.dir.name + ".json")
+
+    /** Every file of the game as it came from the drive: its path, size and date (see [clear]). */
+    private fun writeManifest(ctx: Context, game: Game, files: List<NetFs.Entry>) {
+        val f = manifestFile(ctx, game).apply { parentFile?.mkdirs() }
+        val a = JSONArray()
+        files.forEach { a.put(JSONArray().put(it.path).put(it.size).put(it.modified)) }
+        f.writeText(a.toString())
+    }
+
+    private class Item(val path: String, val size: Long, val modified: Long)
+
+    private fun manifest(ctx: Context, game: Game): List<Item>? = runCatching {
+        val a = JSONArray(manifestFile(ctx, game).readText())
+        (0 until a.length()).map { i -> a.getJSONArray(i).let { Item(it.getString(0), it.getLong(1), it.getLong(2)) } }
+    }.getOrNull()
+
+    private fun allocated(f: File): Long = runCatching { android.system.Os.stat(f.path).st_blocks * 512 }.getOrDefault(0L)
+
+    /** Bytes the game's stand-in takes on the device now. */
+    fun cachedBytes(game: Game): Long {
+        var total = 0L
+        game.dir.walkTopDown().forEach { if (it.isFile) total += allocated(it) }
+        return total
+    }
+
+    /** Files Bannerlator itself reads (the exe checks, the name and icon): never emptied. */
+    private fun keptAlways(path: String): Boolean {
+        val name = path.substringAfterLast('/').lowercase()
+        return name.substringAfterLast('.', "") in PREFETCH_EXTS || name in PREFETCH_NAMES || (name.startsWith("goggame-") && name.endsWith(".info"))
+    }
+
+    /**
+     * Empties what the game has loaded: every file that is still exactly as it came from the drive (same size, same
+     * date; libnetfs.so keeps the date when it fills a file in) goes back to an empty stand-in. A file the game wrote
+     * to (a save or a setting kept in its folder) has another date and is left alone, and so are files it made.
+     * Returns the bytes freed. A game made by an older build has no file list and is left alone.
+     */
+    fun clear(ctx: Context, game: Game): Long {
+        val items = manifest(ctx, game) ?: return 0L
+        var freed = 0L
+        for (it in items) {
+            if (keptAlways(it.path)) continue
+            val f = File(game.dir, it.path)
+            if (!f.isFile || f.length() != it.size) continue
+            if (it.modified > 0 && kotlin.math.abs(f.lastModified() - it.modified) > 2_000) continue
+            val before = allocated(f)
+            if (before == 0L) continue
+            runCatching {
+                RandomAccessFile(f, "rw").use { r -> r.setLength(0); r.setLength(it.size) }
+                if (it.modified > 0) f.setLastModified(it.modified)
+                freed += before - allocated(f)
+            }
+        }
+        Log.i(TAG, "emptied ${game.name}: ${freed shr 20} MB freed")
+        return freed
+    }
+
+    /** Over the limit: empties games kept as "Keep what's loaded", the one played longest ago first, not [except]. */
+    fun enforceLimit(ctx: Context, except: File? = null) {
+        val max = limit(ctx)
+        if (max <= 0) return
+        val list = games(ctx)
+        var total = list.sumOf { cachedBytes(it) }
+        if (total <= max) return
+        for (g in list.filter { it.mode == Mode.KEEP && it.dir != except }.sortedBy { it.lastPlayed }) {
+            total -= clear(ctx, g)
+            if (total <= max) break
+        }
+    }
+
+    /** Empties every game that isn't kept as a full copy. */
+    fun freeUp(ctx: Context): Long = games(ctx).filter { it.mode != Mode.FULL }.sumOf { clear(ctx, it) }
+
+    /** Fetches every part of the game still missing ("Keep a full copy"); [onProgress] gets bytes done / to do. */
+    suspend fun fetchAll(ctx: Context, game: Game, onProgress: (Long, Long) -> Unit) {
+        val app = ctx.applicationContext
+        val drive = NetDriveStore.list(app).firstOrNull { it.id == game.driveId } ?: throw java.io.IOException("Its network drive was removed")
+        val items = manifest(app, game) ?: NetFs.listAll(app, drive, game.remotePath).filter { !it.isDir }.map { Item(it.path, it.size, it.modified) }
+        val missing = items.filter { val f = File(game.dir, it.path); f.isFile && f.length() == it.size && allocated(f) < it.size }
+        val total = missing.sumOf { it.size }.coerceAtLeast(1)
+        val done = java.util.concurrent.atomic.AtomicLong(0)
+        onProgress(0, total)
+        kotlinx.coroutines.coroutineScope {
+            val gate = kotlinx.coroutines.sync.Semaphore(PREFETCH_PARALLEL)
+            missing.map { it ->
+                launch {
+                    gate.acquire()
+                    try {
+                        val f = File(game.dir, it.path)
+                        f.delete()
+                        NetFs.transfer(app, NetFs.Side.Remote(drive, NetFs.join(game.remotePath, it.path)), NetFs.Side.Local(f), isDir = false, move = false) { _, _ -> }
+                        if (it.modified > 0) f.setLastModified(it.modified)
+                        onProgress(done.addAndGet(it.size), total)
+                    } finally {
+                        gate.release()
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Removes a streamed game: its stand-in, its file list and its Games entries (shortcuts whose exe is in the stand-in).
+     */
+    fun remove(ctx: Context, game: Game) {
+        val app = ctx.applicationContext
+        runCatching {
+            for (c in com.winlator.star.container.ContainerManager(app).containers) {
+                c.getDesktopDir().listFiles { f -> f.name.endsWith(".desktop") }?.forEach { d ->
+                    val sc = runCatching { com.winlator.star.container.Shortcut(c, d) }.getOrNull() ?: return@forEach
+                    val exe = runCatching { WinePath.resolveAndroidPath(c, sc.path) }.getOrNull() ?: return@forEach
+                    val p = runCatching { exe.canonicalPath }.getOrDefault(exe.absolutePath)
+                    if (p.startsWith(game.dir.absolutePath + "/")) d.delete()
+                }
+            }
+        }
+        game.dir.deleteRecursively()
+        manifestFile(app, game).delete()
+        synchronized(lock) { saveGames(app, games(app).filter { it.dir != game.dir }) }
+    }
+
+    /** The game behind a launch of [winPath] closed: a "Stream only" game is emptied again. */
+    @JvmStatic
+    fun onGameExit(ctx: Context, container: Container?, winPath: String?) {
+        if (container == null || winPath.isNullOrBlank()) return
+        val app = ctx.applicationContext
+        Thread({
+            runCatching {
+                val exe = WinePath.resolveAndroidPath(container, winPath) ?: return@runCatching
+                val game = gameOf(app, exe) ?: return@runCatching
+                statusFile(app).delete()
+                if (game.mode == Mode.STREAM) clear(app, game)
+            }
+        }, "netstream-exit").start()
     }
 }

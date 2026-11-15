@@ -1,5 +1,15 @@
 [
   {
+    "id": "2026-11-15T16-14-58-577016",
+    "created": "2026-11-15T16:14:58.967Z",
+    "reporter": "Ian Maj Bauman",
+    "device": "Ixsaomi pad 7",
+    "gpu": "Qualcomm Snapdragon 7+ Gen 3",
+    "game": "Contens (not a game)",
+    "symptom": "Other",
+    "logs": 3
+  },
+  {
     "id": "2026-11-12T23-44-14-89c161",
     "created": "2026-11-12T23:44:14.275Z",
     "reporter": "",

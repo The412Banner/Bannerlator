@@ -12,6 +12,123 @@
 - **CI:** build-artifacts 43676398104 (headSha e0baf52a asserted) — running.
 - **Open / next:** green CI → stage APK in /sdcard/Download with sha256 → ASK before install → device test on the FIT against the NAS (setup download, auto-find, browse, copy both ways, greyed when the NAS is unplugged, Lab + Classic). Known limits: copies stop if the file manager page is left (same as local copies); SFTP host keys not checked; mDNS/sweep only on Wi-Fi/Ethernet.
 - **Resume:** worktree /root/src/Bannerlator-wt/fm-network-drives, branch feat/fm-network-drives.
+## 2026-11-15 14:45 EST — feat/dd-driver-import MERGED into main (a8c7a987), NOT device-tested
+
+- **User:** "merge to main" (after "Not now" to installing the test APK). The user chose to merge before a device test; recorded here as their decision.
+- **Merge:** backup `refs/backup/20261115/main-before-dd-driver-import` = 6fab62da (pushed); `--no-ff` merge a8c7a987 (parents 6fab62da + 93a0b9e5); merged tree == branch tip; code == CI-tested 82d85c13 (only PROGRESS_LOG.md differs). No release workflow running.
+- **Proof level:** CI-green (43750239230, ×4); NOT device-tested. Main CI starts on this push.
+- **Open:** device test (DroidDeck list → download → picker Android only / both / Cancel; install from file `/sdcard/Download/DD-Turnip-v0.7.0.zip`; Lab + Classic; Linux runtime import of the DD zip; logcat FATAL check). Branch feat/dd-driver-import kept.
+
+## 2026-11-15 14:20 EST — feat/dd-driver-import CI GREEN, APK staged (branch, awaiting install go)
+
+- **Correction:** CI 43750095575 (361e72c6) cancelled by me before it finished: two Kotlin 2.0.21 compile risks in the new code (`catch (_: …)`, an early `return@key` in a composable). Fixed in 82d85c13.
+- **CI:** build-artifacts 43750239230, headSha 82d85c13, standard/antutu/ludashi/pubg all success; no compiler warnings in the changed files.
+- **Staged:** `/sdcard/Download/Bannerlator-dd-driver-import-82d85c13.apk` (pubg flavor = the FIT's com.tencent.ig), sha256 4ce4dffc… host == device. DD zip `/sdcard/Download/DD-Turnip-v0.7.0.zip` sha256 502ea8aa….
+- **Note:** the FIT now runs root-27's network-games test build 4bf309cf (not on main); this APK replaces it.
+- **Next:** user's yes → install → test plan in the previous entry.
+
+## 2026-11-15 13:50 EST — feat/dd-driver-import: DroidDeck drivers in the lists + Android/Linux pick (branch, CI next)
+
+- **Why:** user asked whether BL can use DroidDeck's drivers: DD-Turnip zips (android/ + linux/ + manifest.json) were refused ("No meta.json in the zip"). User: "android ticked by default, call it DroidDeck, build it".
+- **Built:** 3d1f5a2a — built-in driver source "DroidDeck" (Droid-Deck/Drivers releases, DD-Turnip-v*.zip); a manifest.json bundle asks which parts on every DriverInstaller.install (downloads + install from file, Classic + Lab: one host in MainActivity, Lab look in Lab), Android ticked, Linux not; Android → Graphics Driver list, Linux → Linux runtime drivers (same-name refused / replaced under the same id); AdrenoTools refuses glibc libraries; the Linux importer picks the glibc library out of several; the Wayland importer refuses bundles; per-URL records hold every part.
+- **Checked:** DD-Turnip-v0.7.0.zip sha256 OK, android .so has no "libc.so.6", linux .so has; FIT drivers (Banners-AIO r4, turnip-sdk36, Qualcomm v819) have none (glibc guard no false positive).
+- **Not run:** unit test DriverBundleTest (no CI step runs unit tests; no local SDK).
+- **Next:** CI build, stage APK, ask before install; device test: DroidDeck list → download → picker (Android only / both / Cancel), install from file, Lab + Classic, logcat FATAL check.
+- **Resume:** worktree /root/src/Bannerlator-wt/dd-driver-import, branch feat/dd-driver-import; DD zip in session scratchpad ddzip/.
+
+## 2026-11-15 00:27 EST — Streets of Rage Remake: controller confirmed (no code change)
+
+- **User:** "controller worked after setting it before launch" — the game's "DirectInput games can see the controller" switch on before launch (SDL 1.2 reads pads through winmm, which Wine builds on DirectInput). Closed.
+- **Idea (not started):** spot winmm/SDL 1.2 games (SDL.dll importing joyGetPosEx) and turn DirectInput on for them, or name the case in controller.txt.
+
+## 2026-11-15 00:24 EST — fix/wayland-desktop-clip MERGED into main (b543ec0e)
+
+- **User:** "merge it".
+- **Merge:** backup `refs/backup/20261115/main-before-wayland-desktop-clip` = 9270d6b4; `--no-ff` merge b543ec0e (parents 9270d6b4 + 2a30852d); tree == branch tip; code vs device-tested ac39da17: only PROGRESS_LOG.md differs. Main CI 43680928632.
+- **Streets of Rage Remake on the Wayland path:** full screen in every Fit mode (2ead3b84) and no console-window strip (b543ec0e), both device-proven on the Pocket FIT. Open: whether the controller works with DirectInput on (user to confirm); a Wine-side viewport reset in wayland_desktop_resize (would need a new Proton layer) not done.
+
+## 2026-11-15 00:22 EST — fix/wayland-desktop-clip DEVICE-PROVEN on the Pocket FIT (branch, awaiting the user)
+
+- **Run:** user, 00:20:35-00:21:20 EST, Streets of Rage Remake. Wayland log still shows the 640x480 resize being followed.
+- **Screenshots:** Fit (00:21:04) picture 240-1680 with plain black beyond, no console strip; Stretch (00:21:09) full screen; Pixel-perfect (00:21:14) 320-1600, no strip.
+- **Crash check:** crash buffer empty for the app; no new tombstone; exit EXIT_SELF code 0.
+- **Next:** merge to main on the user's go.
+
+## 2026-11-15 00:08 EST — fix/wayland-desktop-clip installed on the Pocket FIT (branch, device test next)
+
+- **CI:** compositor-only 43679223288 success; full APK 43679225801 success ×4 (ac39da17), no compositor.c warnings. Main CI 43679054889 (2ead3b84) success ×4.
+- **User:** "Yes, install now". Installed 00:08:17 EST, base.apk sha256 034000ee… == staged `/sdcard/Download/Bannerlator-wayland-desktop-clip-ac39da17.apk`.
+- **Test:** user launches Streets of Rage Remake, Fit + Pixel-perfect screenshots; pass = no strip past the picture's right edge, picture unchanged, 640x480 resize line still in the wayland log, no crash. Undo = the 6f7f0929 APK in Download (= main code).
+
+## 2026-11-15 00:05 EST — fix/wayland-desktop-clip: windows cut off at the desktop edge (branch, CI running)
+
+- **Why:** user "fix the console strip too": Streets of Rage Remake's console window (665x434) sticks out past its 640x480 desktop, a strip with title-bar buttons in the letterbox bars (Original/Fit/Pixel-perfect).
+- **Built:** ac39da17 — compositor.c `add_surface`: with a desktop, each draw is clipped to the scene (the desktop), the source rectangle cut by the same share; a window wholly outside is not drawn (its feedback is discarded like any surface outside the scene). Translucency is decided on the full size before the cut. layer_candidate is unaffected (it needs a draw that covers the whole scene uncut).
+- **CI:** compositor-only 43679223288, full APK 43679225801 (headSha ac39da17).
+- **Test plan:** stage pubg APK, ask before install, SorR in Fit + Pixel-perfect: strip gone, picture unchanged; crash check.
+
+## 2026-11-14 23:59 EST — fix/wayland-desktop-resize MERGED into main (2ead3b84)
+
+- **User:** "merge it and fix the console strip too".
+- **Merge:** backup `refs/backup/20261114/main-before-wayland-desktop-resize` = bbf21021; `--no-ff` merge 2ead3b84 (parents bbf21021 + 3baafd3e); tree == branch tip; code vs device-tested 6f7f0929: only PROGRESS_LOG.md differs. Main CI 43679054889.
+- **Next:** console-window strip (windows drawn outside the Windows desktop) on a new branch.
+
+## 2026-11-14 23:55 EST — fix/wayland-desktop-resize DEVICE-PROVEN on the Pocket FIT (branch, awaiting the user)
+
+- **Run:** user, 23:52:26-23:53:12 EST, Streets of Rage Remake, game resolution 1280x720 unchanged.
+- **Log:** `23:52:28.861 desktop resized to 640x480: old 1280x720 viewport dropped (it no longer fits the buffer)` then `desktop size 640x480`. Modes: Original/Fit 1440x1080 at 240,0; Stretch 1920x1080; Fill 1920x1440 at 0,-180; Pixel-perfect 1280x960 at 320,60. The 5 screenshots (23:52:48-23:53:06) show the same.
+- **Crash check:** crash buffer empty for the app; newest tombstone is from 11-13 (qcrosvm, unrelated); exit reason EXIT_SELF code 0.
+- **Leftover (pre-existing, cosmetic):** the game's console window (665x434) sticks out past the right edge of the 640x480 desktop, so a small strip with its title-bar buttons shows in the black bars (Original/Fit/Pixel-perfect). The compositor does not clip windows to the desktop; possible follow-up.
+- **Not tested:** other games that change resolution; X11 sessions are not touched by this change.
+- **Next:** merge to main on the user's go.
+
+## 2026-11-14 23:51 EST — fix/wayland-desktop-resize installed on the Pocket FIT (branch, device test next)
+
+- **User:** "Yes, install now". Installed 23:51:04 EST, base.apk sha256 2bfa4ab7… == staged APK. Replaced the parallel session's fm-network-drives e0baf52a (sessions told).
+- **Test:** the user launches Streets of Rage Remake with the game resolution left at 1280x720 (so the fix itself is tested) and tries Fit / Stretch. Pass = wayland log shows `resized to 640x480: old 1280x720 viewport dropped` and `desktop  size 640x480`, the picture fills the screen per mode, no crash in the crash buffer / exit reasons.
+- **Resume:** read the newest wayland log + screenshots; undo = reinstall e0baf52a or main.
+
+## 2026-11-14 23:48 EST — fix/wayland-desktop-resize: CI green, APK staged (branch, awaiting install go)
+
+- **CI:** compositor-only 43677919630 success; full APK 43677922141 success ×4 (headSha 6f7f0929). No compiler warnings from compositor.c (the 5 warnings are adrenotools).
+- **Staged:** `/sdcard/Download/Bannerlator-wayland-desktop-resize-6f7f0929.apk` (pubg), sha256 2bfa4ab7… host == device; its libbannerwayland.so carries the new "viewport dropped" log text.
+- **Device test:** not yet; install needs the user's yes (the FIT has a parallel session's fm-network-drives e0baf52a build).
+- **Correction:** the entry below was written at about 23:35 EST, not 23:55 (header fixed).
+
+## 2026-11-14 23:35 EST — fix/wayland-desktop-resize: desktop follows a game's display-mode change (branch, CI running)
+
+- **Why:** Streets of Rage Remake switches to 640x480; the picture stayed in the top-left of a 1280x720 scene and no Fit-to-screen mode could fill the screen (entries below).
+- **Cause (code-read):** on the virtual desktop explorer paints the desktop window through a wayland window surface, which sets a wp_viewport at the desktop size (wayland_surface_reconfigure_size + attach_shm). winewayland's `wayland_desktop_resize` later attaches a buffer of the new size without viewport requests, and the game window covers the desktop so it never repaints: the compositor keeps the old viewport, so `scene_size` stays 1280x720.
+- **Built:** 6f7f0929 — compositor.c `desktop_drop_stale_viewport`: a desktop commit that changes the buffer size without viewport requests, or whose source no longer fits the buffer, drops the viewport. Log: `desktop  resized to 640x480: old 1280x720 viewport dropped (...)`.
+- **CI:** compositor-only 43677919630, full APK 43677922141 (headSha 6f7f0929 both).
+- **Device test:** not yet. Plan: stage pubg APK, ask the user before install (FIT has a parallel session's fm-network-drives e0baf52a test build), launch SorR, check the two log lines + full-screen picture in each Fit mode, logcat FATAL check.
+- **Open:** a Wine-side fix (reset the viewport in wayland_desktop_resize) would need a new Proton layer; not done.
+- **Correction:** the "23:45 EST" entry below was written at about 23:28 EST.
+
+## 2026-11-14 23:35 EST — Streets of Rage Remake: in-game Fit to screen modes do not help (logs read, no code change)
+
+- **User:** 5 screenshots 23:22-23:31 (run 23:30:47-23:31:47): cycled Fit to screen Original/Fit/Stretch/Fill/Pixel-perfect.
+- **Log:** every mode is applied to a "1280x720 scene"; the game stays in that scene's top-left 640x480 corner (Pixel-perfect: scene 1280x720 at 320,180). Confirms the 23:45 diagnosis: the desktop never follows the game's 640x480 switch.
+- **Device:** game exited itself 23:31:47; a parallel session then installed feat/fm-network-drives e0baf52a (23:31:49). Workaround (Game resolution 640x480) still untried.
+
+## 2026-11-14 23:45 EST — Streets of Rage Remake: picture not full screen (logs read, no code change)
+
+- **User:** "why isn't it full screen?" (same game, Pocket FIT, main code).
+- **Seen:** the game switches to 640x480. Wine logs `winewayland: virtual desktop resized to 640x480` (run 23:20: 640x480 → 1280x720 → 640x480), but the compositor's wayland log never logs a new desktop size: the scene stays 1280x720 (container Game resolution), so the 640x480 game sits at 0,0 and is scaled 1.5x = 960x720 in the top-left (matches the 23:15:30 screenshot).
+- **Code read:** proton-wine proton_11.12.3-DroidDeck window.c `wayland_desktop_resize` attaches a fresh 640x480 shm buffer to the desktop surface; compositor.c `scene_size` takes the desktop's surface size (viewport destination/source first, else the buffer size). Where the new size is lost is not pinned yet.
+- **Workaround offered (untested):** this game's Game resolution = 640x480 (+ Fill the screen Fit/Stretch), relaunch.
+- **Controls:** the user turned the game's DirectInput switch on (inputType=12) and played 23:20-23:22; result not reported yet.
+- **Resume:** user's go to find + fix the desktop-resize path (compositor + winewayland), or result of the workaround.
+
+## 2026-11-14 23:25 EST — Streets of Rage Remake: controller not found (logs read, no code change)
+
+- **User:** controls did not work in Streets of Rage Remake (Pocket FIT, main code d2e208d3); screenshot 23:15:30 shows the game's "GAMEPAD 1 NOT FOUND".
+- **Cause:** the game (BennuGD + SDL 1.2, 32-bit) reads pads only through winmm `joyGetPosEx` (SDL.dll imports), and Wine's winmm joystick code sits on DirectInput8 (dlls/winmm/joystick.c). The game's own extras `exclusiveXInput=1 inputType=4` = "DirectInput games can see the controller" off → `Joysticks` = "disabled" hides the pad from winmm too. SDL 1.2 counts pads once at start, so the in-game switch (run 1, +35.6 s on, +55.3 s off) could not help.
+- **App side fine:** run 1 (22:46, 90 s) app sent 1889 updates, Wine read 367 frames; run 2 (23:15) same picture with DirectInput off throughout.
+- **Told the user:** turn the switch on in the game's settings (Controls › Controllers, Advanced) and relaunch. Nothing changed on the device.
+- **Seen, not looked at:** the picture only fills the top-left ~960x720 of the screen after the game switches to 640x480. The game's envVars carry a WINEDLLOVERRIDES list the game folder has no DLLs for (no effect).
+- **Idea:** controller.txt could name winmm games (SDL 1.2) in its XINPUT/DINPUT hints, or BL could turn DirectInput on for them.
+- **Resume:** user's result after the relaunch; if still not found, read the new controller.txt (DINPUT line should say "no entry") + wine_debug.log.
 
 ## 2026-11-14 14:15 EST — fix/lab-test-fixes MERGED into main (d33d619e)
 

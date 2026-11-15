@@ -1,0 +1,41 @@
+{
+  "id": "2026-11-15T16-14-58-577016",
+  "created": "2026-11-15T16:14:58.967Z",
+  "ip_hash": "ehXuEuXQAQ",
+  "fields": {
+    "reporter_name": "Ian Maj Bauman",
+    "device_model": "Ixsaomi pad 7",
+    "soc": "",
+    "gpu": "Qualcomm Snapdragon 7+ Gen 3",
+    "android": "Andrid 16 hypperOS 3",
+    "ram": "8GB",
+    "app_version": "3.2.0",
+    "install_source": "In-app updater",
+    "game_name": "Contens (not a game)",
+    "steam_appid": "",
+    "store": "",
+    "exe": "",
+    "symptom": "Other",
+    "when": "",
+    "graphics_driver": "",
+    "dx_wrapper": "",
+    "dxvk": "",
+    "proton": "",
+    "box64": "",
+    "resolution": "",
+    "framegen": "",
+    "repro": "",
+    "tried": "Linux Runtime warning persists on Xiaomi Pad 7 with HyperOS 3\n\nHello Bannerlator developer,\n\nI am experiencing an issue with the Linux Runtime warning in Bannerlator Bionic.\n\nThe application continues to display:\n\n\"Turn off child process restrictions first\"\n\nHowever, I have already enabled \"Disable child process restrictions\" in Android Developer options and restarted my tablet. The warning still appears.\n\nDevice information\n\n- Device: Xiaomi Pad 7\n- Operating system: Official stock Xiaomi HyperOS 3\n- HyperOS version: 3.0.304.0.WOZMIXM\n- Android version: 16\n- Bannerlator Bionic: 3.2.0\n- Previous version: 2.8.0\n- Linux Runtime: r9 (installed)\n\nSteps I have tried\n\n1. Enabled \"Disable child process restrictions\".\n2. Restarted the tablet.\n3. Opened Bannerlator again.\n4. Checked the Linux Runtime page.\n\nExpected result\n\nBannerlator should recognise that child process restrictions are disabled and remove the warning.\n\nActual result\n\nThe warning remains even after enabling the setting and restarting the device.\n\nCould this be a compatibility issue or a detection problem with the official Xiaomi HyperOS 3 firmware?\n\nPlease let me know how I can resolve this issue.\n\nThank you for your help!"
+  },
+  "logs": [
+    {
+      "name": "Screenshot_2026-11-15-17-05-23-305_com.winlator.banner.jpg"
+    },
+    {
+      "name": "Screenshot_2026-11-15-17-03-16-930_com.android.settings.jpg"
+    },
+    {
+      "name": "Screenshot_2026-11-15-17-01-10-746_com.winlator.banner.jpg"
+    }
+  ]
+}

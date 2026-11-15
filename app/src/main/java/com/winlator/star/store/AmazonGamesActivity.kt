@@ -567,7 +567,9 @@ class AmazonGamesActivity : ComponentActivity() {
         val installedDir = prefs!!.getString("amazon_dir_${game.productId}", null)
         if (installedDir == null) return
         lifecycleScope.launch(Dispatchers.IO) {
-            StoreInstallLocations.safeDelete(applicationContext, StoreInstallLocations.Store.AMAZON, File(installedDir))
+            val refused = StoreShortcutCleanup.keptBySafeDelete(applicationContext, StoreInstallLocations.Store.AMAZON, File(installedDir))
+            val gone = StoreInstallLocations.safeDelete(applicationContext, StoreInstallLocations.Store.AMAZON, File(installedDir))
+            StoreShortcutCleanup.afterDelete(applicationContext, Store.AMAZON, game.productId, installedDir, gone, refused)
             // Purge the FULL native install record via the canonical helper, and clear the DL
             // manager's registry/library row — so uninstalling from the list keeps the detail
             // page and the cross-store Download Manager in sync (previously it left the DL card

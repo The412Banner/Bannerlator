@@ -548,7 +548,9 @@ class EpicGameDetailActivity : ComponentActivity() {
                 val dir = prefs!!.getString("epic_dir_$an", null) ?: return@setPositiveButton
                 lifecycleScope.launch(Dispatchers.IO) {
                     // Only a game folder inside an Epic download location; a library root or a user's folder stays.
-                    StoreInstallLocations.safeDelete(applicationContext, StoreInstallLocations.Store.EPIC, File(dir))
+                    val refused = StoreShortcutCleanup.keptBySafeDelete(applicationContext, StoreInstallLocations.Store.EPIC, File(dir))
+                    val gone = StoreInstallLocations.safeDelete(applicationContext, StoreInstallLocations.Store.EPIC, File(dir))
+                    StoreShortcutCleanup.afterDelete(applicationContext, Store.EPIC, an, dir, gone, refused)
                     // Purge the FULL native install record via the canonical helper + clear the DL
                     // manager's registry/library row, so the store list and Download Manager stay in
                     // sync. Mirrors Amazon/GOG.

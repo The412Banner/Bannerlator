@@ -623,7 +623,7 @@ fun SteamLibraryTab(
         uninstallingName = game.name
         // Found in another Steam client's library: those files and that manifest are the client's.
         val imported = SteamLibraryImport.isImported(ctx, game.appId)
-        StoreUninstaller.run(
+        StoreUninstaller.runReporting(
             installDir = game.installDir,
             mark = {
                 if (imported) SteamLibraryImport.releaseImported(ctx, game.appId)
@@ -632,8 +632,10 @@ fun SteamLibraryTab(
             },
             // Another game (a demo / server sharing this installdir) still uses the folder: keep it.
             keepFolder = { imported || SteamInstallPaths.folderSharedWithOtherGame(ctx.applicationContext, java.io.File(game.installDir), game.appId) },
-        ) { ok ->
+        ) { ok, kept ->
             uninstallingName = null
+            // The game's shortcuts go with it, as from the Download Manager.
+            StoreShortcutCleanup.remove(ctx, com.winlator.star.store.download.Store.STEAM, game.appId.toString(), game.installDir, shortcutRemovalFor(ok, kept, imported))
             if (ok) StorefrontLog.i(StorefrontLog.LIBRARY, "uninstalled app ${game.appId} (${game.name})" + if (imported) ", files kept (another client's library)" else "")
             else StorefrontLog.w(StorefrontLog.LIBRARY, "uninstall INCOMPLETE for app ${game.appId} (${game.name}) — files remain at ${game.installDir}")
             onMessage(when {

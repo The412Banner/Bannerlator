@@ -1357,9 +1357,31 @@ static void surface_set_opaque(struct wl_client *c, struct wl_resource *r,
 static void surface_set_input(struct wl_client *c, struct wl_resource *r,
                               struct wl_resource *region) {}
 
+/* The Windows virtual desktop (banner_desktop_v1) sets the scene size. Wine paints the desktop window
+ * through a wp_viewport (source and destination at the desktop size), but when a game changes the
+ * display mode, winewayland's wayland_desktop_resize attaches a buffer of the new size and leaves the
+ * viewport alone. The old viewport then holds the scene at the old size: a 640x480 game sits in the
+ * top-left of a 1280x720 scene, and every Fit-to-screen mode scales that scene. A desktop commit that
+ * changes the buffer size without viewport requests, or whose viewport source no longer fits the
+ * buffer (out_of_buffer in the protocol), drops the viewport; the next desktop paint sets a new one. */
+static void desktop_drop_stale_viewport(struct surface *s, int viewport_req, int old_w, int old_h) {
+    if ((!s->src_set && !s->dst_set) || s->buf_w <= 0 || s->buf_h <= 0) return;
+    int resized = !viewport_req && old_w > 0 && (s->buf_w != old_w || s->buf_h != old_h);
+    int out_of_buffer = s->src_set && (s->src[0] + s->src[2] > s->buf_w + 0.5f ||
+                                       s->src[1] + s->src[3] > s->buf_h + 0.5f);
+    if (!resized && !out_of_buffer) return;
+    int vw, vh;
+    surface_size(s, &vw, &vh);
+    s->src_set = s->dst_set = 0;
+    banner_log("desktop", "resized to %dx%d: old %dx%d viewport dropped (%s)", s->buf_w, s->buf_h, vw, vh,
+               out_of_buffer ? "it no longer fits the buffer" : "new size, no new viewport");
+}
+
 static void surface_commit(struct wl_client *c, struct wl_resource *r) {
     struct surface *s = wl_resource_get_user_data(r);
     struct surface *child;
+    const int viewport_req = s->pending_src_set || s->pending_dst_set;
+    const int old_buf_w = s->buf_w, old_buf_h = s->buf_h;
 
     if (s->pending_src_set) {
         s->src_set = s->pending_src[2] > 0;
@@ -1410,6 +1432,7 @@ static void surface_commit(struct wl_client *c, struct wl_resource *r) {
             if (buffer) wl_buffer_send_release(buffer);
         }
     }
+    if (s->role == ROLE_DESKTOP) desktop_drop_stale_viewport(s, viewport_req, old_buf_w, old_buf_h);
 
     /* Subsurface positions are applied when the parent commits. */
     wl_list_for_each(child, &s->children, child_link) {

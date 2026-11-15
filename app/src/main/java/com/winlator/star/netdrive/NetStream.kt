@@ -29,17 +29,23 @@ object NetStream {
     /**
      * Fetched whole when the stand-in is made, because Bannerlator itself reads them (the exe's name and icon, the
      * checks before a launch): the game's exes and dlls, and the small files that say which game it is. Not the
-     * installers under redist folders. Everything else streams while playing (11-15: fetching every file up to
-     * 4 MB took Bayonetta 709 files / 544 MB, one at a time, which looked like a copy).
+     * installers under redist folders, but their install scripts (*.vdf), which InstallScriptRedists reads before a
+     * launch to install the game's runtimes (11-15 GTA V: read empty under _CommonRedist). Everything else streams
+     * while playing (11-15: fetching every file up to 4 MB took Bayonetta 709 files / 544 MB, one at a time).
      */
     private val PREFETCH_EXTS = setOf("exe", "dll")
     private val PREFETCH_NAMES = setOf("steam_appid.txt", "microsoftgame.config", "appxmanifest.xml")
     private val SKIP_DIRS = setOf("_commonredist", "commonredist", "redist", "redistributable", "redistributables",
         "directx", "dotnet", "dotnetfx", "vcredist", "vc_redist", "prerequisites", "prereq", "installer", "installers", "__installer")
     private const val PREFETCH_PARALLEL = 4
+    /** InstallScriptRedists reads *.vdf up to this size. */
+    private const val SCRIPT_MAX = 512L * 1024
+
+    private fun isScript(name: String) = name.endsWith(".vdf")
 
     private fun prefetchable(e: NetFs.Entry): Boolean {
         if (e.isDir || e.size <= 0) return false
+        if (isScript(e.name.lowercase()) && e.size <= SCRIPT_MAX) return true
         val dirs = e.path.split('/').dropLast(1).map { it.lowercase() }
         if (dirs.any { it in SKIP_DIRS }) return false
         val name = e.name.lowercase()
@@ -246,7 +252,8 @@ object NetStream {
     /** Files Bannerlator itself reads (the exe checks, the name and icon): never emptied. */
     private fun keptAlways(path: String): Boolean {
         val name = path.substringAfterLast('/').lowercase()
-        return name.substringAfterLast('.', "") in PREFETCH_EXTS || name in PREFETCH_NAMES || (name.startsWith("goggame-") && name.endsWith(".info"))
+        return name.substringAfterLast('.', "") in PREFETCH_EXTS || name in PREFETCH_NAMES || isScript(name) ||
+            (name.startsWith("goggame-") && name.endsWith(".info"))
     }
 
     /**

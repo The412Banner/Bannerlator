@@ -1,5 +1,15 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 23:55 EST — fix/wayland-desktop-resize: desktop follows a game's display-mode change (branch, CI running)
+
+- **Why:** Streets of Rage Remake switches to 640x480; the picture stayed in the top-left of a 1280x720 scene and no Fit-to-screen mode could fill the screen (entries below).
+- **Cause (code-read):** on the virtual desktop explorer paints the desktop window through a wayland window surface, which sets a wp_viewport at the desktop size (wayland_surface_reconfigure_size + attach_shm). winewayland's `wayland_desktop_resize` later attaches a buffer of the new size without viewport requests, and the game window covers the desktop so it never repaints: the compositor keeps the old viewport, so `scene_size` stays 1280x720.
+- **Built:** 6f7f0929 — compositor.c `desktop_drop_stale_viewport`: a desktop commit that changes the buffer size without viewport requests, or whose source no longer fits the buffer, drops the viewport. Log: `desktop  resized to 640x480: old 1280x720 viewport dropped (...)`.
+- **CI:** compositor-only 43677919630, full APK 43677922141 (headSha 6f7f0929 both).
+- **Device test:** not yet. Plan: stage pubg APK, ask the user before install (FIT has a parallel session's fm-network-drives e0baf52a test build), launch SorR, check the two log lines + full-screen picture in each Fit mode, logcat FATAL check.
+- **Open:** a Wine-side fix (reset the viewport in wayland_desktop_resize) would need a new Proton layer; not done.
+- **Correction:** the "23:45 EST" entry below was written at about 23:28 EST.
+
 ## 2026-11-14 23:35 EST — Streets of Rage Remake: in-game Fit to screen modes do not help (logs read, no code change)
 
 - **User:** 5 screenshots 23:22-23:31 (run 23:30:47-23:31:47): cycled Fit to screen Original/Fit/Stretch/Fill/Pixel-perfect.

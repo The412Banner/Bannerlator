@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 00:27 EST — Streets of Rage Remake: controller confirmed (no code change)
+
+- **User:** "controller worked after setting it before launch" — the game's "DirectInput games can see the controller" switch on before launch (SDL 1.2 reads pads through winmm, which Wine builds on DirectInput). Closed.
+- **Idea (not started):** spot winmm/SDL 1.2 games (SDL.dll importing joyGetPosEx) and turn DirectInput on for them, or name the case in controller.txt.
+
 ## 2026-11-15 00:24 EST — fix/wayland-desktop-clip MERGED into main (b543ec0e)
 
 - **User:** "merge it".

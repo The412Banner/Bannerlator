@@ -42,6 +42,30 @@
 - **CI:** build-artifacts 43676398104 (headSha e0baf52a asserted) — running.
 - **Open / next:** green CI → stage APK in /sdcard/Download with sha256 → ASK before install → device test on the FIT against the NAS (setup download, auto-find, browse, copy both ways, greyed when the NAS is unplugged, Lab + Classic). Known limits: copies stop if the file manager page is left (same as local copies); SFTP host keys not checked; mDNS/sweep only on Wi-Fi/Ethernet.
 - **Resume:** worktree /root/src/Bannerlator-wt/fm-network-drives, branch feat/fm-network-drives.
+## 2026-11-15 14:45 EST — feat/dd-driver-import MERGED into main (a8c7a987), NOT device-tested
+
+- **User:** "merge to main" (after "Not now" to installing the test APK). The user chose to merge before a device test; recorded here as their decision.
+- **Merge:** backup `refs/backup/20261115/main-before-dd-driver-import` = 6fab62da (pushed); `--no-ff` merge a8c7a987 (parents 6fab62da + 93a0b9e5); merged tree == branch tip; code == CI-tested 82d85c13 (only PROGRESS_LOG.md differs). No release workflow running.
+- **Proof level:** CI-green (43750239230, ×4); NOT device-tested. Main CI starts on this push.
+- **Open:** device test (DroidDeck list → download → picker Android only / both / Cancel; install from file `/sdcard/Download/DD-Turnip-v0.7.0.zip`; Lab + Classic; Linux runtime import of the DD zip; logcat FATAL check). Branch feat/dd-driver-import kept.
+
+## 2026-11-15 14:20 EST — feat/dd-driver-import CI GREEN, APK staged (branch, awaiting install go)
+
+- **Correction:** CI 43750095575 (361e72c6) cancelled by me before it finished: two Kotlin 2.0.21 compile risks in the new code (`catch (_: …)`, an early `return@key` in a composable). Fixed in 82d85c13.
+- **CI:** build-artifacts 43750239230, headSha 82d85c13, standard/antutu/ludashi/pubg all success; no compiler warnings in the changed files.
+- **Staged:** `/sdcard/Download/Bannerlator-dd-driver-import-82d85c13.apk` (pubg flavor = the FIT's com.tencent.ig), sha256 4ce4dffc… host == device. DD zip `/sdcard/Download/DD-Turnip-v0.7.0.zip` sha256 502ea8aa….
+- **Note:** the FIT now runs root-27's network-games test build 4bf309cf (not on main); this APK replaces it.
+- **Next:** user's yes → install → test plan in the previous entry.
+
+## 2026-11-15 13:50 EST — feat/dd-driver-import: DroidDeck drivers in the lists + Android/Linux pick (branch, CI next)
+
+- **Why:** user asked whether BL can use DroidDeck's drivers: DD-Turnip zips (android/ + linux/ + manifest.json) were refused ("No meta.json in the zip"). User: "android ticked by default, call it DroidDeck, build it".
+- **Built:** 3d1f5a2a — built-in driver source "DroidDeck" (Droid-Deck/Drivers releases, DD-Turnip-v*.zip); a manifest.json bundle asks which parts on every DriverInstaller.install (downloads + install from file, Classic + Lab: one host in MainActivity, Lab look in Lab), Android ticked, Linux not; Android → Graphics Driver list, Linux → Linux runtime drivers (same-name refused / replaced under the same id); AdrenoTools refuses glibc libraries; the Linux importer picks the glibc library out of several; the Wayland importer refuses bundles; per-URL records hold every part.
+- **Checked:** DD-Turnip-v0.7.0.zip sha256 OK, android .so has no "libc.so.6", linux .so has; FIT drivers (Banners-AIO r4, turnip-sdk36, Qualcomm v819) have none (glibc guard no false positive).
+- **Not run:** unit test DriverBundleTest (no CI step runs unit tests; no local SDK).
+- **Next:** CI build, stage APK, ask before install; device test: DroidDeck list → download → picker (Android only / both / Cancel), install from file, Lab + Classic, logcat FATAL check.
+- **Resume:** worktree /root/src/Bannerlator-wt/dd-driver-import, branch feat/dd-driver-import; DD zip in session scratchpad ddzip/.
+
 ## 2026-11-15 00:27 EST — Streets of Rage Remake: controller confirmed (no code change)
 
 - **User:** "controller worked after setting it before launch" — the game's "DirectInput games can see the controller" switch on before launch (SDL 1.2 reads pads through winmm, which Wine builds on DirectInput). Closed.

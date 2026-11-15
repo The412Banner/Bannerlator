@@ -375,7 +375,7 @@ object ContentsInstaller {
      */
     private fun driverOutcome(st: ContentDownloadState, ok: Boolean, driver: DriverInstaller.Result?): ContentDownloadState =
         if (ok) st.copy(phase = ContentDownloadPhase.DONE, fraction = 1f,
-            note = driver?.takeIf { it.place != DriverInstaller.Place.ANDROID }?.let { DriverInstaller.message(it) })
+            note = driver?.takeIf { it.place != DriverInstaller.Place.ANDROID || it.more.isNotEmpty() }?.let { DriverInstaller.message(it) })
         else st.copy(phase = ContentDownloadPhase.ERROR,
             error = driver?.let { DriverInstaller.message(it) } ?: "Install failed.",
             replaceable = driver?.sameName == true)

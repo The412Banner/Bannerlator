@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 13:50 EST — feat/dd-driver-import: DroidDeck drivers in the lists + Android/Linux pick (branch, CI next)
+
+- **Why:** user asked whether BL can use DroidDeck's drivers: DD-Turnip zips (android/ + linux/ + manifest.json) were refused ("No meta.json in the zip"). User: "android ticked by default, call it DroidDeck, build it".
+- **Built:** 3d1f5a2a — built-in driver source "DroidDeck" (Droid-Deck/Drivers releases, DD-Turnip-v*.zip); a manifest.json bundle asks which parts on every DriverInstaller.install (downloads + install from file, Classic + Lab: one host in MainActivity, Lab look in Lab), Android ticked, Linux not; Android → Graphics Driver list, Linux → Linux runtime drivers (same-name refused / replaced under the same id); AdrenoTools refuses glibc libraries; the Linux importer picks the glibc library out of several; the Wayland importer refuses bundles; per-URL records hold every part.
+- **Checked:** DD-Turnip-v0.7.0.zip sha256 OK, android .so has no "libc.so.6", linux .so has; FIT drivers (Banners-AIO r4, turnip-sdk36, Qualcomm v819) have none (glibc guard no false positive).
+- **Not run:** unit test DriverBundleTest (no CI step runs unit tests; no local SDK).
+- **Next:** CI build, stage APK, ask before install; device test: DroidDeck list → download → picker (Android only / both / Cancel), install from file, Lab + Classic, logcat FATAL check.
+- **Resume:** worktree /root/src/Bannerlator-wt/dd-driver-import, branch feat/dd-driver-import; DD zip in session scratchpad ddzip/.
+
 ## 2026-11-15 00:27 EST — Streets of Rage Remake: controller confirmed (no code change)
 
 - **User:** "controller worked after setting it before launch" — the game's "DirectInput games can see the controller" switch on before launch (SDL 1.2 reads pads through winmm, which Wine builds on DirectInput). Closed.

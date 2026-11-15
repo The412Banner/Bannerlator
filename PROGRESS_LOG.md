@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 14:20 EST — feat/dd-driver-import CI GREEN, APK staged (branch, awaiting install go)
+
+- **Correction:** CI 43750095575 (361e72c6) cancelled by me before it finished: two Kotlin 2.0.21 compile risks in the new code (`catch (_: …)`, an early `return@key` in a composable). Fixed in 82d85c13.
+- **CI:** build-artifacts 43750239230, headSha 82d85c13, standard/antutu/ludashi/pubg all success; no compiler warnings in the changed files.
+- **Staged:** `/sdcard/Download/Bannerlator-dd-driver-import-82d85c13.apk` (pubg flavor = the FIT's com.tencent.ig), sha256 4ce4dffc… host == device. DD zip `/sdcard/Download/DD-Turnip-v0.7.0.zip` sha256 502ea8aa….
+- **Note:** the FIT now runs root-27's network-games test build 4bf309cf (not on main); this APK replaces it.
+- **Next:** user's yes → install → test plan in the previous entry.
+
 ## 2026-11-15 13:50 EST — feat/dd-driver-import: DroidDeck drivers in the lists + Android/Linux pick (branch, CI next)
 
 - **Why:** user asked whether BL can use DroidDeck's drivers: DD-Turnip zips (android/ + linux/ + manifest.json) were refused ("No meta.json in the zip"). User: "android ticked by default, call it DroidDeck, build it".

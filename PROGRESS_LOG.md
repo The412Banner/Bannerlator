@@ -1,5 +1,16 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 17:15 EST — feat/lab-start-screen-home-row MERGED into main
+- User: "works, merge it to main" (after installing c81d9869 on the FIT, 17:07 EST).
+- What: Lab "Open the app on" offers Home / Library / Containers and opens that page ("games" = Library, "home" or never set = Home); Home's library row starts at the game played last.
+- Merge: backup refs/backup/20261115/main-before-lab-start-screen-home-row = 4b5ffbfd; --no-ff; merged code == c81d9869 (CI 43766218001 green ×4).
+
+## 2026-11-15 17:20 EST — feat/lab-start-screen-home-row: Lab start page choice + Home row starts at the latest game (branch, CI running)
+- Why: user 11-15 (screenshots 164804/164811): set to "Games" the app opened Home; wants Lab options Home / Library / Containers that open those pages; Home's Library row always showed the far end ("Add a game") instead of the latest game.
+- Found: AppSettingsRegistry "app.general.landing" (Games/Containers/Big Picture, hint "In the Deck interface, Games and Big Picture both open on Home"); MainActivity → Screen.Games.route → DeckShell keeps Deck home for Games. Home row LazyRow had no state: the list arrives after the page opens and the row keeps its only item ("Add a game") in view.
+- Built: c81d9869 — labDefs override labLanding() (Home "home" / Library "games" / Containers "containers", no hint, never-set = Home); MainActivity: Lab + "games" → LabRoutes.LIBRARY; Classic shell sanitises lab_ routes; Classic radio treats "home" as games; LabHome row rememberLazyListState + scrollToItem(0) when the list changes.
+- CI: 43766218001. Not device-tested.
+
 ## 2026-11-15 17:07 EST — feat/device-info-popup: fix for the empty pop-up (branch, CI next)
 
 - **Device test (user, screenshots 17:04:28 portrait / 17:04:57 landscape):** tapping "Pocket FIT" opens the pop-up (title, ✕, Copy) but NO sections. User: "I see no info".

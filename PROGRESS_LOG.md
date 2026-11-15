@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 17:03 EST — feat/device-info-popup CI GREEN, installing on the FIT (user: "install when done")
+
+- **CI:** build-artifacts 43765983107, headSha c0989e10, pubg/standard/ludashi/antutu success; no compiler warnings in the changed files; lib/arm64-v8a/libdeviceinfo.so (8904 B) in the APK.
+- **Staged:** `/sdcard/Download/Bannerlator-device-info-popup-c0989e10.apk` (pubg), sha256 b6b9dfad… host == device.
+- **Before install:** FIT ran root-27's 3ded5770 (contained in this build); Termux in front, Bannerlator not on screen. Peers told.
+- **Resume:** after install → user taps the device name (landscape top line / portrait drawer); check every section, Copy, ✕ / B, logcat FATAL.
+
 ## 2026-11-15 16:51 EST — feat/device-info-popup: tap the device's name for device details (branch, CI next)
 
 - **Why:** user (screenshots 16:26 / 16:26 / 16:27): tap the device name at the top (Lab landscape top line, Lab portrait drawer) to open a pop-up with all the device's information, like DroidDeck's GPU card details. User: "build it on a new branch off main".

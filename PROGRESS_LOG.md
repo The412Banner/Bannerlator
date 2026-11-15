@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 15:25 EST — feat/fm-network-drives MERGED into main (a27b69bd)
+- What: Network drives in the file manager — rclone engine downloaded from BFE's release, auto-search of the home network (mDNS + port sweep, open shares listed), add/edit drives (SMB/SFTP/WebDAV/FTP, logins kept encrypted), browse, copy both ways, rename/delete/new folder; Add to Games by copying a game folder from a drive (Copy to shown first and remembered; game root found from an exe several folders deep); a second copy of a game is named "Name (2)".
+- Merge: backup refs/backup/20261115/main-before-fm-network-drives = 887201c6; --no-ff; merged tree == feat/fm-network-drives (CI 43756467755 green ×4 on 00f79eac + a log commit).
+- Device proof: browse + SFTP login + Add to Games copy used by the user on test builds 11-14/15 (user: "we know nas copy works"); this exact build not installed.
+- Not in main: streaming games from a drive (feat/network-games-spike, continues as a test branch).
+
 ## 2026-11-15 15:20 EST — feat/fm-network-drives: the NAS part, ready to merge on its own (branch, CI running)
 - Why: user 11-15: merge "add NAS, browse and copy games to device from NAS" into main; streaming continues separately on feat/network-games-spike.
 - Built: backup refs/backup/20261115/feat-fm-network-drives-before-main-merge-887201c6 = 6f947bf2; merged main 887201c6 (ff236200; only PROGRESS_LOG conflicted, both kept; main's files identical); cherry-picked "Name (2)" for a second copy (1c14bcc6 = b760d5a4); Copy to first + last place remembered (00f79eac = the copy half of 91d807bc). No streaming code (no NetStream/libnetfs/launcher changes).

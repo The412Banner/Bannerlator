@@ -106,6 +106,12 @@ object GameFolderScanner {
         }
     }
 
+    /** [folder] as ONE game (its subfolders are part of it, unlike [scan]): its best exe, or null when it has none. */
+    fun gameIn(folder: File, existingExePaths: Set<String> = emptySet()): Candidate? =
+        if (!folder.isDirectory) null else runCatching { candidateFor(folder, existingExePaths) }
+            .onFailure { Log.w(TAG, "scan failed for ${folder.name}", it) }
+            .getOrNull()
+
     private fun candidateFor(folder: File, existingExePaths: Set<String>): Candidate? {
         val declared = declaredExes(folder).map { canonical(it) }.toSet()
         val scored = collectExes(folder)

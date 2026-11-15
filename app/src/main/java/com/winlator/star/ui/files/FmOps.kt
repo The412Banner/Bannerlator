@@ -103,6 +103,9 @@ internal class FmOps(
 
     fun toast(msg: String) = Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
 
+    /** The containers right now (games are added to one of them). */
+    fun containerList(): List<Container> = containers()
+
     /** Runs [block] as the visible operation (label + progress + cancel), one at a time. */
     fun runOp(label: String, block: suspend () -> Unit) {
         if (opJob?.isActive == true) { toast("Another operation is still running"); return }

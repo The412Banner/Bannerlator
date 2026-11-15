@@ -1,5 +1,6 @@
 package com.winlator.star.ui.files
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +16,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -166,9 +168,73 @@ internal fun netProps(item: FmItem.Net): List<Pair<String, String>> = buildList 
     add("Modified" to fmDateTime(item.modified))
 }
 
-/** Classic's network dialogs (form, remove, new folder, rename, delete), drawn from [FmNetOps]'s state. */
+/** The size line of the Add to Games dialog. */
+internal fun addSizeText(size: Long?): String = when {
+    size == null -> "Measuring…"
+    size < 0 -> "Size unknown"
+    else -> StringUtils.formatBytes(size)
+}
+
+/** Classic's Add to Games: which folder is the game, where it is copied to, which container gets it. */
 @Composable
-internal fun FmNetDialogs(net: FmNetOps, clearSelections: () -> Unit) {
+internal fun NetAddGameDialog(net: FmNetOps, req: FmNetOps.AddReq, containers: List<com.winlator.star.container.Container>, chooseFolder: (String, (java.io.File) -> Unit) -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    val targets = remember { net.addTargets() }
+    @Composable
+    fun Choice(selected: Boolean, text: String, sub: String? = null, onClick: () -> Unit) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 4.dp)) {
+            RadioButton(selected = selected, onClick = onClick)
+            Column(Modifier.weight(1f)) {
+                Text(text, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (sub != null) Text(sub, color = cs.onSurfaceVariant, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+    @Composable
+    fun Heading(text: String) = Text(text, color = cs.primary, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp, bottom = 2.dp))
+    OutlinedAlertDialog(
+        onDismissRequest = { net.addReq = null },
+        title = { Text("Add to Games") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Heading("Game folder")
+                if (req.levels.size > 1) {
+                    req.levels.forEach { lv ->
+                        Choice(req.level == lv, com.winlator.star.netdrive.NetFs.nameOf(lv).ifEmpty { req.drive.name }, lv.ifEmpty { req.drive.name }) {
+                            if (req.level != lv) { req.level = lv; req.measure() }
+                        }
+                    }
+                } else Text(req.name, fontSize = 14.sp)
+                Text(addSizeText(req.size), color = cs.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+                Heading("Copy to")
+                targets.forEach { (label, dir) ->
+                    Choice(req.target == dir, "$label · Winlator/Games", "${StringUtils.formatBytes(net.freeSpace(dir))} free") { req.target = dir }
+                }
+                val custom = req.target?.takeIf { t -> targets.none { it.second == t } }
+                if (custom != null) Choice(true, custom.name.ifBlank { custom.absolutePath }, custom.absolutePath) { }
+                TextButton(onClick = { chooseFolder("Copy the game to") { req.target = it } }) { Text("Choose a folder…") }
+                if (containers.size > 1) {
+                    Heading("Container")
+                    containers.forEach { c -> Choice(req.container == c, c.name) { req.container = c } }
+                }
+                val t = req.target
+                val sz = req.size
+                if (t != null) {
+                    Text("${t.absolutePath}/${req.name}", color = cs.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                    if (sz != null && sz > 0 && sz > net.freeSpace(t)) Text("Not enough free space there", color = cs.error, fontSize = 13.sp)
+                }
+                if (containers.isEmpty()) Text("No container yet: create one first", color = cs.error, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+            }
+        },
+        confirmButton = { TextButton(onClick = { net.confirmAdd(req) }, enabled = req.target != null && req.container != null) { Text("Copy and add") } },
+        dismissButton = { TextButton(onClick = { net.addReq = null }) { Text("Cancel") } },
+    )
+}
+
+/** Classic's network dialogs (form, remove, new folder, rename, delete, add to Games), drawn from [FmNetOps]'s state. */
+@Composable
+internal fun FmNetDialogs(net: FmNetOps, containers: List<com.winlator.star.container.Container>, chooseFolder: (String, (java.io.File) -> Unit) -> Unit, clearSelections: () -> Unit) {
+    net.addReq?.let { NetAddGameDialog(net, it, containers, chooseFolder) }
     net.editReq?.let { d ->
         NetDriveDialog(d, net.editIsNew, net.testing, net.testError, onDismiss = { net.editReq = null; net.testError = null }) { drive, anyway -> net.submit(drive, anyway) }
     }

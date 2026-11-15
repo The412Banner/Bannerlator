@@ -349,7 +349,7 @@ fun FileManagerRoot(
         }
     }
     sortFor?.let { p -> SortDialog(p.sort, { sortFor = null }) { s -> sortFor = null; panes.forEach { it.applySort(s) } } }
-    FmNetDialogs(ops.net) { panes.forEach { it.clearSelection() } }
+    FmNetDialogs(ops.net, containers, ::chooseFolder) { panes.forEach { it.clearSelection() } }
     FmNetWatcher(active = pick == null && panes.any { it.loc == FmLoc.Home }, tick = storageTick)
     conflict?.let { (name, isDir, batch) ->
         ConflictDialog(name, isDir, batch) { choice, all -> ops.answerConflict(choice, all) }
@@ -590,6 +590,17 @@ fun FileManagerRoot(
                     actionLabel = "Cancel",
                     onAction = { opJob?.cancel() },
                     progress = opProgress,
+                    showProgress = true,
+                )
+            }
+            // A game being copied from a network drive ("Add to Games"): runs on when this page is left.
+            com.winlator.star.netdrive.NetHub.copying?.let { c ->
+                FmCapsule(
+                    icon = Icons.Filled.DriveFileMove,
+                    text = c.label + (c.progress?.let { "  ${(it * 100).toInt()}%" } ?: ""),
+                    actionLabel = "Cancel",
+                    onAction = { com.winlator.star.netdrive.NetHub.cancelGameCopy() },
+                    progress = c.progress,
                     showProgress = true,
                 )
             }

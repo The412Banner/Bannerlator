@@ -39,6 +39,33 @@ object NetHub {
     /** Saved drive id -> reachable; missing = being checked. */
     val reach = mutableStateMapOf<String, Boolean>()
 
+    /** A game being copied from a drive to this device ("Add to Games"); null when none. */
+    class GameCopy(val name: String) {
+        var label by mutableStateOf("")
+        var progress by mutableStateOf<Float?>(null)
+    }
+    var copying by mutableStateOf<GameCopy?>(null)
+        private set
+    private var copyJob: Job? = null
+
+    /**
+     * Runs [block] as THE game copy, in the app's scope rather than a screen's, so leaving the file manager doesn't
+     * stop it. One at a time: false when another is running.
+     */
+    fun startGameCopy(name: String, block: suspend (GameCopy) -> Unit): Boolean {
+        if (copyJob?.isActive == true) return false
+        val c = GameCopy(name)
+        copying = c
+        copyJob = scope.launch {
+            try { block(c) } finally { copying = null }
+        }
+        return true
+    }
+
+    fun cancelGameCopy() {
+        copyJob?.cancel()
+    }
+
     private var loaded = false
     private var lastScan = 0L
     private var scanJob: Job? = null

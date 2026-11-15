@@ -577,6 +577,14 @@ private fun LabFileManagerBody(
                     actions = listOf(L("Cancel") to { ops.opJob?.cancel(); Unit }),
                 )
             }
+            // A game being copied from a network drive ("Add to Games"): runs on when this page is left.
+            com.winlator.star.netdrive.NetHub.copying?.let { c ->
+                LabStatusLine(
+                    text = L(c.label) + (c.progress?.let { "  ${(it * 100).toInt()}%" } ?: ""),
+                    progress = c.progress ?: -1f,
+                    actions = listOf(L("Cancel") to { com.winlator.star.netdrive.NetHub.cancelGameCopy(); Unit }),
+                )
+            }
             if (pane.selectionMode && pick == null) {
                 LabStatusLine(
                     text = L("%1\$s selected", pane.selected.size),
@@ -738,7 +746,7 @@ private fun LabFileManagerBody(
             is FmItem.Net -> LabNetProperties(item) { ops.propsTarget = null }
         }
     }
-    LabNetDialogs(ops.net) { panes.forEach { it.clearSelection() } }
+    LabNetDialogs(ops.net, containers, ::chooseFolder) { panes.forEach { it.clearSelection() } }
     FmNetWatcher(active = pick == null && panes.any { it.loc == FmLoc.Home }, tick = storageTick)
     ops.conflict?.let { (name, isDir, batch) ->
         LabConflictDialog(name, isDir, batch) { choice, all -> ops.answerConflict(choice, all) }

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.AddToHomeScreen
 import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -57,6 +58,8 @@ internal class FmNetOps(private val context: Context, private val scope: Corouti
     var newFolderIn by mutableStateOf<FmLoc.Net?>(null)
     var renameTarget by mutableStateOf<FmItem.Net?>(null)
     var deleteTargets by mutableStateOf<List<FmItem.Net>>(emptyList())
+    /** The "Add to Games" dialog: which game folder on which drive, and where it goes. */
+    var addReq by mutableStateOf<AddReq?>(null)
 
     fun copy(items: List<FmItem.Net>) {
         ops.clipboard = emptyList()
@@ -102,6 +105,13 @@ internal class FmNetOps(private val context: Context, private val scope: Corouti
                             },
                             id = "found:" + f.host,
                             menu = { foundMenu(f) },
+                        ))
+                    }
+                    NetHub.copying?.let { c ->
+                        add(FmHomeTile(
+                            c.name, HomeIcons.networkSetup, tint, File("/"),
+                            subtitle = "Copying to Games" + (c.progress?.let { " · ${(it * 100).toInt()} %" } ?: "…"),
+                            action = { }, id = "net:copying",
                         ))
                     }
                     add(FmHomeTile(
@@ -209,6 +219,7 @@ internal class FmNetOps(private val context: Context, private val scope: Corouti
         add(FmMenuEntry("Open", if (item.isDir) Icons.Filled.FolderOpen else Icons.AutoMirrored.Filled.OpenInNew) { openItem(p, item) })
         add(FmMenuEntry("Select", Icons.Filled.CheckBox) { p.startSelect(item) })
         add(FmMenuEntry("Copy", Icons.Filled.ContentCopy) { copy(listOf(item)) })
+        if (item.isDir || item.extension == "exe") add(FmMenuEntry("Add to Games…", Icons.Filled.AddToHomeScreen) { startAdd(item) })
         add(FmMenuEntry("Rename", Icons.Filled.Edit) { renameTarget = item })
         add(FmMenuEntry("Properties", Icons.Filled.Info) { ops.propsTarget = item })
         add(FmMenuEntry("Delete", Icons.Filled.Delete, danger = true) { deleteTargets = listOf(item) })
@@ -243,6 +254,109 @@ internal class FmNetOps(private val context: Context, private val scope: Corouti
             }
         }
         if (failed > 0) ops.toast(if (items.size == 1) (last ?: "Couldn't delete") else "$failed couldn't be deleted")
+    }
+
+    // ── Add to Games: copy a game folder from a drive to this device, then add its exe to Games ──
+
+    /**
+     * One "Add to Games" request. [levels] are the folders the game could be (the exe's folder and the ones above it,
+     * nearest first; one entry when started on a folder); [level] is the one picked, [exeRel] the exe inside it when
+     * the request started on an exe. [size] is measured after the dialog opens (null while measuring, -1 unknown).
+     */
+    inner class AddReq(val drive: NetDrive, val exePath: String?, val levels: List<String>, start: String) {
+        var level by mutableStateOf(start)
+        var size by mutableStateOf<Long?>(null)
+        var target by mutableStateOf<File?>(null)
+        var container by mutableStateOf<com.winlator.star.container.Container?>(null)
+        val name: String get() = NetFs.nameOf(level).ifEmpty { drive.name }
+        val exeRel: String? get() = exePath?.let { p -> if (level.isEmpty()) p else p.removePrefix(level.trimEnd('/') + "/") }
+
+        fun measure() {
+            val at = level
+            size = null
+            scope.launch {
+                val r = runCatching { NetFs.size(context, drive, at).first }.getOrDefault(-1L)
+                if (level == at) size = r
+            }
+        }
+    }
+
+    /** Where a game folder can go: each volume's Winlator/Games (Internal first), with its free space. */
+    fun addTargets(): List<Pair<String, File>> = buildList {
+        add("Internal storage" to File("/storage/emulated/0/Winlator/Games"))
+        runCatching { com.winlator.star.core.StorageRoots.list(context) }.getOrDefault(emptyList())
+            .filter { it.removable && it.readable }
+            .forEach { add(it.label.ifBlank { it.dir.name } to File(it.dir, "Winlator/Games")) }
+    }
+
+    fun freeSpace(dir: File): Long {
+        var d: File? = dir
+        while (d != null && !d.exists()) d = d.parentFile
+        return runCatching { d?.usableSpace ?: 0L }.getOrDefault(0L)
+    }
+
+    fun startAdd(item: FmItem.Net) {
+        if (NetHub.copying != null) { ops.toast("A game is already being copied"); return }
+        scope.launch {
+            val req = if (item.isDir) {
+                AddReq(item.drive, null, listOf(item.path), item.path)
+            } else {
+                // The game folder: the exe's own, or above it past build folders (Binaries/Win64), as the "+" importer finds it.
+                var dir = NetFs.parentOf(item.path)
+                repeat(3) { if (dir.isNotEmpty() && NetFs.nameOf(dir).lowercase() in com.winlator.star.core.GameIdentifier.BUILD_DIRS) dir = NetFs.parentOf(dir) }
+                if (com.winlator.star.core.GameIdentifier.isUnrealShippingName(item.name.substringBeforeLast('.')) && dir.isNotEmpty()) {
+                    val parent = NetFs.parentOf(dir)
+                    val hasEngine = runCatching { NetFs.list(context, item.drive, parent).any { it.isDir && it.name.equals("Engine", true) } }.getOrDefault(false)
+                    if (hasEngine) dir = parent
+                }
+                val levels = buildList {
+                    var d = NetFs.parentOf(item.path)
+                    while (d.isNotEmpty() && size < 6) { add(d); d = NetFs.parentOf(d) }
+                }.ifEmpty { listOf("") }
+                AddReq(item.drive, item.path, levels, if (dir.isEmpty() && levels.first().isNotEmpty()) levels.first() else dir)
+            }
+            req.target = addTargets().first().second
+            req.container = ops.containerList().firstOrNull()
+            addReq = req
+            req.measure()
+        }
+    }
+
+    /** The dialog's Copy: copies the game folder into [AddReq.target], then adds its exe to Games in the chosen container. */
+    fun confirmAdd(req: AddReq) {
+        val base = req.target ?: return
+        val container = req.container ?: run { ops.toast("No container yet: create one first"); return }
+        addReq = null
+        val gameDir = File(base, req.name)
+        val exeRel = req.exeRel
+        val app = context.applicationContext
+        val started = NetHub.startGameCopy(req.name) { c ->
+            fun say(msg: String) = android.os.Handler(android.os.Looper.getMainLooper()).post { android.widget.Toast.makeText(app, msg, android.widget.Toast.LENGTH_LONG).show() }
+            try {
+                c.label = "Copying ${req.name} to Games"
+                withContext(Dispatchers.IO) { gameDir.mkdirs() }
+                NetFs.transfer(app, NetFs.Side.Remote(req.drive, req.level), NetFs.Side.Local(gameDir), isDir = true, move = false) { b, t ->
+                    c.progress = if (t > 0) (b.toFloat() / t).coerceIn(0f, 1f) else null
+                }
+                c.label = "Adding ${req.name} to Games"
+                c.progress = null
+                val added = withContext(Dispatchers.IO) {
+                    val exe = exeRel?.let { File(gameDir, it) }?.takeIf { it.isFile }
+                        ?: com.winlator.star.core.GameFolderScanner.gameIn(gameDir)?.exe
+                        ?: return@withContext null
+                    val id = runCatching { com.winlator.star.core.GameIdentifier.identify(exe) }.getOrNull()
+                    val display = id?.let { com.winlator.star.core.GameIdentifier.displayName(it, exe, gameDir) } ?: req.name
+                    runCatching { com.winlator.star.ui.screens.ExeShortcutImporter.addToShortcuts(app, container, exe, display, id?.appId).nameWithoutExtension }.getOrNull()
+                }
+                say(if (added != null) "Added \"$added\" to Games" else "Copied ${req.name}, but no game .exe was found in it")
+            } catch (e: CancellationException) {
+                say("Stopped copying ${req.name} (copy again to finish it)")
+                throw e
+            } catch (e: Exception) {
+                say("Couldn't copy ${req.name}: ${e.message ?: "error"}")
+            }
+        }
+        if (!started) ops.toast("A game is already being copied")
     }
 
     // ── Copying between drives and this device ──

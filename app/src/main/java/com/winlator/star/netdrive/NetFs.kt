@@ -149,6 +149,12 @@ object NetFs {
         e.message ?: "Couldn't connect"
     }
 
+    /** Bytes and file count of everything under [path] (a folder walk on the server). */
+    suspend fun size(ctx: Context, d: NetDrive, path: String): Pair<Long, Long> = withRc(ctx) { rc ->
+        val o = withContext(Dispatchers.IO) { rc.call("operations/size", JSONObject().put("fs", fsAt(rc, d, path)), readTimeoutMs = 300_000) }
+        o.optLong("bytes", 0L) to o.optLong("count", 0L)
+    }
+
     suspend fun mkdir(ctx: Context, d: NetDrive, path: String) = withRc(ctx) { rc ->
         val fs = root(rc, d)
         withContext(Dispatchers.IO) { rc.call("operations/mkdir", JSONObject().put("fs", fs).put("remote", path.trim('/'))) }
@@ -261,6 +267,10 @@ object NetFs {
             "logon_failure" in l || "unable to authenticate" in l || "login incorrect" in l || "530 " in l ||
                 "401" in l || "authentication" in l || "wrong password" in l -> "Wrong user name or password"
             "bad_network_name" in l -> "That share doesn't exist on this server"
+            // Something answered on that port, but not the kind of server picked (SMB on the SFTP port, …).
+            "invalid transport format" in l || "ssh: handshake failed" in l || "overflow reading version string" in l ||
+                "malformed http response" in l || "short response" in l ->
+                "The server on that port isn't this kind of drive. Check the type and the port"
             "access_denied" in l || "permission denied" in l || "403" in l -> "No permission for this"
             "object not found" in l || "directory not found" in l || "object_name_not_found" in l || "object_path_not_found" in l ||
                 "no such file" in l -> "Not found (it may have been moved or deleted)"

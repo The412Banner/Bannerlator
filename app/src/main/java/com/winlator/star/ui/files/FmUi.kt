@@ -220,7 +220,9 @@ internal fun detailFor(item: FmItem, pane: FmPane): String {
     val date = fmDateTime(item.modified)
     if (!item.isDir) return "${StringUtils.formatBytes(item.size)}  ·  $date"
     if (item is FmItem.Entry) return if (item.size > 0) "${StringUtils.formatBytes(item.size)}  ·  $date" else date
-    val file = (item as FmItem.Disk).file
+    // Network folders: no item count (one more listing per row over Wi-Fi).
+    if (item !is FmItem.Disk) return date
+    val file = item.file
     val count = pane.childCounts[item.key]
     LaunchedEffect(item.key, pane.listingTick) {
         if (pane.childCounts[item.key] == null) {

@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 17:05 EST — feat/lab-library-tile-outline MERGED into main
+- User: "works, merge it to main" (after installing 3ded5770 on the FIT, 16:45 EST).
+- What: a 1 dp outline (strong ink at 35 %) round each Library card in all three styles; the focus ring stays on top.
+- Merge: backup refs/backup/20261115/main-before-lab-library-tile-outline = 5ad52cec; --no-ff; merged code == 3ded5770 (CI 43764497846 green ×4).
+
 ## 2026-11-15 16:55 EST — feat/lab-library-tile-outline: a thin outline round each Library card (branch, CI running)
 - Why: user 11-15 (screenshot Screenshot_20261115-163218): "in library, each game art needs a thin outline".
 - Built: 3ded5770 — LabGridCard (all three styles: covers, wide, icons) gets a 1 dp border in SimpleStrong at 35 % (white on dark, near-black on light), card-shaped; labTile's focus ring stays on top.

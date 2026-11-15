@@ -228,6 +228,26 @@ internal fun NetAddGameDialog(net: FmNetOps, req: FmNetOps.AddReq, containers: L
                         }
                     }
                 }
+                // Which exe Games starts: the best one is picked (the game over a launcher); the user can change it.
+                Heading("Game program")
+                val exes = req.exes
+                val pick = req.exePick
+                when {
+                    exes == null -> Text("Looking for the game's program…", color = cs.onSurfaceVariant, fontSize = 12.sp)
+                    exes.isEmpty() || pick == null -> Text("No .exe found in this folder", color = cs.error, fontSize = 12.sp)
+                    else -> {
+                        val sz = exes.firstOrNull { it.first == pick }?.second ?: 0L
+                        Choice(true, pick.substringAfterLast('/'), "$pick · ${StringUtils.formatBytes(sz)}" + if (exes.size > 1) (if (req.exesOpen) " · tap to close" else " · tap to change") else "") {
+                            if (exes.size > 1) req.exesOpen = !req.exesOpen
+                        }
+                        if (req.exesOpen) exes.forEach { (rel, size) ->
+                            Choice(rel == pick, rel.substringAfterLast('/'), "$rel · ${StringUtils.formatBytes(size)}") {
+                                req.exePick = rel
+                                req.exesOpen = false
+                            }
+                        }
+                    }
+                }
                 if (containers.size > 1) {
                     Heading("Container")
                     containers.forEach { c -> Choice(req.container == c, c.name) { req.container = c } }

@@ -43,12 +43,21 @@ object NetStream {
 
     private fun isScript(name: String) = name.endsWith(".vdf")
 
+    /** Installers and uninstallers: never what Bannerlator or the game needs up front (11-15: GTA V's two Social Club
+     *  setups were 129 MB of the stand-in). They still stream if something runs them. */
+    private val INSTALLER_RE = Regex("""(?i)setup|install|uninst|redist""")
+    private fun isInstaller(name: String): Boolean {
+        val base = name.substringBeforeLast('.')
+        return com.winlator.star.core.GameFolderScanner.isJunkExeName(base) || INSTALLER_RE.containsMatchIn(base)
+    }
+
     private fun prefetchable(e: NetFs.Entry): Boolean {
         if (e.isDir || e.size <= 0) return false
         if (isScript(e.name.lowercase()) && e.size <= SCRIPT_MAX) return true
         val dirs = e.path.split('/').dropLast(1).map { it.lowercase() }
         if (dirs.any { it in SKIP_DIRS }) return false
         val name = e.name.lowercase()
+        if (name.endsWith(".exe") && isInstaller(name)) return false
         return name.substringAfterLast('.', "") in PREFETCH_EXTS || name in PREFETCH_NAMES ||
             (name.startsWith("goggame-") && name.endsWith(".info") && e.size < 1L shl 20)
     }
@@ -240,7 +249,27 @@ object NetStream {
         (0 until a.length()).map { i -> a.getJSONArray(i).let { Item(it.getString(0), it.getLong(1), it.getLong(2)) } }
     }.getOrNull()
 
-    private fun allocated(f: File): Long = runCatching { android.system.Os.stat(f.path).st_blocks * 512 }.getOrDefault(0L)
+    /**
+     * Disk space [f] takes. A small file that is all hole still counts one 4 KB block on f2fs (st_blocks 8), which put
+     * a few MB of nothing in the total of a game with many small files: a file of one block or less counts only when
+     * it holds data (lseek SEEK_DATA finds some).
+     */
+    private fun allocated(f: File): Long = runCatching {
+        val blocks = android.system.Os.stat(f.path).st_blocks * 512
+        if (blocks > 4096) return@runCatching blocks
+        val fd = android.system.Os.open(f.path, android.system.OsConstants.O_RDONLY, 0)
+        try {
+            android.system.Os.lseek(fd, 0L, SEEK_DATA)
+            blocks
+        } catch (e: android.system.ErrnoException) {
+            if (e.errno == android.system.OsConstants.ENXIO) 0L else blocks   // ENXIO: no data at all
+        } finally {
+            android.system.Os.close(fd)
+        }
+    }.getOrDefault(0L)
+
+    /** Linux's lseek whence for "the next data" (not in OsConstants). */
+    private const val SEEK_DATA = 3
 
     /** Bytes the game's stand-in takes on the device now. */
     fun cachedBytes(game: Game): Long {

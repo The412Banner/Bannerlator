@@ -97,6 +97,26 @@ internal fun LabNetAddGameDialog(net: FmNetOps, req: FmNetOps.AddReq, containers
                 }
             }
         }
+        // Which exe Games starts: the best one is picked (the game over a launcher); the user can change it.
+        LabToolHeading(L("Game program"))
+        val exes = req.exes
+        val pick = req.exePick
+        when {
+            exes == null -> LabDialogText(L("Looking for the game's program…"), muted = true)
+            exes.isEmpty() || pick == null -> LabDialogText(L("No .exe found in this folder"), error = true)
+            else -> {
+                val sz = exes.firstOrNull { it.first == pick }?.second ?: 0L
+                LabToolRow(pick.substringAfterLast('/'), sub = "$pick · ${StringUtils.formatBytes(sz)}" + if (exes.size > 1) " · " + (if (req.exesOpen) L("tap to close") else L("tap to change")) else "", selected = true) {
+                    if (exes.size > 1) req.exesOpen = !req.exesOpen
+                }
+                if (req.exesOpen) exes.forEach { (rel, size) ->
+                    LabToolRow(rel.substringAfterLast('/'), sub = "$rel · ${StringUtils.formatBytes(size)}", selected = rel == pick) {
+                        req.exePick = rel
+                        req.exesOpen = false
+                    }
+                }
+            }
+        }
         if (containers.size > 1) {
             LabToolHeading(L("Container"))
             containers.forEach { c -> LabToolRow(c.name, selected = req.container == c) { req.container = c } }

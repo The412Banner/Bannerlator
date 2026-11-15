@@ -284,15 +284,46 @@ internal class FmNetOps(private val context: Context, private val scope: Corouti
         var streamMode by mutableStateOf(NetStream.Mode.KEEP)
         /** The game-folder levels list is open (it starts closed: one line with the picked folder). */
         var levelsOpen by mutableStateOf(false)
+        /** The game folder's exes (path in it, size), best first; null while the folder is being listed. */
+        var exes by mutableStateOf<List<Pair<String, Long>>?>(null)
+        /** The exe Games will start, as a path in the game folder. */
+        var exePick by mutableStateOf<String?>(null)
+        /** The exe list is open (it starts closed: one line with the picked exe). */
+        var exesOpen by mutableStateOf(false)
         val name: String get() = NetFs.nameOf(level).ifEmpty { drive.name }
-        val exeRel: String? get() = exePath?.let { p -> if (level.isEmpty()) p else p.removePrefix(level.trimEnd('/') + "/") }
+        /** The exe the request started on, as a path in the game folder (null when it started on a folder or lies outside). */
+        private val clickedRel: String? get() = exePath?.let { p ->
+            if (level.isEmpty()) p else p.removePrefix(level.trimEnd('/') + "/").takeIf { it != p }
+        }
+        val exeRel: String? get() = exePick ?: clickedRel
 
         fun measure() {
             val at = level
             size = null
+            exes = null
+            exePick = null
+            exesOpen = false
             scope.launch {
                 val r = runCatching { NetFs.size(context, drive, at).first }.getOrDefault(-1L)
                 if (level == at) size = r
+            }
+            scope.launch {
+                val listed = runCatching { NetFs.listAll(context, drive, at) }.getOrDefault(emptyList())
+                    .filter { !it.isDir && it.name.endsWith(".exe", true) }
+                val sizes = listed.associate { it.path to it.size }
+                val ranked = com.winlator.star.core.GameFolderScanner.rankListed(NetFs.nameOf(at).ifEmpty { drive.name }, listed.map { it.path to it.size })
+                    .toMutableList()
+                val clicked = clickedRel
+                if (clicked != null && clicked !in ranked && clicked in sizes) ranked.add(0, clicked)
+                if (level != at) return@launch
+                exes = ranked.map { it to (sizes[it] ?: 0L) }
+                // The exe the user started on, unless it is a launcher and the folder has a game exe ranked above it.
+                fun launcher(rel: String) = com.winlator.star.core.GameIdentifier.isLauncherExeName(rel.substringAfterLast('/').substringBeforeLast('.'))
+                val best = ranked.firstOrNull()
+                exePick = when {
+                    clicked != null && clicked in ranked && !(launcher(clicked) && best != null && best != clicked && !launcher(best)) -> clicked
+                    else -> best ?: clicked
+                }
             }
         }
     }

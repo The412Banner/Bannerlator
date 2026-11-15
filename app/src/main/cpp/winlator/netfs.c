@@ -13,6 +13,9 @@
  *  - write / pwrite / writev on such a file: the whole file is fetched first, so nothing written is later
  *    overwritten by a fetch. Writes stay on the device (nothing is sent back to the NAS).
  *  - A fetch that fails is retried for about 15 s (Wi-Fi blips, a NAS waking up); then the call fails with EIO.
+ *  - It must come FIRST in LD_PRELOAD: libfakeinput.so's read() sends every read that isn't a controller straight to
+ *    syscall(SYS_read), so a library after it never sees read() (11-15: Darksiders' and GTA V's Steam emulator
+ *    settings, steam_api.ini, were read that way, came back empty, and steam_api.dll failed to start).
  *
  * Env (set by GuestProgramLauncherComponent for network games only; without them everything passes through):
  *   BLNETFS_ROOT    canonical path of the game's stand-in folder
@@ -74,6 +77,11 @@ typedef int (*dup3_fn)(int, int, int);
 typedef int (*fstat_fn)(int, struct stat *);
 typedef int (*stat_fn)(const char *, struct stat *);
 typedef int (*fstatat_fn)(int, const char *, struct stat *, int);
+typedef FILE *(*fopen_fn)(const char *, const char *);
+typedef FILE *(*fdopen_fn)(int, const char *);
+typedef FILE *(*freopen_fn)(const char *, const char *, FILE *);
+typedef int (*fclose_fn)(FILE *);
+typedef int (*closedir_fn)(DIR *);
 
 static struct {
     read_fn read;
@@ -90,6 +98,11 @@ static struct {
     fstat_fn fstat;
     stat_fn stat, lstat;
     fstatat_fn fstatat;
+    fopen_fn fopen, fopen64;
+    fdopen_fn fdopen;
+    freopen_fn freopen, freopen64;
+    fclose_fn fclose;
+    closedir_fn closedir;
 } real;
 
 static pthread_once_t once = PTHREAD_ONCE_INIT;
@@ -147,10 +160,19 @@ static void resolve_real(void)
     real.stat = (stat_fn)dlsym(RTLD_NEXT, "stat");
     real.lstat = (stat_fn)dlsym(RTLD_NEXT, "lstat");
     real.fstatat = (fstatat_fn)dlsym(RTLD_NEXT, "fstatat");
+    real.fopen = (fopen_fn)dlsym(RTLD_NEXT, "fopen");
+    real.fopen64 = (fopen_fn)dlsym(RTLD_NEXT, "fopen64");
+    real.fdopen = (fdopen_fn)dlsym(RTLD_NEXT, "fdopen");
+    real.freopen = (freopen_fn)dlsym(RTLD_NEXT, "freopen");
+    real.freopen64 = (freopen_fn)dlsym(RTLD_NEXT, "freopen64");
+    real.fclose = (fclose_fn)dlsym(RTLD_NEXT, "fclose");
+    real.closedir = (closedir_fn)dlsym(RTLD_NEXT, "closedir");
     if (!real.pread64) real.pread64 = real.pread;
     if (!real.preadv64) real.preadv64 = real.preadv;
     if (!real.pwrite64) real.pwrite64 = real.pwrite;
     if (!real.mmap64) real.mmap64 = real.mmap;
+    if (!real.fopen64) real.fopen64 = real.fopen;
+    if (!real.freopen64) real.freopen64 = real.freopen;
 }
 
 /*
@@ -659,8 +681,8 @@ static int fill_chunk(const char *r, int h, dev_t dev, ino_t ino, off_t c, off_t
 
 /*
  * Every hole of the file, fetched as 4 MB pieces up to PARTS at once: the first time the game opens a file up to
- * WHOLE_MAX, all of it comes over before the game goes on (11-15: Streets of Rage Remake needs all of SorR.dat
- * although every read it makes through these hooks is the 23-byte header; with the file whole it runs).
+ * WHOLE_MAX, all of it comes over before the game goes on (11-15: Streets of Rage Remake ran only with SorR.dat
+ * whole; its other reads were read() calls that libfakeinput.so sent past this library, see the top).
  */
 static int fill_whole(const char *r, int h, dev_t dev, ino_t ino, off_t size)
 {
@@ -772,7 +794,7 @@ static void fill_dir(const char *rel)
             j.e[j.n].size = fs.st_size;
             if (j.e[j.n].rel) { j.total += fs.st_size; j.n++; }
         }
-        closedir(d);
+        real.closedir(d);
     }
     if (j.n > 0) {
         pthread_mutex_init(&j.m, NULL);
@@ -1009,6 +1031,79 @@ EXPORT int dup3(int oldfd, int newfd, int flags)
     ready();
     if (enabled && oldfd != newfd) forget(newfd);
     return real.dup3(oldfd, newfd, flags);
+}
+
+/*
+ * stdio. A FILE's reads, and its fclose(), happen inside libc, past these hooks. So a stand-in file opened as a FILE
+ * comes over when it is opened, and fclose()/closedir() forget the descriptor as close() does (a number left marked
+ * would skip the next file that gets it).
+ */
+static FILE *stdio_opened(FILE *f, const char *mode)
+{
+    if (!f || !enabled) return f;
+    int fd = fileno(f);
+    if (fd < 0 || classify(fd) != FD_NET) return f;
+    if (mode && strchr(mode, 'w')) return f;   /* emptied on open: nothing to fetch */
+    int whole = mode && (strchr(mode, '+') || strchr(mode, 'a'));
+    if (ensure(fd, 0, 1, whole) != 0) {
+        int e = errno;
+        forget(fd);
+        real.fclose(f);
+        errno = e;
+        return NULL;
+    }
+    return f;
+}
+
+EXPORT FILE *fopen(const char *path, const char *mode)
+{
+    ready();
+    FILE *f = real.fopen(path, mode);
+    return stdio_opened(f, mode);
+}
+
+EXPORT FILE *fopen64(const char *path, const char *mode)
+{
+    ready();
+    FILE *f = real.fopen64(path, mode);
+    return stdio_opened(f, mode);
+}
+
+EXPORT FILE *fdopen(int fd, const char *mode)
+{
+    ready();
+    FILE *f = real.fdopen(fd, mode);
+    return stdio_opened(f, mode);
+}
+
+EXPORT FILE *freopen(const char *path, const char *mode, FILE *old)
+{
+    ready();
+    if (enabled) forget(fileno(old));
+    FILE *f = real.freopen(path, mode, old);
+    return stdio_opened(f, mode);
+}
+
+EXPORT FILE *freopen64(const char *path, const char *mode, FILE *old)
+{
+    ready();
+    if (enabled) forget(fileno(old));
+    FILE *f = real.freopen64(path, mode, old);
+    return stdio_opened(f, mode);
+}
+
+EXPORT int fclose(FILE *f)
+{
+    ready();
+    if (enabled) forget(fileno(f));
+    return real.fclose(f);
+}
+
+EXPORT int closedir(DIR *d)
+{
+    ready();
+    if (enabled) forget(dirfd(d));
+    return real.closedir(d);
 }
 
 /*

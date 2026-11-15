@@ -806,8 +806,10 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
                     Log.e("GuestLauncher", "Failed to copy libnetfs.so: " + e.getMessage());
                 }
                 if (netfsDest.exists()) {
-                    if (!ld_preload.isEmpty()) ld_preload += ":";
-                    ld_preload += netfsDest.getAbsolutePath();
+                    // First in line: libfakeinput.so's read() sends every non-controller read straight to
+                    // syscall(SYS_read), so a library after it never sees read() (11-15: Darksiders' Steam emulator
+                    // settings came back empty and the game stopped at a black screen).
+                    ld_preload = netfsDest.getAbsolutePath() + (ld_preload.isEmpty() ? "" : ":" + ld_preload);
                     for (java.util.Map.Entry<String, String> e : netEnv.entrySet()) envVars.put(e.getKey(), e.getValue());
                     Log.i("GuestLauncher", "Network game: streaming " + netEnv.get("BLNETFS_ROOT"));
                 }

@@ -197,22 +197,26 @@ internal fun NetAddGameDialog(net: FmNetOps, req: FmNetOps.AddReq, containers: L
         title = { Text("Add to Games") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                Heading("Game folder")
-                if (req.levels.size > 1) {
-                    req.levels.forEach { lv ->
-                        Choice(req.level == lv, com.winlator.star.netdrive.NetFs.nameOf(lv).ifEmpty { req.drive.name }, lv.ifEmpty { req.drive.name }) {
-                            if (req.level != lv) { req.level = lv; req.measure() }
-                        }
-                    }
-                } else Text(req.name, fontSize = 14.sp)
-                Text(addSizeText(req.size), color = cs.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+                // Where the game goes comes first (it was below the folder levels, off screen: user 11-15).
                 Heading("Copy to")
                 targets.forEach { (label, dir) ->
                     Choice(req.target == dir, "$label · Winlator/Games", "${StringUtils.formatBytes(net.freeSpace(dir))} free") { req.target = dir }
                 }
                 val custom = req.target?.takeIf { t -> targets.none { it.second == t } }
-                if (custom != null) Choice(true, custom.name.ifBlank { custom.absolutePath }, custom.absolutePath) { }
+                if (custom != null) Choice(true, custom.name.ifBlank { custom.absolutePath }, "${custom.absolutePath} · ${StringUtils.formatBytes(net.freeSpace(custom))} free") { }
                 TextButton(onClick = { chooseFolder("Copy the game to") { req.target = it } }) { Text("Choose a folder…") }
+                Heading("Game folder")
+                Choice(true, req.name, addSizeText(req.size) + if (req.levels.size > 1) (if (req.levelsOpen) " · tap to close" else " · tap to change") else "") {
+                    if (req.levels.size > 1) req.levelsOpen = !req.levelsOpen
+                }
+                if (req.levelsOpen) {
+                    req.levels.forEach { lv ->
+                        Choice(req.level == lv, com.winlator.star.netdrive.NetFs.nameOf(lv).ifEmpty { req.drive.name }, lv.ifEmpty { req.drive.name }) {
+                            if (req.level != lv) { req.level = lv; req.measure() }
+                            req.levelsOpen = false
+                        }
+                    }
+                }
                 if (containers.size > 1) {
                     Heading("Container")
                     containers.forEach { c -> Choice(req.container == c, c.name) { req.container = c } }

@@ -1079,7 +1079,8 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(
-                    selected = defaultLandingScreen == "games",
+                    // "home" is Lab's Home page; Classic opens its games list for it.
+                    selected = defaultLandingScreen == "games" || defaultLandingScreen == "home",
                     onClick = { defaultLandingScreen = "games" },
                 )
                 Text("Game Shortcuts", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)

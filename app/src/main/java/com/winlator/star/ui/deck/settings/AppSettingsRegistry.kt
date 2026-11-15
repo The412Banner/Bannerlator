@@ -147,6 +147,7 @@ internal object AppSettingsRegistry {
     val labDefs: List<SettingDef> by lazy {
         legacyDefs.map { d ->
             if (d.id == "app.advanced.fileProvider") d.copyWith(hint = T("Lets Android's file manager open the app's data. Takes effect after the app restarts."))
+            else if (d.id == "app.general.landing") labLanding()
             else d
         } + AppSettingsRows.defs()
             .filter { it.category == AppSettingsRows.CAT_STEAM || it.category == AppSettingsRows.CAT_DOWNLOADS }
@@ -179,6 +180,28 @@ internal object AppSettingsRegistry {
 
     private fun toggle(id: String, category: String, group: String, label: String, level: SettingLevel, key: String, default: Boolean, hint: String? = null) =
         app(id, category, group, label, level, hint = hint, tech = key, control = { Control.Toggle }, binding = prefBool(key, default))
+
+    /**
+     * Lab's "Open the app on": its own pages, Home, Library or Containers (user 11-15: "Games" opened Home). The stored
+     * value is the one Classic uses: "games" is the Library (Classic's games list), "containers" the containers, and
+     * "home" (Lab only; Classic opens its games list for it) or never set is Home. Big Picture is not offered: Lab has none.
+     */
+    private fun labLanding() = app(
+        "app.general.landing", "app.general", T("Start-up"), T("Open the app on"), SIMPLE,
+        tech = T("default_landing_screen"),
+        control = { Control.Segmented(listOf(Opt("home", T("Home")), Opt("games", T("Library")), Opt("containers", T("Containers")))) },
+        binding = AppBinding(
+            get = { c ->
+                val p = prefs(c)
+                when (p.getString("default_landing_screen", null)) {
+                    "containers" -> "containers"
+                    "games" -> if (p.getBoolean("enable_big_picture_mode", false)) "home" else "games"
+                    else -> "home"
+                }
+            },
+            set = { c, v -> prefs(c).edit().putBoolean("enable_big_picture_mode", false).putString("default_landing_screen", v).apply() },
+        ),
+    )
 
     private fun soundPackOptions(): List<Opt> = UiSoundPacks.choices().map { (id, label) -> Opt(id, label) }
 

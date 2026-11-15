@@ -211,6 +211,9 @@ class MainActivity : AppCompatActivity() {
             ?: when {
                 prefs.getBoolean("enable_big_picture_mode", false) -> Screen.BigPicture.route
                 prefs.getString("default_landing_screen", "games") == "containers" -> Screen.Containers.route
+                // Lab: "Library" (stored as "games") opens the Library page; "Home" or never set, the Home page.
+                AppThemeState.uiStyle.value == AppThemeState.UI_STYLE_DECK && AppThemeState.simpleLook &&
+                    prefs.getString("default_landing_screen", null) == "games" -> com.winlator.star.ui.simple.LabRoutes.LIBRARY
                 else -> Screen.Games.route
             }
 
@@ -715,7 +718,8 @@ private fun AppShell(
         }
     } else {
         ClassicAppShell(
-            startRoute = startRoute,
+            // Lab's own start page has no Classic screen (the style was changed since launch): the games list.
+            startRoute = if (startRoute.startsWith("lab_")) Screen.Games.route else startRoute,
             pendingRoute = pendingRoute,
             onPendingRouteConsumed = onPendingRouteConsumed,
             showAllFilesDialog = showAllFilesDialog,

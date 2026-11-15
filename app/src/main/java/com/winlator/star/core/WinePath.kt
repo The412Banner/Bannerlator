@@ -155,6 +155,24 @@ object WinePath {
     }
 
     /** Picks the next free drive letter (skips C: and Z:, plus anything already mapped). */
+    /**
+     * Makes sure [dir] is reachable in [container] through a drive letter mapped to [dir] itself (or a folder above
+     * it), adding and saving one when there is none. Paths below it then resolve to that letter.
+     */
+    fun ensureDrive(container: Container, dir: String): Boolean {
+        if (bestDriveMatch(container, dir) != null) return true
+        val letter = allocateDriveLetter(container) ?: return false
+        container.drives = container.drives + "$letter:$dir"
+        return try {
+            container.saveData()
+            Log.d(TAG, "Added drive $letter: -> $dir (container ${container.id})")
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "Drive persist failed (continuing with in-memory mapping)", e)
+            true
+        }
+    }
+
     private fun allocateDriveLetter(container: Container): String? {
         val used = mutableSetOf("C", "Z")
         for (entry in container.drivesIterator()) used += entry[0].uppercase()

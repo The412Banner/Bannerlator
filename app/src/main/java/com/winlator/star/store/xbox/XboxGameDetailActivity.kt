@@ -275,7 +275,7 @@ class XboxGameDetailActivity : ComponentActivity() {
     private fun confirmUninstall() {
         AlertDialog.Builder(this, R.style.StoreAlertDialogDark)
             .setTitle("Uninstall ${game.title}?")
-            .setMessage("The game's files are deleted. Shortcuts that point to it stop working until you install it again.")
+            .setMessage("The game's files and its shortcuts are deleted.")
             .setPositiveButton("Uninstall") { _, _ ->
                 lifecycleScope.launch {
                     val r = withContext(Dispatchers.IO) { runCatching { XboxDownloads.uninstall(applicationContext, game.id) } }

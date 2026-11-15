@@ -13165,6 +13165,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         inputControlsView.setXServer(xServer);
         inputControlsView.setVisibility(View.GONE);
         rootView.addView(inputControlsView);
+        // Network games that stream: "Loading from NAS 34%" in the top-right corner while the game waits for files.
+        com.winlator.star.netdrive.NetStreamTag.attach(this, rootView);
 
         inputControlsView.setVisualStyle(VisualStyle.GAMEHUB);
 

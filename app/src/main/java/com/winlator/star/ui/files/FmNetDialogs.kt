@@ -198,13 +198,24 @@ internal fun NetAddGameDialog(net: FmNetOps, req: FmNetOps.AddReq, containers: L
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 // Where the game goes comes first (it was below the folder levels, off screen: user 11-15).
-                Heading("Copy to")
-                targets.forEach { (label, dir) ->
-                    Choice(req.target == dir, "$label · Winlator/Games", "${StringUtils.formatBytes(net.freeSpace(dir))} free") { req.target = dir }
+                Heading("How")
+                Choice(!req.stream, "Copy to this device", "Plays without the network") { req.stream = false }
+                Choice(req.stream, "Stream from the network (test)", "Nothing copied first: parts are fetched as the game reads them; the drive must stay on") { req.stream = true }
+                if (!req.stream) {
+                    Heading("Copy to")
+                    targets.forEach { (label, dir) ->
+                        Choice(req.target == dir, "$label · Winlator/Games", "${StringUtils.formatBytes(net.freeSpace(dir))} free") { req.target = dir }
+                    }
+                    val custom = req.target?.takeIf { t -> targets.none { it.second == t } }
+                    if (custom != null) Choice(true, custom.name.ifBlank { custom.absolutePath }, "${custom.absolutePath} · ${StringUtils.formatBytes(net.freeSpace(custom))} free") { }
+                    TextButton(onClick = { chooseFolder("Copy the game to") { req.target = it } }) { Text("Choose a folder…") }
+                } else {
+                    Heading("Keep on this device")
+                    com.winlator.star.netdrive.NetStream.Mode.values().forEach { m ->
+                        Choice(req.streamMode == m, m.label, streamModeHint(m)) { req.streamMode = m }
+                    }
+                    Text("Kept in app storage (internal): ${StringUtils.formatBytes(net.appFree())} free", color = cs.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
                 }
-                val custom = req.target?.takeIf { t -> targets.none { it.second == t } }
-                if (custom != null) Choice(true, custom.name.ifBlank { custom.absolutePath }, "${custom.absolutePath} · ${StringUtils.formatBytes(net.freeSpace(custom))} free") { }
-                TextButton(onClick = { chooseFolder("Copy the game to") { req.target = it } }) { Text("Choose a folder…") }
                 Heading("Game folder")
                 Choice(true, req.name, addSizeText(req.size) + if (req.levels.size > 1) (if (req.levelsOpen) " · tap to close" else " · tap to change") else "") {
                     if (req.levels.size > 1) req.levelsOpen = !req.levelsOpen
@@ -217,21 +228,96 @@ internal fun NetAddGameDialog(net: FmNetOps, req: FmNetOps.AddReq, containers: L
                         }
                     }
                 }
+                // Which exe Games starts: the best one is picked (the game over a launcher); the user can change it.
+                Heading("Game program")
+                val exes = req.exes
+                val pick = req.exePick
+                when {
+                    exes == null -> Text("Looking for the game's program…", color = cs.onSurfaceVariant, fontSize = 12.sp)
+                    exes.isEmpty() || pick == null -> Text("No .exe found in this folder", color = cs.error, fontSize = 12.sp)
+                    else -> {
+                        val sz = exes.firstOrNull { it.first == pick }?.second ?: 0L
+                        Choice(true, pick.substringAfterLast('/'), "$pick · ${StringUtils.formatBytes(sz)}" + if (exes.size > 1) (if (req.exesOpen) " · tap to close" else " · tap to change") else "") {
+                            if (exes.size > 1) req.exesOpen = !req.exesOpen
+                        }
+                        if (req.exesOpen) exes.forEach { (rel, size) ->
+                            Choice(rel == pick, rel.substringAfterLast('/'), "$rel · ${StringUtils.formatBytes(size)}") {
+                                req.exePick = rel
+                                req.exesOpen = false
+                            }
+                        }
+                    }
+                }
                 if (containers.size > 1) {
                     Heading("Container")
                     containers.forEach { c -> Choice(req.container == c, c.name) { req.container = c } }
                 }
                 val t = req.target
                 val sz = req.size
-                if (t != null) {
+                if (t != null && !req.stream) {
                     Text("${t.absolutePath}/${req.name}", color = cs.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
                     if (sz != null && sz > 0 && sz > net.freeSpace(t)) Text("Not enough free space there", color = cs.error, fontSize = 13.sp)
                 }
                 if (containers.isEmpty()) Text("No container yet: create one first", color = cs.error, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
             }
         },
-        confirmButton = { TextButton(onClick = { net.confirmAdd(req) }, enabled = req.target != null && req.container != null) { Text("Copy and add") } },
+        confirmButton = { TextButton(onClick = { net.confirmAdd(req) }, enabled = (req.stream || req.target != null) && req.container != null) { Text(if (req.stream) "Add" else "Copy and add") } },
         dismissButton = { TextButton(onClick = { net.addReq = null }) { Text("Cancel") } },
+    )
+}
+
+/** The second line of a "Keep on this device" choice. */
+internal fun streamModeHint(m: com.winlator.star.netdrive.NetStream.Mode): String = when (m) {
+    com.winlator.star.netdrive.NetStream.Mode.KEEP -> "What it loads stays, up to the size limit"
+    com.winlator.star.netdrive.NetStream.Mode.STREAM -> "Emptied when the game closes"
+    com.winlator.star.netdrive.NetStream.Mode.FULL -> "Fetch all of it now and keep it"
+}
+
+/** Classic's "Streamed games": space used and the limit, how each game is kept, empty / remove, free up space. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+internal fun NetStreamsDialog(net: FmNetOps) {
+    val cs = MaterialTheme.colorScheme
+    val hub = com.winlator.star.netdrive.NetHub
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val limit = com.winlator.star.netdrive.NetStream.limit(ctx)
+    @Composable
+    fun Choice(selected: Boolean, text: String, sub: String? = null, onClick: () -> Unit) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 2.dp)) {
+            RadioButton(selected = selected, onClick = onClick)
+            Column(Modifier.weight(1f)) {
+                Text(text, fontSize = 14.sp)
+                if (sub != null) Text(sub, color = cs.onSurfaceVariant, fontSize = 12.sp)
+            }
+        }
+    }
+    OutlinedAlertDialog(
+        onDismissRequest = { net.streamsOpen = false },
+        title = { Text("Streamed games") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text("${StringUtils.formatBytes(hub.streamsTotal)} used of ${net.limitLabel(limit)}", fontSize = 14.sp)
+                Text("Size limit", color = cs.primary, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
+                Row(Modifier.fillMaxWidth().padding(top = 2.dp)) {
+                    net.limitChoices.forEach { b ->
+                        FilterChip(selected = limit == b, onClick = { net.setLimit(b) }, label = { Text(if (b <= 0) "None" else "${b shr 30} GB", fontSize = 11.sp) }, modifier = Modifier.padding(end = 4.dp))
+                    }
+                }
+                Text("Over the limit, the games played longest ago are emptied first.", color = cs.onSurfaceVariant, fontSize = 12.sp)
+                hub.streams.forEach { info ->
+                    val g = info.game
+                    Text("${g.name} · ${StringUtils.formatBytes(info.bytes)}", color = cs.primary, fontSize = 14.sp, modifier = Modifier.padding(top = 12.dp))
+                    com.winlator.star.netdrive.NetStream.Mode.values().forEach { m -> Choice(g.mode == m, m.label) { net.setStreamMode(g, m) } }
+                    Row {
+                        TextButton(onClick = { net.emptyStream(g) }) { Text("Empty now") }
+                        TextButton(onClick = { net.removeStreamReq = g }) { Text("Remove", color = cs.error) }
+                    }
+                }
+                if (hub.streams.isEmpty()) Text("No streamed games yet.", color = cs.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+            }
+        },
+        confirmButton = { TextButton(onClick = { net.freeUpStreams() }) { Text("Free up space") } },
+        dismissButton = { TextButton(onClick = { net.streamsOpen = false }) { Text("Close") } },
     )
 }
 
@@ -239,6 +325,16 @@ internal fun NetAddGameDialog(net: FmNetOps, req: FmNetOps.AddReq, containers: L
 @Composable
 internal fun FmNetDialogs(net: FmNetOps, containers: List<com.winlator.star.container.Container>, chooseFolder: (String, (java.io.File) -> Unit) -> Unit, clearSelections: () -> Unit) {
     net.addReq?.let { NetAddGameDialog(net, it, containers, chooseFolder) }
+    if (net.streamsOpen) NetStreamsDialog(net)
+    net.removeStreamReq?.let { g ->
+        OutlinedAlertDialog(
+            onDismissRequest = { net.removeStreamReq = null },
+            title = { Text("Remove \"${g.name}\"?") },
+            text = { Text("Removes it from Games and deletes what it keeps on this device. Nothing on the network drive is touched.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp) },
+            confirmButton = { TextButton(onClick = { net.removeStream(g) }) { Text("Remove", color = MaterialTheme.colorScheme.error) } },
+            dismissButton = { TextButton(onClick = { net.removeStreamReq = null }) { Text("Cancel") } },
+        )
+    }
     net.editReq?.let { d ->
         NetDriveDialog(d, net.editIsNew, net.testing, net.testError, onDismiss = { net.editReq = null; net.testError = null }) { drive, anyway -> net.submit(drive, anyway) }
     }

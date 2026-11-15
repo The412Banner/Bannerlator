@@ -139,6 +139,18 @@ target_link_libraries(hostname_fix
         dl
 )
 
+# Network games (test): streams a game's files from a network drive as Wine reads them. Loaded via LD_PRELOAD for
+# network games only (see netfs.c and netdrive/NetStream.kt).
+add_library(netfs SHARED
+        winlator/netfs.c
+)
+
+target_compile_options(netfs PRIVATE -Wall -Wextra -fvisibility=hidden)
+
+target_link_libraries(netfs
+        dl
+)
+
 add_library(vulkan_renderer SHARED
         winlator/vulkan_jni.cpp
         winlator/stream_jni.cpp

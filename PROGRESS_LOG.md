@@ -1,5 +1,45 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 15:50 EST — Add to Games picks the game exe (user can choose), setup skips installers, true cache size (feat/network-games-spike 95335172, CI)
+- Why: user 11-15 "do 1 2 and 3 … let the user select game exe files found if multiple are present".
+- Built: 95335172 — GameFolderScanner.rankListed (same scoring as a local scan, from a drive listing); AddReq lists the folder's exes on open / folder change, picks the best (a clicked launcher gives way to a game exe ranked above it), "Game program" line with the others to choose (Classic + Lab); prefetch skips installer/uninstaller exes; cachedBytes counts a ≤1-block file only when SEEK_DATA finds data.
+- CI: 43758966389. Not device-tested yet. User: "install it when done".
+- Note: the exe picker and installer rules also help Copy (merged to main without them); port to main when the user wants.
+
+## 2026-11-15 15:35 EST — Streaming: Cyberpunk 2077 plays from the NAS (feat/network-games-spike dc05ae85 = FIT 58aa6260)
+- User: "cyberpunk worked" — streamed (Keep what's loaded), 311 loads from the NAS at ~14 MB/s in the first 2 minutes; read check 6680 reads, 0 on a hole.
+- GTA V (re-added with the *.vdf prefetch): same crash at GTA5.exe+0x121fa24; read check 1625 reads, 0 on a hole → the game's own issue; user: drop it. Darksiders: title video freezes with a full local copy too → not streaming.
+- Open: adding a whole folder picked Cyberpunk's REDprelauncher.exe over bin/x64/Cyberpunk2077.exe (prefer the game exe); installer exes prefetched (GTA's "Social club", 129 MB); the cache total counts 4 KB per tiny empty file; remove the test tools from the FIT (tracefs instance netfs, /data/local/tmp/ino, /sdcard/Download/ino). Streaming stays a test branch until the user says merge.
+
+## 2026-11-15 — Streamed games: the missed-read bug found and fixed (feat/network-games-spike, CI)
+- Why: GTA V and Darksiders (both Steam-emulator copies) stopped at start ("steam_api.dll failed to initialize"); their steam_api.ini was never fetched.
+- Found: inotify showed the game READ steam_api.ini; trace builds of libnetfs (read/pread/mmap/open/recvmsg/sendfile/copy_file_range/splice/fread/_chk hooks) saw no read; fanotify = ENOSYS; tracefs f2fs_dataread_start named darksiders1.exe (4096 + 2326-byte reads). Cause: **libfakeinput.so (earlier in LD_PRELOAD) exports read() and sends every non-controller read to syscall(SYS_read)** — libnetfs never saw read(). Same cause behind SoRR needing the whole SorR.dat.
+- Proof: test helper that also hooked syscall() → Darksiders got past the check, fetched its small files (4 in 473 ms) and media, reached its title screen (124 fps); user then saw it sit on the title logo (still loading, stream-only mode).
+- Built: cc371af1 — libnetfs first in LD_PRELOAD for network games; stdio hooks (fopen/fdopen/freopen fetch at open; fclose/closedir forget). CI 43752408660.
+- Also seen: GTA V with its small files filled by hand ran, streamed rpf data, then crashed twice at GTA5.exe+0x121fa24 (maybe the same bug: read() data came back empty) — retest on cc371af1.
+- Test leftovers on the FIT (undo!): imagefs/usr/lib/libnetfs.so = test build, chattr +i; tracefs instance instances/netfs; /data/local/tmp/ino. Lessons: a preloaded library that hooks a call must forward it with RTLD_NEXT, never a raw syscall, or later preloads are skipped; check every preload's exports (llvm-readelf) before trusting a hook.
+- Device test 11-15 14:36 EST on cc371af1 (installed 14:35, sha256 7f330349): LD_PRELOAD starts with libnetfs.so; Darksiders passes the Steam check; kernel trace of every read of the stand-in files checked against holes afterwards: **3685 reads, 0 on a hole**. Darksiders still sits on its title logo (no prompt) — not a streaming fault.
+- A/B 14:48 EST: the user's full local copy of Darksiders (no streaming) freezes on the title video the same way → a Darksiders/Bannerlator video issue, not streaming. CORRECTION: nothing was replaced — the full copy had never been added; added at 14:49 it was named "darksiders1" because the importer's Steam-name rename refuses a taken name. Fix b760d5a4: the next free "Name (2)" instead (importer only), CI 43754849082.
+- GTA V retest 14:56 EST on cc371af1: passes the Steam check on its own now; streams; crashes at GTA5.exe+0x121fa24 as before. Read check: 2944 reads, the game got data for all of its own; the only 2 empty reads were BL's own (InstallScriptRedists, thread DefaultDispatch) of _CommonRedist installscript.vdf → GTA V crash is not streaming. Fix 8a3df9d6: *.vdf ≤ 512 KB fetched with the stand-in (redist folders too) and kept. CI 43755565176 (with b760d5a4).
+- Resume: FIT has cc371af1. Test tools left on the FIT: tracefs instance instances/netfs, /data/local/tmp/ino (holecheck, ino, fan), /sdcard/Download/ino.
+
+## 2026-11-15 — GTA V streamed launch A/B (feat/network-games-spike, testing)
+- Why: the user's streamed GTA V (03:54 EST) quit at start: `"steam_api64.dll" failed to initialize`, c0000142. Only exe/dll were in the stand-in; its small settings files (steam_api.ini, steam*.wow, …) were never fetched.
+- Test: the 7 small top-level files filled from the NAS (sha1 match, mtime kept), relaunch. Past the error → libnetfs misses the crack's reads; same error → not streaming.
+- Also seen: create() prefetched 129 MB of "Social club" installer exes → skip installer folders.
+- Resume: FIT has 4bf309cf (a8c1a9be). Temp files /sdcard/Download/gta-small-tmp.
+
+## 2026-11-15 00:25 EST — feat/network-games-spike: copy AND stream NAS games in one build (branch, CI running)
+
+- **User:** "both go" (Add to Games by copying: must ask where to copy, also on NAS folder menus; streaming spike) → "make both options available to test both in one apk".
+- **Branch:** feat/network-games-spike off feat/fm-network-drives (6f947bf2 = Network drives + Add to Games copy, CI 43678806335 green ×4). Code e924b017.
+- **Copy (6f947bf2):** NAS exe/folder ⋮ → Add to Games… → game folder (exe: GameIdentifier.gameFolderOf rule; every level up to 6 pickable), size, How, Copy to (each volume's Winlator/Games or a chosen folder), container → copy in the app scope (leaving the file manager doesn't stop it; Cancel; rerun fetches only what's missing) → exe added to Games (the one started on, else GameFolderScanner.gameIn).
+- **Stream (e924b017):** How = Stream from the network (test) → stand-in in files/netgames/<Game> (folders + sparse files at real sizes + dates; exes/dlls/files ≤ 4 MB fetched whole) → drive letter for files/netgames added to the container once (WinePath.ensureDrive) → exe added to Games; registry netdrives/streams.json. Launch: GuestProgramLauncherComponent → NetStream.launchEnv → rcd (now --rc-serve) + private stream.conf (port, prefix, auth) → libnetfs.so in LD_PRELOAD with BLNETFS_ROOT/BLNETFS_CONF.
+- **libnetfs.so (cpp/winlator/netfs.c):** hooks read/pread(64)/readv/preadv(64)/mmap(64)/write*/close/dup2/dup3; fds classified by fstat + /proc/self/fd (wineserver's socket-passed fds work); holes found with SEEK_HOLE; missing 8 MB chunks fetched as up to 8 parallel ranged GETs and pwritten into the sparse file (shared by all processes); 2-chunk read-ahead (≤ 4 background threads); writes fetch the whole file first; retries ~15 s then EIO; atfork resets locks.
+- **Proof so far (Pocket FIT proot, glibc build of netfs.c + rclone rcd --rc-serve + Nighthawk NAS):** pread / read / mmap at 5 offsets of Bayonetta data10.cpk (853 MB, sparse stand-in) == the NAS's bytes (FNV-64 match); only fetched chunks use disk; sequential 28.8 MB/s (one 8 MB GET alone ~7 MB/s; NAS raw 33.8 MB/s).
+- **CI:** build-artifacts 43679956619 (headSha e924b017 asserted) — running.
+- **Not done / limits:** NOT device-tested in the app; x86_64 (Box64) containers unproven (arm64ec first); new files the game writes into its folder stay local; removing a streamed game leaves its stand-in (files/netgames); the NAS must stay reachable while playing (a fetch that fails for ~15 s gives the game a read error).
+- **Resume:** worktree /root/src/Bannerlator-wt/network-games; test = FIT, pubg APK, file manager → NAS → Bayonetta.exe → Add to Games → Stream → launch → game log lines "netfs: …".
 ## 2026-11-15 16:18 EST — fix/store-close-leaves-store MERGED into main (9b98c499), NOT device-tested
 
 - **User:** "merge to main if green". CI 43761896820 (c3f2999a) success ×4, no compiler warnings in StoreSectionHost.kt.
@@ -12,6 +52,11 @@
 - **Why:** user feedback on the ✕ from 75d304a7 (on the FIT in root-27's a6ef5dce = main d115c396), relayed by root-27: "I see the close button but it just closes the menu not the store".
 - **Built:** 01eb2ccee — StoreSectionHost.kt StoreSwitcher: the ✕ closes the list and finishes the store's Activity (= every store's onClose: Steam, GOG, Epic, Amazon, Xbox); B and a tap outside still close only the list. Only this file (root-27 is in store/*Activity.kt etc. on fix/store-uninstall-shortcuts).
 - **Next:** CI, stage APK, ask before install; test: ✕ in each store leaves it back to Bannerlator, picking a store still switches, B closes the list only.
+## 2026-11-15 16:15 EST — fix/store-uninstall-shortcuts: a store page's Uninstall removes the game's shortcuts (branch, CI running)
+- Why: user 11-15: "when a game is downloaded from one of the app stores and creates a shortcut, after uninstalling that game it leaves the game shortcut behind". Verified: only DownloadActions.uninstall removed shortcuts; SteamLibraryTab.uninstall, XboxDownloads.uninstall (Xbox page), Epic/GOG pages, Amazon list + page did not. FIT library check found 6 such dead shortcuts (Among Us, 5 Steam NFS) + 1 hand-added (RE2, folder gone) + 2 empty leftovers; removed with the user's yes (backups in Download/Bannerlator-backup/removed-shortcuts-20261115).
+- Built: d9d79936 — StoreShortcutCleanup (DownloadActions' removal moved out; real-path comparison) called from every store uninstall; Xbox confirm text updated.
+- CI: 43762035530. Not device-tested.
+- Not mine: the store menu ✕ closing only the menu (user report) — root-a3 is fixing it on fix/store-close-leaves-store.
 
 ## 2026-11-15 15:49 EST — Correction: wrong times on six of my entries today (log only)
 

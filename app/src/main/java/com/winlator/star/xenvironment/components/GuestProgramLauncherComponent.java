@@ -792,6 +792,30 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
                     + (DInputVibration.effective(container, shortcut) ? "on" : "off") + ")");
         }
 
+        // Network games that stream (test, netdrive/NetStream.kt): the game sits in a stand-in folder of sparse files;
+        // libnetfs.so fetches each part from the network drive as the game reads it. Only for those games.
+        if (shortcut != null && container != null) {
+            java.util.Map<String, String> netEnv = com.winlator.star.netdrive.NetStream.launchEnv(environment.getContext(), container, shortcut.path);
+            if (netEnv != null) {
+                File netfsDest = new File(imageFs.getLibDir(), "libnetfs.so");
+                File netfsSrc = new File(nativeLibDir, "libnetfs.so");
+                try {
+                    if (netfsSrc.exists()) FileUtils.copy(netfsSrc, netfsDest);
+                    else if (!netfsDest.exists()) Log.e("GuestLauncher", "libnetfs.so NOT FOUND in APK: " + netfsSrc.getAbsolutePath());
+                } catch (Exception e) {
+                    Log.e("GuestLauncher", "Failed to copy libnetfs.so: " + e.getMessage());
+                }
+                if (netfsDest.exists()) {
+                    // First in line: libfakeinput.so's read() sends every non-controller read straight to
+                    // syscall(SYS_read), so a library after it never sees read() (11-15: Darksiders' Steam emulator
+                    // settings came back empty and the game stopped at a black screen).
+                    ld_preload = netfsDest.getAbsolutePath() + (ld_preload.isEmpty() ? "" : ":" + ld_preload);
+                    for (java.util.Map.Entry<String, String> e : netEnv.entrySet()) envVars.put(e.getKey(), e.getValue());
+                    Log.i("GuestLauncher", "Network game: streaming " + netEnv.get("BLNETFS_ROOT"));
+                }
+            }
+        }
+
         Log.d("GuestLauncher", "Final LD_PRELOAD: " + ld_preload);
         // winewayland.so (unixlib) dlopens libwayland-client/-egl/xkbcommon/xkbregistry. These resolve
         // from imagefs/usr/lib via LD_LIBRARY_PATH exactly like winex11.so's libX11/libXext deps do
@@ -887,6 +911,8 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             synchronized (lock) {
                 pid = -1;
             }
+            // A streamed network game set to "Stream only" is emptied again once it has closed.
+            if (shortcut != null) com.winlator.star.netdrive.NetStream.onGameExit(environment.getContext(), container, shortcut.path);
 
             if (terminationCallback != null)
                 terminationCallback.call(status);

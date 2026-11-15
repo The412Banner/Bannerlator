@@ -622,7 +622,9 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
         lifecycleScope.launch(Dispatchers.IO) {
             val installPath = GogInstallPath.getInstallDir(this@GogGameDetailActivity, dirName)
             // Only a game folder inside a GOG download location (an empty name would point at the whole library).
-            StoreInstallLocations.safeDelete(applicationContext, StoreInstallLocations.Store.GOG, installPath)
+            val refused = StoreShortcutCleanup.keptBySafeDelete(applicationContext, StoreInstallLocations.Store.GOG, installPath)
+            val gone = StoreInstallLocations.safeDelete(applicationContext, StoreInstallLocations.Store.GOG, installPath)
+            StoreShortcutCleanup.afterDelete(applicationContext, Store.GOG, gameId, installPath.absolutePath, gone, refused)
             GogInstallPath.forgetBase(applicationContext, dirName)
             // Purge the FULL native install record via the one canonical helper, and clear the DL
             // manager's registry/library row — so the store list, this page, and the cross-store

@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 23:59 EST — fix/wayland-desktop-resize MERGED into main (2ead3b84)
+
+- **User:** "merge it and fix the console strip too".
+- **Merge:** backup `refs/backup/20261114/main-before-wayland-desktop-resize` = bbf21021; `--no-ff` merge 2ead3b84 (parents bbf21021 + 3baafd3e); tree == branch tip; code vs device-tested 6f7f0929: only PROGRESS_LOG.md differs. Main CI 43679054889.
+- **Next:** console-window strip (windows drawn outside the Windows desktop) on a new branch.
+
 ## 2026-11-14 23:55 EST — fix/wayland-desktop-resize DEVICE-PROVEN on the Pocket FIT (branch, awaiting the user)
 
 - **Run:** user, 23:52:26-23:53:12 EST, Streets of Rage Remake, game resolution 1280x720 unchanged.

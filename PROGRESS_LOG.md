@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 17:24 EST — feat/device-info-popup MERGED into main (7b63e6ff), DEVICE-PROVEN on the Pocket FIT
+
+- **User:** "merge it" with screenshots 17:23:30 (portrait drawer) and 17:23:43 (landscape top line): the pop-up shows Chip (SoC) (Snapdragon 8 Gen 3 family, SG8350P, QTI, pineapple, qcom, 682 · SG_PINEAPPLE, Snapdragon), GPU (Adreno 750, Adreno 7xx, model from the Vulkan driver, kernel name Adreno33v2, 231–1050 MHz 14 steps, load, 53 °C), CPU and the rest below.
+- **Checks:** no DeviceInfo / LabDeviceDetails / VulkanInfo warnings in logcat (no section failed); crash buffer clean since the 17:22 install.
+- **Merge:** backup `refs/backup/20261115/main-before-device-info-popup` = 4eeb94f0 (pushed); `--no-ff` merge 7b63e6ff (parents 4eeb94f0 + 1d2bc1a4); merged tree == branch tip; code == device-tested 18b50320 (only PROGRESS_LOG.md differs). No release workflow running.
+- **Proof level:** CI-green (43767835605) + device-proven (sections shown, both entry points). Not checked by me: Copy's pasted text, controller focus through the sections.
+- **Branch kept.** Main CI starts on this push.
+
 ## 2026-11-15 17:22 EST — feat/device-info-popup 18b50320 (fix + main 4eeb94f0) CI GREEN, installing (user: "install when done")
 
 - **CI:** build-artifacts 43767835605, headSha 18b50320, ×4 success; no compiler warnings in the changed files; libdeviceinfo.so in the APK. (43767472392 and 43767759407 on 12d2bddc cancelled by me.)

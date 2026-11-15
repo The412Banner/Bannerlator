@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 16:15 EST — fix/store-uninstall-shortcuts: a store page's Uninstall removes the game's shortcuts (branch, CI running)
+- Why: user 11-15: "when a game is downloaded from one of the app stores and creates a shortcut, after uninstalling that game it leaves the game shortcut behind". Verified: only DownloadActions.uninstall removed shortcuts; SteamLibraryTab.uninstall, XboxDownloads.uninstall (Xbox page), Epic/GOG pages, Amazon list + page did not. FIT library check found 6 such dead shortcuts (Among Us, 5 Steam NFS) + 1 hand-added (RE2, folder gone) + 2 empty leftovers; removed with the user's yes (backups in Download/Bannerlator-backup/removed-shortcuts-20261115).
+- Built: d9d79936 — StoreShortcutCleanup (DownloadActions' removal moved out; real-path comparison) called from every store uninstall; Xbox confirm text updated.
+- CI: 43762035530. Not device-tested.
+- Not mine: the store menu ✕ closing only the menu (user report) — root-a3 is fixing it on fix/store-close-leaves-store.
+
 ## 2026-11-15 15:49 EST — Correction: wrong times on six of my entries today (log only)
 
 - **Mistake:** I wrote times in six headings from guesses instead of reading the clock. The commit times (local, `git log --date=format-local`) are: dd-driver-import built 14:01 (written 13:50), CI green 14:14 (14:20), merged 15:02 (14:45); store-switcher-close built 15:23 (15:30), CI green 15:34 (15:52), merged 15:40 (15:58). Headings fixed in place, each marked "corrected". No code change.

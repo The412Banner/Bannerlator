@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 — Streamed games: the missed-read bug found and fixed (feat/network-games-spike, CI)
+- Why: GTA V and Darksiders (both Steam-emulator copies) stopped at start ("steam_api.dll failed to initialize"); their steam_api.ini was never fetched.
+- Found: inotify showed the game READ steam_api.ini; trace builds of libnetfs (read/pread/mmap/open/recvmsg/sendfile/copy_file_range/splice/fread/_chk hooks) saw no read; fanotify = ENOSYS; tracefs f2fs_dataread_start named darksiders1.exe (4096 + 2326-byte reads). Cause: **libfakeinput.so (earlier in LD_PRELOAD) exports read() and sends every non-controller read to syscall(SYS_read)** — libnetfs never saw read(). Same cause behind SoRR needing the whole SorR.dat.
+- Proof: test helper that also hooked syscall() → Darksiders got past the check, fetched its small files (4 in 473 ms) and media, reached its title screen (124 fps); user then saw it sit on the title logo (still loading, stream-only mode).
+- Built: cc371af1 — libnetfs first in LD_PRELOAD for network games; stdio hooks (fopen/fdopen/freopen fetch at open; fclose/closedir forget). CI 43752408660.
+- Also seen: GTA V with its small files filled by hand ran, streamed rpf data, then crashed twice at GTA5.exe+0x121fa24 (maybe the same bug: read() data came back empty) — retest on cc371af1.
+- Test leftovers on the FIT (undo!): imagefs/usr/lib/libnetfs.so = test build, chattr +i; tracefs instance instances/netfs; /data/local/tmp/ino. Lessons: a preloaded library that hooks a call must forward it with RTLD_NEXT, never a raw syscall, or later preloads are skipped; check every preload's exports (llvm-readelf) before trusting a hook.
+- Resume: FIT has 4bf309cf + the locked test helper.
+
 ## 2026-11-15 — GTA V streamed launch A/B (feat/network-games-spike, testing)
 - Why: the user's streamed GTA V (03:54 EST) quit at start: `"steam_api64.dll" failed to initialize`, c0000142. Only exe/dll were in the stand-in; its small settings files (steam_api.ini, steam*.wow, …) were never fetched.
 - Test: the 7 small top-level files filled from the NAS (sha1 match, mtime kept), relaunch. Past the error → libnetfs misses the crack's reads; same error → not streaming.

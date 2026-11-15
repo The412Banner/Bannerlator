@@ -270,6 +270,8 @@ internal class FmNetOps(private val context: Context, private val scope: Corouti
         var container by mutableStateOf<com.winlator.star.container.Container?>(null)
         /** Stream from the drive (test) instead of copying first. */
         var stream by mutableStateOf(false)
+        /** The game-folder levels list is open (it starts closed: one line with the picked folder). */
+        var levelsOpen by mutableStateOf(false)
         val name: String get() = NetFs.nameOf(level).ifEmpty { drive.name }
         val exeRel: String? get() = exePath?.let { p -> if (level.isEmpty()) p else p.removePrefix(level.trimEnd('/') + "/") }
 
@@ -293,6 +295,20 @@ internal class FmNetOps(private val context: Context, private val scope: Corouti
 
     /** Free space of the app's own storage (where streamed games keep what they read). */
     fun appFree(): Long = freeSpace(context.filesDir)
+
+    private fun prefs() = androidx.preference.PreferenceManager.getDefaultSharedPreferences(context)
+
+    /** The folder the last copy went to, when it is still there; else Internal storage's Winlator/Games. */
+    fun defaultTarget(): File {
+        val targets = addTargets()
+        val last = prefs().getString("fmNetAddTarget", null)?.let(::File)
+        return when {
+            last == null -> targets.first().second
+            targets.any { it.second == last } -> last
+            last.isDirectory -> last
+            else -> targets.first().second
+        }
+    }
 
     fun freeSpace(dir: File): Long {
         var d: File? = dir
@@ -320,7 +336,7 @@ internal class FmNetOps(private val context: Context, private val scope: Corouti
                 }.ifEmpty { listOf("") }
                 AddReq(item.drive, item.path, levels, if (dir.isEmpty() && levels.first().isNotEmpty()) levels.first() else dir)
             }
-            req.target = addTargets().first().second
+            req.target = defaultTarget()
             req.container = ops.containerList().firstOrNull()
             addReq = req
             req.measure()
@@ -333,6 +349,7 @@ internal class FmNetOps(private val context: Context, private val scope: Corouti
         if (req.stream) { confirmStream(req, container); return }
         val base = req.target ?: return
         addReq = null
+        prefs().edit().putString("fmNetAddTarget", base.absolutePath).apply()
         val gameDir = File(base, req.name)
         val exeRel = req.exeRel
         val app = context.applicationContext

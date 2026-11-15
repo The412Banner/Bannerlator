@@ -66,15 +66,7 @@ internal fun LabNetProperties(item: FmItem.Net, onDismiss: () -> Unit) {
 internal fun LabNetAddGameDialog(net: FmNetOps, req: FmNetOps.AddReq, containers: List<com.winlator.star.container.Container>, chooseFolder: (String, (java.io.File) -> Unit) -> Unit) {
     val targets = remember { net.addTargets() }
     LabDialog(L("Add to Games"), onDismiss = { net.addReq = null }) {
-        LabToolHeading(L("Game folder"))
-        if (req.levels.size > 1) {
-            req.levels.forEach { lv ->
-                LabToolRow(NetFs.nameOf(lv).ifEmpty { req.drive.name }, sub = lv.ifEmpty { req.drive.name }, selected = req.level == lv) {
-                    if (req.level != lv) { req.level = lv; req.measure() }
-                }
-            }
-        } else LabPropLine(L("Folder"), req.name)
-        LabPropLine(L("Size"), L(addSizeText(req.size)))
+        // Where the game goes comes first (it was below the folder levels, off screen: user 11-15).
         LabToolHeading(L("How"))
         LabToolRow(L("Copy to this device"), sub = L("Plays without the network"), selected = !req.stream) { req.stream = false }
         LabToolRow(L("Stream from the network (test)"), sub = L("Nothing copied first: parts are fetched as the game reads them; the drive must stay on"), selected = req.stream) { req.stream = true }
@@ -84,10 +76,22 @@ internal fun LabNetAddGameDialog(net: FmNetOps, req: FmNetOps.AddReq, containers
                 LabToolRow("${L(label)} · Winlator/Games", sub = L("%1\$s free", StringUtils.formatBytes(net.freeSpace(dir))), selected = req.target == dir) { req.target = dir }
             }
             val custom = req.target?.takeIf { t -> targets.none { it.second == t } }
-            if (custom != null) LabToolRow(custom.name.ifBlank { custom.absolutePath }, sub = custom.absolutePath, selected = true) { }
+            if (custom != null) LabToolRow(custom.name.ifBlank { custom.absolutePath }, sub = custom.absolutePath + " · " + L("%1\$s free", StringUtils.formatBytes(net.freeSpace(custom))), selected = true) { }
             LabToolRow(L("Choose a folder…")) { chooseFolder(L("Copy the game to")) { req.target = it } }
         } else {
             LabDialogText(L("What the game reads is kept in app storage (internal): %1\$s free", StringUtils.formatBytes(net.appFree())), muted = true)
+        }
+        LabToolHeading(L("Game folder"))
+        LabToolRow(req.name, sub = L(addSizeText(req.size)) + if (req.levels.size > 1) " · " + (if (req.levelsOpen) L("tap to close") else L("tap to change")) else "", selected = true) {
+            if (req.levels.size > 1) req.levelsOpen = !req.levelsOpen
+        }
+        if (req.levelsOpen) {
+            req.levels.forEach { lv ->
+                LabToolRow(NetFs.nameOf(lv).ifEmpty { req.drive.name }, sub = lv.ifEmpty { req.drive.name }, selected = req.level == lv) {
+                    if (req.level != lv) { req.level = lv; req.measure() }
+                    req.levelsOpen = false
+                }
+            }
         }
         if (containers.size > 1) {
             LabToolHeading(L("Container"))

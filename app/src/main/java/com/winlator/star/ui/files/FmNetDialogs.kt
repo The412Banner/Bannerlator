@@ -197,15 +197,7 @@ internal fun NetAddGameDialog(net: FmNetOps, req: FmNetOps.AddReq, containers: L
         title = { Text("Add to Games") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                Heading("Game folder")
-                if (req.levels.size > 1) {
-                    req.levels.forEach { lv ->
-                        Choice(req.level == lv, com.winlator.star.netdrive.NetFs.nameOf(lv).ifEmpty { req.drive.name }, lv.ifEmpty { req.drive.name }) {
-                            if (req.level != lv) { req.level = lv; req.measure() }
-                        }
-                    }
-                } else Text(req.name, fontSize = 14.sp)
-                Text(addSizeText(req.size), color = cs.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+                // Where the game goes comes first (it was below the folder levels, off screen: user 11-15).
                 Heading("How")
                 Choice(!req.stream, "Copy to this device", "Plays without the network") { req.stream = false }
                 Choice(req.stream, "Stream from the network (test)", "Nothing copied first: parts are fetched as the game reads them; the drive must stay on") { req.stream = true }
@@ -215,10 +207,22 @@ internal fun NetAddGameDialog(net: FmNetOps, req: FmNetOps.AddReq, containers: L
                         Choice(req.target == dir, "$label · Winlator/Games", "${StringUtils.formatBytes(net.freeSpace(dir))} free") { req.target = dir }
                     }
                     val custom = req.target?.takeIf { t -> targets.none { it.second == t } }
-                    if (custom != null) Choice(true, custom.name.ifBlank { custom.absolutePath }, custom.absolutePath) { }
+                    if (custom != null) Choice(true, custom.name.ifBlank { custom.absolutePath }, "${custom.absolutePath} · ${StringUtils.formatBytes(net.freeSpace(custom))} free") { }
                     TextButton(onClick = { chooseFolder("Copy the game to") { req.target = it } }) { Text("Choose a folder…") }
                 } else {
                     Text("What the game reads is kept in app storage (internal): ${StringUtils.formatBytes(net.appFree())} free", color = cs.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+                }
+                Heading("Game folder")
+                Choice(true, req.name, addSizeText(req.size) + if (req.levels.size > 1) (if (req.levelsOpen) " · tap to close" else " · tap to change") else "") {
+                    if (req.levels.size > 1) req.levelsOpen = !req.levelsOpen
+                }
+                if (req.levelsOpen) {
+                    req.levels.forEach { lv ->
+                        Choice(req.level == lv, com.winlator.star.netdrive.NetFs.nameOf(lv).ifEmpty { req.drive.name }, lv.ifEmpty { req.drive.name }) {
+                            if (req.level != lv) { req.level = lv; req.measure() }
+                            req.levelsOpen = false
+                        }
+                    }
                 }
                 if (containers.size > 1) {
                     Heading("Container")

@@ -51,6 +51,8 @@
 #define PARTS 8
 #define AHEAD 2
 #define MAX_BACKGROUND 4
+/* Files up to this size are fetched whole the first time they are used. */
+#define WHOLE_MAX ((off_t)1 << 30)
 
 enum { FD_UNKNOWN = 0, FD_PLAIN = 1, FD_NET = 2, FD_COMPLETE = 3 };
 
@@ -94,6 +96,8 @@ static dev_t root_dev;
 static int port;
 static char prefix[8192];
 static char auth[1024];
+/* Where the "Loading from NAS" status line goes (from the config), or "" for none. */
+static char status_path[PATH_MAX];
 
 static unsigned char state[MAXFD];
 static char *rel[MAXFD];
@@ -179,6 +183,7 @@ static void init_env(void)
             if (!strncmp(line, "port=", 5) && n - 5 < sizeof cport) { strcpy(cport, line + 5); p = cport; }
             else if (!strncmp(line, "prefix=", 7) && n - 7 < sizeof cprefix) { strcpy(cprefix, line + 7); pre = cprefix; }
             else if (!strncmp(line, "auth=", 5) && n - 5 < sizeof cauth) { strcpy(cauth, line + 5); a = cauth; }
+            else if (!strncmp(line, "status=", 7) && n - 7 < sizeof status_path) strcpy(status_path, line + 7);
         }
     }
     if (!r || !*r || !p || !pre || !a) return;
@@ -445,51 +450,129 @@ static int spawn(pthread_t *t, int detached, void *(*fn)(void *), void *arg)
     return rc;
 }
 
-struct part { const char *r; int h; off_t start, end; int rc; };
+/* ── What the game is waiting for, for Bannerlator's "Loading from NAS" tag ──
+ * One line "<done> <total> <MB/s> <file>" in the status file named by the config ("status="), rewritten at most
+ * every 200 ms while a fetch the game waits for runs, and "<total> <total> …" when it ends (the tag then hides). */
+static int status_fd = -1;
+static long long status_last;
+static pthread_mutex_t status_lock = PTHREAD_MUTEX_INITIALIZER;
 
-static void *part_main(void *arg)
+static void status_write(const char *name, long long done, long long total, double mbps, int force)
 {
-    struct part *p = arg;
-    p->rc = fetch_retry(p->r, p->h, p->start, p->end);
+    if (!status_path[0]) return;
+    long long now = (long long)now_ms();
+    if (!force && now - __atomic_load_n(&status_last, __ATOMIC_RELAXED) < 200) return;
+    pthread_mutex_lock(&status_lock);
+    if (force || now - status_last >= 200) {
+        status_last = now;
+        if (status_fd < 0) {
+            status_fd = open(status_path, O_WRONLY | O_CREAT | O_CLOEXEC, 0600);
+            if (status_fd >= 0 && status_fd < MAXFD) __atomic_store_n(&state[status_fd], FD_PLAIN, __ATOMIC_RELEASE);
+        }
+        if (status_fd >= 0) {
+            const char *base = strrchr(name, '/');
+            char line[600];
+            int n = snprintf(line, sizeof line, "%lld %lld %.1f %s\n", done, total, mbps, base ? base + 1 : name);
+            if (n > 0 && n < (int)sizeof line) {
+                real.pwrite(status_fd, line, (size_t)n, 0);
+                if (ftruncate(status_fd, n) != 0) { /* keep going: the line is still there */ }
+            }
+        }
+    }
+    pthread_mutex_unlock(&status_lock);
+}
+
+/* ── One fetch: ranges of a file, split into pieces, fetched by up to PARTS helper threads ── */
+struct job {
+    const char *r;
+    int h;
+    off_t (*ranges)[2];
+    int nranges;
+    off_t piece;
+    int background;
+    pthread_mutex_t m;
+    int ri;
+    off_t next;
+    int failed;
+    long long total, done;
+    double t0;
+};
+
+static int job_take(struct job *j, off_t *s, off_t *e)
+{
+    int ok = 0;
+    pthread_mutex_lock(&j->m);
+    while (j->ri < j->nranges && j->next >= j->ranges[j->ri][1]) {
+        j->ri++;
+        if (j->ri < j->nranges) j->next = j->ranges[j->ri][0];
+    }
+    if (!j->failed && j->ri < j->nranges) {
+        *s = j->next;
+        *e = j->next + j->piece < j->ranges[j->ri][1] ? j->next + j->piece : j->ranges[j->ri][1];
+        j->next = *e;
+        ok = 1;
+    }
+    pthread_mutex_unlock(&j->m);
+    return ok;
+}
+
+static void *job_main(void *arg)
+{
+    struct job *j = arg;
+    off_t s, e;
+    while (job_take(j, &s, &e)) {
+        if (fetch_retry(j->r, j->h, s, e) != 0) {
+            pthread_mutex_lock(&j->m);
+            j->failed = 1;
+            pthread_mutex_unlock(&j->m);
+            break;
+        }
+        long long d = __atomic_add_fetch(&j->done, (long long)(e - s), __ATOMIC_ACQ_REL);
+        if (!j->background) {
+            double ms = now_ms() - j->t0;
+            status_write(j->r, d, j->total, ms > 0 ? d / 1048.576 / ms : 0.0, 0);
+        }
+    }
     return NULL;
 }
 
-/* [start, end) of [r] into [h], as up to PARTS ranged GETs at once. */
+/* The [n] ranges of [r] into [h], in pieces of [piece] bytes, up to PARTS at once on helper threads (the calling
+ * game thread only waits; a thread that won't start leaves its share to the others, or to this thread). */
+static int fetch_ranges(const char *r, int h, off_t (*ranges)[2], int n, off_t piece, int background)
+{
+    struct job j;
+    memset(&j, 0, sizeof j);
+    j.r = r; j.h = h; j.ranges = ranges; j.nranges = n; j.piece = piece; j.background = background;
+    pthread_mutex_init(&j.m, NULL);
+    j.next = n > 0 ? ranges[0][0] : 0;
+    j.t0 = now_ms();
+    long long pieces = 0;
+    for (int i = 0; i < n; i++) { j.total += ranges[i][1] - ranges[i][0]; pieces += (ranges[i][1] - ranges[i][0] + piece - 1) / piece; }
+    if (j.total <= 0) { pthread_mutex_destroy(&j.m); return 0; }
+    if (!background) status_write(r, 0, j.total, 0.0, 1);
+    int workers = pieces < PARTS ? (int)pieces : PARTS;
+    pthread_t tids[PARTS];
+    int started = 0;
+    for (int i = 0; i < workers; i++) if (spawn(&tids[started], 0, job_main, &j) == 0) started++;
+    if (started == 0) job_main(&j);
+    for (int i = 0; i < started; i++) pthread_join(tids[i], NULL);
+    double ms = now_ms() - j.t0;
+    int rc = j.failed || j.done < j.total ? -1 : 0;
+    if (!background) status_write(r, j.total, j.total, 0.0, 1);
+    if (rc == 0)
+        say("netfs: %s%s %lld KB in %d piece%s, %.0f ms (%.1f MB/s)", background ? "(ahead) " : "", r, j.total >> 10,
+            (int)pieces, pieces == 1 ? "" : "s", ms, ms > 0 ? j.total / 1048.576 / ms : 0.0);
+    else
+        say("netfs: %s: couldn't fetch (%lld of %lld KB arrived)", r, j.done >> 10, j.total >> 10);
+    pthread_mutex_destroy(&j.m);
+    return rc;
+}
+
+/* [start, end) of [r] into [h]: one chunk, as 1 MB pieces. */
 static int fetch(const char *r, int h, off_t start, off_t end, int background)
 {
-    double t0 = now_ms();
-    off_t len = end - start;
-    int n = (int)((len + ((off_t)1 << 20) - 1) >> 20);
-    if (n > PARTS) n = PARTS;
-    if (n < 1) n = 1;
-    off_t step = (len + n - 1) / n;
-    step = (step + 4095) & ~(off_t)4095;
-    struct part parts[PARTS];
-    pthread_t tids[PARTS];
-    int started[PARTS] = {0};
-    int count = 0;
-    for (off_t o = start; o < end && count < PARTS; o += step) {
-        struct part *p = &parts[count];
-        p->r = r; p->h = h; p->start = o; p->end = o + step < end ? o + step : end; p->rc = -1;
-        started[count] = spawn(&tids[count], 0, part_main, p) == 0;
-        count++;
-    }
-    /* Every part runs on a helper thread; the caller (a game thread) only waits. A part whose thread didn't start
-     * gets one more try, then runs here as a last resort. */
-    for (int i = 0; i < count; i++) if (!started[i]) started[i] = spawn(&tids[i], 0, part_main, &parts[i]) == 0;
-    for (int i = 0; i < count; i++) if (!started[i]) part_main(&parts[i]);
-    int rc = 0;
-    for (int i = 0; i < count; i++) {
-        if (started[i]) pthread_join(tids[i], NULL);
-        if (parts[i].rc != 0) rc = -1;
-    }
-    double ms = now_ms() - t0;
-    if (rc == 0)
-        say("netfs: %s%s %lld+%lld KB in %.0f ms (%.1f MB/s)", background ? "(ahead) " : "", r, (long long)(start >> 10),
-            (long long)(len >> 10), ms, ms > 0 ? len / 1048.576 / ms : 0.0);
-    else
-        say("netfs: %s: couldn't fetch %lld-%lld", r, (long long)start, (long long)end);
-    return rc;
+    off_t range[1][2] = { { start, end } };
+    return fetch_ranges(r, h, range, 1, (off_t)1 << 20, background);
 }
 
 /* Chunks being fetched right now, so a read and the read-ahead never fetch the same one twice. */
@@ -542,16 +625,52 @@ static void fork_child(void)
 
 static int present(int h, off_t c, off_t ce) { return lseek(h, c, SEEK_HOLE) >= ce; }
 
+#define WHOLE_KEY ((off_t)-1)
+
 /* Fetches chunk [c, ce) unless it is there already or another thread has it. */
 static int fill_chunk(const char *r, int h, dev_t dev, ino_t ino, off_t c, off_t ce, int background)
 {
     while (!present(h, c, ce)) {
+        /* A whole-file fetch of this file is running: wait for it, then check again. */
+        if (!claim(dev, ino, WHOLE_KEY)) continue;
+        unclaim(dev, ino, WHOLE_KEY);
         if (!claim(dev, ino, c)) continue;
         int rc = present(h, c, ce) ? 0 : fetch(r, h, c, ce, background);
         unclaim(dev, ino, c);
         return rc;
     }
     return 0;
+}
+
+/*
+ * Every hole of the file, fetched as 4 MB pieces up to PARTS at once: the first time the game opens a file up to
+ * WHOLE_MAX, all of it comes over before the game goes on (11-15: Streets of Rage Remake needs all of SorR.dat
+ * although every read it makes through these hooks is the 23-byte header; with the file whole it runs).
+ */
+static int fill_whole(const char *r, int h, dev_t dev, ino_t ino, off_t size)
+{
+    for (;;) {
+        if (lseek(h, 0, SEEK_HOLE) >= size) return 0;
+        if (!claim(dev, ino, WHOLE_KEY)) continue;   /* another thread did it: check again */
+        enum { MAXR = 4096 };
+        off_t (*ranges)[2] = malloc(sizeof(off_t[2]) * MAXR);
+        int n = 0, rc = -1;
+        if (ranges) {
+            off_t pos = 0;
+            while (pos < size && n < MAXR) {
+                off_t hole = lseek(h, pos, SEEK_HOLE);
+                if (hole < 0 || hole >= size) break;
+                off_t data = lseek(h, hole, SEEK_DATA);
+                if (data < 0 || data > size) data = size;
+                ranges[n][0] = hole; ranges[n][1] = data; n++;
+                pos = data;
+            }
+            rc = n ? fetch_ranges(r, h, ranges, n, (off_t)4 << 20, 0) : 0;
+            free(ranges);
+        }
+        unclaim(dev, ino, WHOLE_KEY);
+        return rc;
+    }
 }
 
 struct ahead { char *r; off_t from; int chunks; };
@@ -614,12 +733,18 @@ static int ensure(int fd, off_t off, size_t len, int whole)
     struct stat sb;
     if (h < 0 || real.fstat(h, &sb) != 0) goto done;
     off_t size = sb.st_size;
-    if (whole) { off = 0; len = (size_t)size; }
-    if (size <= 0 || off >= size || len == 0) goto done;
+    if (size <= 0) goto done;
     if (lseek(h, 0, SEEK_HOLE) >= size) {
         __atomic_store_n(&state[fd], FD_COMPLETE, __ATOMIC_RELEASE);
         goto done;
     }
+    /* Up to WHOLE_MAX, the whole file on its first use; bigger files stream in chunks (writes still fetch all). */
+    if (whole || size <= WHOLE_MAX) {
+        if (fill_whole(r, h, sb.st_dev, sb.st_ino, size) != 0) rc = -1;
+        else __atomic_store_n(&state[fd], FD_COMPLETE, __ATOMIC_RELEASE);
+        goto done;
+    }
+    if (off >= size || len == 0) goto done;
     off_t end = off + (off_t)len;
     if (end > size || end < off) end = size;
     int waited = 0;

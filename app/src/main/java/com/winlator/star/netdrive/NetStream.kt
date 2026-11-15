@@ -52,6 +52,10 @@ object NetStream {
         fun toJson(): JSONObject = JSONObject().put("dir", dir.absolutePath).put("drive", driveId).put("path", remotePath)
     }
 
+    /** Where libnetfs.so writes what the game is waiting for (NetStreamTag shows it). */
+    @JvmStatic
+    fun statusFile(ctx: Context): File = File(NetEngine.dir(ctx.applicationContext), "stream.status")
+
     fun root(ctx: Context): File = File(ctx.applicationContext.filesDir, "netgames").apply { mkdirs() }.canonicalFile
 
     private fun registryFile(ctx: Context) = File(NetEngine.dir(ctx).apply { mkdirs() }, "streams.json")
@@ -167,7 +171,8 @@ object NetStream {
                 ?: run { Log.w(TAG, "stream ${game.dir.name}: the network engine didn't start"); return null }
             val (port, auth) = NetDaemon.serveInfo() ?: return null
             val conf = File(NetEngine.dir(app), "stream.conf")
-            conf.writeText("port=$port\nprefix=$prefix\nauth=$auth\n")
+            val status = statusFile(app).apply { delete() }
+            conf.writeText("port=$port\nprefix=$prefix\nauth=$auth\nstatus=${status.absolutePath}\n")
             conf.setReadable(false, false); conf.setReadable(true, true)
             Log.i(TAG, "streaming ${game.dir.name} from ${drive.name}")
             mapOf("BLNETFS_ROOT" to game.dir.absolutePath, "BLNETFS_CONF" to conf.absolutePath)

@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 23:55 EST — fix/wayland-desktop-resize DEVICE-PROVEN on the Pocket FIT (branch, awaiting the user)
+
+- **Run:** user, 23:52:26-23:53:12 EST, Streets of Rage Remake, game resolution 1280x720 unchanged.
+- **Log:** `23:52:28.861 desktop resized to 640x480: old 1280x720 viewport dropped (it no longer fits the buffer)` then `desktop size 640x480`. Modes: Original/Fit 1440x1080 at 240,0; Stretch 1920x1080; Fill 1920x1440 at 0,-180; Pixel-perfect 1280x960 at 320,60. The 5 screenshots (23:52:48-23:53:06) show the same.
+- **Crash check:** crash buffer empty for the app; newest tombstone is from 11-13 (qcrosvm, unrelated); exit reason EXIT_SELF code 0.
+- **Leftover (pre-existing, cosmetic):** the game's console window (665x434) sticks out past the right edge of the 640x480 desktop, so a small strip with its title-bar buttons shows in the black bars (Original/Fit/Pixel-perfect). The compositor does not clip windows to the desktop; possible follow-up.
+- **Not tested:** other games that change resolution; X11 sessions are not touched by this change.
+- **Next:** merge to main on the user's go.
+
 ## 2026-11-14 23:51 EST — fix/wayland-desktop-resize installed on the Pocket FIT (branch, device test next)
 
 - **User:** "Yes, install now". Installed 23:51:04 EST, base.apk sha256 2bfa4ab7… == staged APK. Replaced the parallel session's fm-network-drives e0baf52a (sessions told).

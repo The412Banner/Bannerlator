@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 14:45 EST — feat/dd-driver-import MERGED into main (a8c7a987), NOT device-tested
+
+- **User:** "merge to main" (after "Not now" to installing the test APK). The user chose to merge before a device test; recorded here as their decision.
+- **Merge:** backup `refs/backup/20261115/main-before-dd-driver-import` = 6fab62da (pushed); `--no-ff` merge a8c7a987 (parents 6fab62da + 93a0b9e5); merged tree == branch tip; code == CI-tested 82d85c13 (only PROGRESS_LOG.md differs). No release workflow running.
+- **Proof level:** CI-green (43750239230, ×4); NOT device-tested. Main CI starts on this push.
+- **Open:** device test (DroidDeck list → download → picker Android only / both / Cancel; install from file `/sdcard/Download/DD-Turnip-v0.7.0.zip`; Lab + Classic; Linux runtime import of the DD zip; logcat FATAL check). Branch feat/dd-driver-import kept.
+
 ## 2026-11-15 14:20 EST — feat/dd-driver-import CI GREEN, APK staged (branch, awaiting install go)
 
 - **Correction:** CI 43750095575 (361e72c6) cancelled by me before it finished: two Kotlin 2.0.21 compile risks in the new code (`catch (_: …)`, an early `return@key` in a composable). Fixed in 82d85c13.

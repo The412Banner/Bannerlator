@@ -52,6 +52,12 @@ object DriverSources {
             builtIn = true,
         ),
         RemoteDriverSource.json("Banners-Turnip", "$NIGHTLIES/banners-turnip_drivers.json", builtIn = true),
+        // DroidDeck's DD-Turnip: each zip holds an Android and a Linux driver; installing one asks which (DriverInstaller).
+        RemoteDriverSource(
+            name = "DroidDeck",
+            feeds = listOf(DriverFeed.GithubReleases("Droid-Deck", "Drivers", "(?i)^DD-Turnip-v[0-9.]+\\.zip$")),
+            builtIn = true,
+        ),
         RemoteDriverSource.json("StevenMXZ", "$NIGHTLIES/stevenmxz_drivers.json", builtIn = true),
         RemoteDriverSource.json("whitebelyash", "$NIGHTLIES/white_drivers.json", builtIn = true),
     )

@@ -129,6 +129,8 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
         if (ok || !ContentsTypes.isDriver(type)) return
         if (ContentDownloadRegistry.get(ContentsInstaller.keyFor(type, "file", name))?.replaceable == true) return
         if (DriverInstaller.zipKind(context, uri).isNotEmpty() || !hasFreedrenoLib(context, uri)) return
+        // A zip with an Android and a Linux driver already asked which (a Cancel lands here too).
+        if (DriverInstaller.bundleOf(context, uri) != null) return
         (context as? Activity)?.runOnUiThread { otherList = uri }
     }
     val cm = remember(tick) { runCatching { ContentsManager(context).apply { syncContents() } }.getOrNull() }

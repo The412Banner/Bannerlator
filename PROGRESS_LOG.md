@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 00:08 EST — fix/wayland-desktop-clip installed on the Pocket FIT (branch, device test next)
+
+- **CI:** compositor-only 43679223288 success; full APK 43679225801 success ×4 (ac39da17), no compositor.c warnings. Main CI 43679054889 (2ead3b84) success ×4.
+- **User:** "Yes, install now". Installed 00:08:17 EST, base.apk sha256 034000ee… == staged `/sdcard/Download/Bannerlator-wayland-desktop-clip-ac39da17.apk`.
+- **Test:** user launches Streets of Rage Remake, Fit + Pixel-perfect screenshots; pass = no strip past the picture's right edge, picture unchanged, 640x480 resize line still in the wayland log, no crash. Undo = the 6f7f0929 APK in Download (= main code).
+
 ## 2026-11-15 00:05 EST — fix/wayland-desktop-clip: windows cut off at the desktop edge (branch, CI running)
 
 - **Why:** user "fix the console strip too": Streets of Rage Remake's console window (665x434) sticks out past its 640x480 desktop, a strip with title-bar buttons in the letterbox bars (Original/Fit/Pixel-perfect).

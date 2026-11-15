@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 18:05 EST — 3.2.1 STABLE RELEASED + VERIFIED (Latest)
+- release.yml 43770791882 SUCCESS on main 8d38b006; tag 3.2.1 → 8d38b006 (== main == built); "Bannerlator 3.2.1", not prerelease, not draft, published 23:03:54 UTC; releases/latest = 3.2.1.
+- Assets: 4 APKs (574.8 MiB each: antutu, ludashi, pubg, standard) + update.json. Body 17.5k chars, says NAS streaming is experimental, includes "Every change since 3.2.0".
+- Manifest branch: update.json and update-pre.json = 3.2.1 / vc 108, 32 patches; Bannerlator-updates 3.2.1 = 32 .bldp. Link preview (og:description) starts "Bannerlator 3.2.1 Run Windows apps and games on Android…".
+- Backup refs/backup/20261115/main-before-3.2.1 = e9ea9ebd. Size scan branch tmp/size-3.2.1 still on GitHub (delete on the user's word).
+
 ## 2026-11-15 18:05 EST — 3.2.1 STABLE CUT (user: "cut it")
 - Backup refs/backup/20261115/main-before-3.2.1 = e9ea9ebd; main fast-forwards to release/3.2.1 (vc 108 / 3.2.1, notes, README); release.yml: tag 3.2.1, title "Bannerlator 3.2.1", number 3.2.1, make_prerelease false. No main pushes until it ends (root-a3, root-36 told).
 

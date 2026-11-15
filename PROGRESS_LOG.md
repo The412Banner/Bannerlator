@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 16:07 EST — fix/store-close-leaves-store: the store menu's ✕ closes the store (branch, CI next)
+
+- **Why:** user feedback on the ✕ from 75d304a7 (on the FIT in root-27's a6ef5dce = main d115c396), relayed by root-27: "I see the close button but it just closes the menu not the store".
+- **Built:** 01eb2ccee — StoreSectionHost.kt StoreSwitcher: the ✕ closes the list and finishes the store's Activity (= every store's onClose: Steam, GOG, Epic, Amazon, Xbox); B and a tap outside still close only the list. Only this file (root-27 is in store/*Activity.kt etc. on fix/store-uninstall-shortcuts).
+- **Next:** CI, stage APK, ask before install; test: ✕ in each store leaves it back to Bannerlator, picking a store still switches, B closes the list only.
+
 ## 2026-11-15 15:49 EST — Correction: wrong times on six of my entries today (log only)
 
 - **Mistake:** I wrote times in six headings from guesses instead of reading the clock. The commit times (local, `git log --date=format-local`) are: dd-driver-import built 14:01 (written 13:50), CI green 14:14 (14:20), merged 15:02 (14:45); store-switcher-close built 15:23 (15:30), CI green 15:34 (15:52), merged 15:40 (15:58). Headings fixed in place, each marked "corrected". No code change.

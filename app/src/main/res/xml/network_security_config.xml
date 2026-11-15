@@ -16,6 +16,13 @@
     <!-- App-wide default: no cleartext anywhere unless a domain-config below opts in. -->
     <base-config cleartextTrafficPermitted="false" />
 
+    <!-- This device itself: Network drives drive their rclone engine through its remote-control API on
+         127.0.0.1 (random port + password, see netdrive/NetDaemon.kt). Nothing else goes there. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+
     <!-- Steam content-delivery domains only. includeSubdomains covers the CDN hosts handed out as
          *.cdn.steampipe.steamcontent.com and *.steamcontent.com. -->
     <domain-config cleartextTrafficPermitted="true">

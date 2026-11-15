@@ -283,6 +283,7 @@ fun FileManagerRoot(
         pick != null -> null
         item is FmItem.Disk -> { { ops.diskMenu(p, item) } }
         item is FmItem.Entry -> { { ops.entryMenu(p, item) } }
+        item is FmItem.Net -> { { ops.net.itemMenu(p, item) } }
         else -> null
     }
 
@@ -344,9 +345,12 @@ fun FileManagerRoot(
         when (item) {
             is FmItem.Disk -> DiskPropertiesDialog(item.file, describeLocation(item.file, containers, imagefsDir), { propsTarget = null }) { refreshAll() }
             is FmItem.Entry -> EntryPropertiesDialog(item) { propsTarget = null }
+            is FmItem.Net -> NetPropertiesDialog(item) { propsTarget = null }
         }
     }
     sortFor?.let { p -> SortDialog(p.sort, { sortFor = null }) { s -> sortFor = null; panes.forEach { it.applySort(s) } } }
+    FmNetDialogs(ops.net, containers, ::chooseFolder) { panes.forEach { it.clearSelection() } }
+    FmNetWatcher(active = pick == null && panes.any { it.loc == FmLoc.Home }, tick = storageTick)
     conflict?.let { (name, isDir, batch) ->
         ConflictDialog(name, isDir, batch) { choice, all -> ops.answerConflict(choice, all) }
     }
@@ -413,7 +417,7 @@ fun FileManagerRoot(
         val l = pane.loc
         if (pick == null && l is FmLoc.InArchive) add(FmMenuEntry("Extract all…", Icons.Filled.Unarchive) { extractReq = pane to emptyList() })
         // The compact toolbar has no paste capsule: the controller reaches the clipboard's clear action from here too.
-        if (compactToolbar && pick == null && clipboard.isNotEmpty()) add(FmMenuEntry("Clear clipboard", Icons.Filled.Close) { clipboard = emptyList() })
+        if (compactToolbar && pick == null && ops.net.clipSummary() != null) add(FmMenuEntry("Clear clipboard", Icons.Filled.Close) { ops.net.clearClips() })
     }
 
     // ── Layout ──
@@ -488,10 +492,11 @@ fun FileManagerRoot(
                                 )
                             }
                             IconButton(onClick = { sortFor = pane }, modifier = Modifier.size(tb)) { Icon(Icons.Filled.Sort, "Sort", modifier = Modifier.size(tbIcon)) }
-                            if (pick == null && barDir != null) {
+                            val barNet = pane.currentNet
+                            if (pick == null && (barDir != null || barNet != null)) {
                                 Box {
                                     IconButton(onClick = { newOpen = true }, modifier = Modifier.size(tb)) { Icon(Icons.Filled.Add, "New", tint = cs.primary, modifier = Modifier.size(tbIcon)) }
-                                    if (newOpen) FmMenu(true, { newOpen = false }, newMenuEntries(barDir))
+                                    if (newOpen) FmMenu(true, { newOpen = false }, if (barDir != null) newMenuEntries(barDir) else ops.net.newMenuEntries(barNet!!))
                                 }
                             }
                             Box {
@@ -529,10 +534,11 @@ fun FileManagerRoot(
                 }
                 IconButton(onClick = { sortFor = pane }) { Icon(Icons.Filled.Sort, "Sort") }
                 val dir = pane.currentDir
-                if (pick == null && dir != null) {
+                val netLoc = pane.currentNet
+                if (pick == null && (dir != null || netLoc != null)) {
                     Box {
                         IconButton(onClick = { newOpen = true }) { Icon(Icons.Filled.Add, "New", tint = cs.primary) }
-                        if (newOpen) FmMenu(true, { newOpen = false }, newMenuEntries(dir))
+                        if (newOpen) FmMenu(true, { newOpen = false }, if (dir != null) newMenuEntries(dir) else ops.net.newMenuEntries(netLoc!!))
                     }
                 }
                 Box {
@@ -565,15 +571,16 @@ fun FileManagerRoot(
             }
 
             // Paste capsule: what's on the clipboard and a one-tap paste into the active pane's folder.
-            if (clipboard.isNotEmpty() && pick == null && !compactToolbar) {
-                val dest = pane.currentDir
-                val what = if (clipboard.size == 1) clipboard[0].name else "${clipboard.size} items"
+            val clipText = ops.net.clipSummary()
+            if (clipText != null && pick == null && !compactToolbar) {
+                val dest = pane.loc
+                val can = ops.net.canPasteInto(dest)
                 FmCapsule(
                     icon = Icons.Filled.ContentPaste,
-                    text = (if (clipCut) "Move " else "Copy ") + what,
-                    actionLabel = if (dest != null) "Paste here" else null,
-                    onAction = if (dest != null) ({ paste(clipboard, dest, clipCut) }) else null,
-                    onClose = { clipboard = emptyList() },
+                    text = clipText,
+                    actionLabel = if (can) "Paste here" else null,
+                    onAction = if (can) ({ ops.net.pasteInto(dest) }) else null,
+                    onClose = { ops.net.clearClips() },
                 )
             }
             opLabel?.let { label ->
@@ -583,6 +590,17 @@ fun FileManagerRoot(
                     actionLabel = "Cancel",
                     onAction = { opJob?.cancel() },
                     progress = opProgress,
+                    showProgress = true,
+                )
+            }
+            // A game being copied from a network drive ("Add to Games"): runs on when this page is left.
+            com.winlator.star.netdrive.NetHub.copying?.let { c ->
+                FmCapsule(
+                    icon = Icons.Filled.DriveFileMove,
+                    text = c.label + (c.progress?.let { "  ${(it * 100).toInt()}%" } ?: ""),
+                    actionLabel = "Cancel",
+                    onAction = { com.winlator.star.netdrive.NetHub.cancelGameCopy() },
+                    progress = c.progress,
                     showProgress = true,
                 )
             }
@@ -619,14 +637,27 @@ fun FileManagerRoot(
                 val items = pane.selectedItems()
                 val disk = items.filterIsInstance<FmItem.Disk>().map { it.file }
                 val entries = items.filterIsInstance<FmItem.Entry>()
+                val netItems = items.filterIsInstance<FmItem.Net>()
                 val otherDir = if (dualPref) panes[if (active == 0) 1 else 0].currentDir else null
+                val otherNet = if (dualPref) panes[if (active == 0) 1 else 0].currentNet else null
                 val actions = if (pane.inArchive) listOf(
                     FmSelAction("Extract", Icons.Filled.Unarchive, entries.isNotEmpty()) { extractReq = pane to entries },
                     FmSelAction("All", Icons.Filled.SelectAll) { pane.selectAll() },
-                ) else buildList {
+                ) else if (pane.currentNet != null) buildList {
+                    add(FmSelAction("Copy", Icons.Filled.ContentCopy, netItems.isNotEmpty()) { ops.net.copy(netItems); pane.clearSelection() })
+                    val over: FmLoc? = otherDir?.let { FmLoc.Dir(it) } ?: otherNet
+                    if (over != null) add(FmSelAction("Copy over", Icons.Filled.ContentCopy, netItems.isNotEmpty()) { pane.clearSelection(); ops.net.sendItems(netItems, over) })
+                    else add(FmSelAction("Copy to", Icons.Filled.Folder, netItems.isNotEmpty()) { val n = netItems; pane.clearSelection(); chooseFolder("Copy to") { ops.net.sendItems(n, FmLoc.Dir(it)) } })
+                    if (netItems.size == 1) add(FmSelAction("Rename", Icons.Filled.Edit) { ops.net.renameTarget = netItems[0]; pane.clearSelection() })
+                    add(FmSelAction("All", Icons.Filled.SelectAll) { pane.selectAll() })
+                    add(FmSelAction("Delete", Icons.Filled.Delete, netItems.isNotEmpty(), danger = true) { ops.net.deleteTargets = netItems })
+                } else buildList {
                     add(FmSelAction("Copy", Icons.Filled.ContentCopy, disk.isNotEmpty()) { clipboard = disk; clipCut = false; pane.clearSelection() })
                     add(FmSelAction("Cut", Icons.Filled.ContentCut, disk.isNotEmpty()) { clipboard = disk; clipCut = true; pane.clearSelection() })
-                    if (otherDir != null) {
+                    if (otherNet != null) {
+                        add(FmSelAction("Copy over", Icons.Filled.ContentCopy, disk.isNotEmpty()) { pane.clearSelection(); ops.net.sendFiles(disk, otherNet, false) })
+                        add(FmSelAction("Move over", Icons.Filled.DriveFileMove, disk.isNotEmpty()) { pane.clearSelection(); ops.net.sendFiles(disk, otherNet, true) })
+                    } else if (otherDir != null) {
                         add(FmSelAction("Copy over", Icons.Filled.ContentCopy, disk.isNotEmpty()) { pane.clearSelection(); paste(disk, otherDir, false) })
                         add(FmSelAction("Move over", Icons.Filled.DriveFileMove, disk.isNotEmpty()) { pane.clearSelection(); paste(disk, otherDir, true) })
                     } else {
@@ -666,12 +697,12 @@ fun FileManagerRoot(
         }
         // XMB (compact toolbar): the clipboard is a round paste button above the hint row, shown only while something is
         // copied or cut. It carries no name, only what it does (paste / move) for accessibility.
-        if (compactToolbar && pick == null && clipboard.isNotEmpty()) {
-            val dest = pane.currentDir
+        if (compactToolbar && pick == null && ops.net.clipSummary() != null) {
+            val dest = pane.loc
             FmPasteFab(
-                cut = clipCut,
-                onPaste = if (dest != null) ({ paste(clipboard, dest, clipCut) }) else null,
-                onClear = { clipboard = emptyList() },
+                cut = clipCut && clipboard.isNotEmpty(),
+                onPaste = if (ops.net.canPasteInto(dest)) ({ ops.net.pasteInto(dest) }) else null,
+                onClear = { ops.net.clearClips() },
                 modifier = Modifier.align(Alignment.BottomEnd),
             )
         }
@@ -728,7 +759,7 @@ private fun PaneView(
 
         Box(Modifier.weight(1f).fillMaxWidth()) {
             if (loc == FmLoc.Home) {
-                FmHome(home(), onOpen = { dir -> pane.openDir(dir) }, refreshTick = storageTick)
+                FmHome(home(), onOpen = { tile -> tile.openIn(pane) }, refreshTick = storageTick)
             } else {
                 val shown = pane.shown()
                 val isArchiveCache = remember(shown) { HashMap<String, Boolean>() }
@@ -804,6 +835,15 @@ internal fun crumbsFor(pane: FmPane, containers: List<Container>, imagefsDir: Fi
     when (val l = pane.loc) {
         FmLoc.Home -> Unit
         is FmLoc.Dir -> dirCrumbs(l.dir)
+        is FmLoc.Net -> {
+            out.add(l.drive.name to { pane.open(FmLoc.Net(l.drive, "")) })
+            var cur = ""
+            l.path.split('/').filter { it.isNotEmpty() }.forEach { seg ->
+                cur = if (cur.isEmpty()) seg else "$cur/$seg"
+                val target = cur
+                out.add(seg to { pane.open(FmLoc.Net(l.drive, target)) })
+            }
+        }
         is FmLoc.InArchive -> {
             l.archive.parentFile?.let { dirCrumbs(it) }
             out.add(l.archive.name to { pane.open(FmLoc.InArchive(l.archive, "")) })

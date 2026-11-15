@@ -1,5 +1,24 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 15:20 EST — feat/fm-network-drives: the NAS part, ready to merge on its own (branch, CI running)
+- Why: user 11-15: merge "add NAS, browse and copy games to device from NAS" into main; streaming continues separately on feat/network-games-spike.
+- Built: backup refs/backup/20261115/feat-fm-network-drives-before-main-merge-887201c6 = 6f947bf2; merged main 887201c6 (ff236200; only PROGRESS_LOG conflicted, both kept; main's files identical); cherry-picked "Name (2)" for a second copy (1c14bcc6 = b760d5a4); Copy to first + last place remembered (00f79eac = the copy half of 91d807bc). No streaming code (no NetStream/libnetfs/launcher changes).
+- CI: 43756467755.
+- Device proof so far: network drives browse + SFTP login (user, 11-14/15), Add to Games dialog (user video). To do before merge: Add to Games → Copy of a small game on this build, launch it.
+- Next: install (ask), test, merge to main (backup main first), then merge main into feat/network-games-spike.
+
+## 2026-11-14 23:22 EST — feat/fm-network-drives: Network drives in the file manager (branch, CI running)
+
+- **User:** "so what now, how do we add a network drives section to the app file manager that will download the required package and automatically scan home networks for open Nas and an option to add NAS drives or storage" + "it should automatically detect and list available open network storage drives if detected after being added and downloading as an outside package" → plan given → "yes go".
+- **Why:** step 1 of running games from the home NAS (see memory bannerlator-network-games): browse / add / log in / copy, greyed when unreachable. Running games in place is NOT part of this.
+- **Checked first (live, from the Pocket FIT on home Wi-Fi):** BFE's rclone release asset still published (`rclone-v1.75.2-android-arm64.gz`, sha256 259868b5… = BFE's pin, unpacks to 190151335b…); the bionic binary runs; guest SMB on the Nighthawk NAS (192.168.1.216) lists share `usb` → 14TB-HDD + Seagate-5TB; SFTP login on 2222 works; wrong password → "unable to authenticate"; rcd `core/obscure` + `operations/list` with on-the-fly remotes work and leave the config file empty. Discovery: mDNS `_smb._tcp` and WS-Discovery got no answer from the NAS (its wsdd2 is installed but not running); a TCP sweep of port 445 over 192.168.1.1–254 found it in 8.3 s.
+- **Built e0baf52a (off main 1ed649e7):**
+  - `netdrive/`: `NetEngine` (download on tap from BFE's release, sha256-checked, self-test, filesDir/netdrives/rclone), `NetDaemon` (one rcd on 127.0.0.1, random port + password, idle stop 90 s, `--contimeout 8s --timeout 60s`), `RcClient` (BFE's), `NetDrive` + `NetDriveStore` (Keystore AES-GCM sealed list, Xbox store pattern), `NetFs` (list/mkdir/delete/rename/transfer jobs with progress + cancel, obscured passwords, `scrub` cuts passwords and remote strings out of errors and logs, plain-words errors), `NetScan` (NsdManager `_smb._tcp` + 445 sweep of the /24, reverse-DNS names, guest check → Open / Needs login), `NetHub` (Compose state: saved, reach, found, scanning; rescan after 60 s / network change / install).
+  - File manager (Classic + XMB + Lab): `FmLoc.Net` / `FmItem.Net`; Home "Network" section (Set up → Downloading % → saved drives, found shares, Search again, Add drive); unreachable saved drive greyed + not openable (menu still works: Edit, Check again, Remove); open file = fetch to cache then open; copy/move device → drive, copy drive → device or drive (paste, Copy over / Copy to, conflict prompt, progress, Cancel); new folder, rename, delete, properties; add/edit/log-in form (SMB/SFTP/WebDAV/FTP, blank user = guest/anonymous, Save tests the connection first, "Save anyway"). Pickers leave Network out (they return a path).
+  - `network_security_config.xml`: cleartext to 127.0.0.1/localhost only (for rcd). `NOTICE_RCLONE.txt` added.
+- **CI:** build-artifacts 43676398104 (headSha e0baf52a asserted) — running.
+- **Open / next:** green CI → stage APK in /sdcard/Download with sha256 → ASK before install → device test on the FIT against the NAS (setup download, auto-find, browse, copy both ways, greyed when the NAS is unplugged, Lab + Classic). Known limits: copies stop if the file manager page is left (same as local copies); SFTP host keys not checked; mDNS/sweep only on Wi-Fi/Ethernet.
+- **Resume:** worktree /root/src/Bannerlator-wt/fm-network-drives, branch feat/fm-network-drives.
 ## 2026-11-15 14:45 EST — feat/dd-driver-import MERGED into main (a8c7a987), NOT device-tested
 
 - **User:** "merge to main" (after "Not now" to installing the test APK). The user chose to merge before a device test; recorded here as their decision.

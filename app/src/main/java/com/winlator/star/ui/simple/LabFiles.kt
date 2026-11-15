@@ -99,6 +99,7 @@ import com.winlator.star.ui.files.FmHomeTile
 import com.winlator.star.ui.files.FmItem
 import com.winlator.star.ui.files.FmItemIcon
 import com.winlator.star.ui.files.FmLoc
+import com.winlator.star.ui.files.FmNetWatcher
 import com.winlator.star.ui.files.FmOps
 import com.winlator.star.ui.files.FmPane
 import com.winlator.star.ui.files.FmPick
@@ -144,7 +145,7 @@ import kotlin.math.max
 
 private sealed interface LRow { val key: String; val group: String? }
 private class LTile(val tile: FmHomeTile, override val group: String) : LRow {
-    override val key: String = "t:$group:${tile.dir.absolutePath}:${tile.title}"
+    override val key: String = "t:$group:${tile.key}"
 }
 private object LParent : LRow {
     override val key: String = ".."
@@ -315,7 +316,7 @@ private fun LabFileManagerBody(
     val dialogOpen = pageMenu || viewMenu || sortOpen || selMenu || searchFor != null || itemMenu != null || tileMenu != null ||
         ops.newFolderIn != null || ops.newFileIn != null || ops.renameTarget != null || ops.deleteTargets.isNotEmpty() ||
         ops.propsTarget != null || ops.compressTargets.isNotEmpty() || ops.extractReq != null || ops.runChoice != null ||
-        ops.shortcutChoice != null || ops.conflict != null || panes.any { it.passwordFor != null }
+        ops.shortcutChoice != null || ops.conflict != null || panes.any { it.passwordFor != null } || netDialogOpen(ops.net)
 
     val deckActions = LocalDeckActions.current
     val focus = remember { FocusRequester() }
@@ -363,7 +364,7 @@ private fun LabFileManagerBody(
 
         fun activate(p: FmPane, r: LRow?) {
             when (r) {
-                is LTile -> p.openDir(r.tile.dir)
+                is LTile -> r.tile.openIn(p)
                 LParent -> p.up()
                 is LItem -> if (p.selectionMode) p.toggleSelect(r.item) else ops.openItem(p, r.item, pick, onPick)
                 null -> Unit
@@ -377,9 +378,9 @@ private fun LabFileManagerBody(
             }
         }
         fun pasteHere(): Boolean {
-            val dir = panes[active].currentDir ?: return false
-            if (pick != null || ops.clipboard.isEmpty()) return false
-            ops.paste(ops.clipboard, dir, ops.clipCut)
+            val loc = panes[active].loc
+            if (pick != null || !ops.net.canPasteInto(loc)) return false
+            ops.net.pasteInto(loc)
             return true
         }
         fun chooseThisFolder() {
@@ -409,7 +410,7 @@ private fun LabFileManagerBody(
             add("Y" to L("Menu"))
             if (pick == null && pane.loc != FmLoc.Home) add("Select" to L("Tick"))
             if (pick?.dirsOnly == true && pane.currentDir != null) add("Start" to L("Choose this folder"))
-            else if (pick == null && ops.clipboard.isNotEmpty() && pane.currentDir != null) add("Start" to (if (ops.clipCut) L("Move here") else L("Paste here")))
+            else if (pick == null && ops.net.canPasteInto(pane.loc)) add("Start" to (if (ops.clipCut && ops.clipboard.isNotEmpty()) L("Move here") else L("Paste here")))
             if (dual) add("L2" to L("Pane"))
         }
         if (!standalone) DisposableEffect(deckActions, legend) {
@@ -555,14 +556,17 @@ private fun LabFileManagerBody(
                     },
                 )
             }
-            if (ops.clipboard.isNotEmpty() && pick == null) {
-                val what = if (ops.clipboard.size == 1) ops.clipboard[0].name else L("%1\$s items", ops.clipboard.size)
+            val netClip = ops.net.clip
+            if ((ops.clipboard.isNotEmpty() || netClip.isNotEmpty()) && pick == null) {
+                val local = ops.clipboard.isNotEmpty()
+                val n = if (local) ops.clipboard.size else netClip.size
+                val what = if (n == 1) (if (local) ops.clipboard[0].name else netClip[0].name) else L("%1\$s items", n)
                 LabStatusLine(
-                    text = (if (ops.clipCut) L("Move: %1\$s", what) else L("Copy: %1\$s", what)),
+                    text = (if (local && ops.clipCut) L("Move: %1\$s", what) else L("Copy: %1\$s", what)),
                     icon = Icons.Filled.ContentPaste,
                     actions = buildList {
-                        if (pane.currentDir != null) add(L("Paste here") to { pasteHere(); Unit })
-                        add(L("Clear") to { ops.clipboard = emptyList() })
+                        if (ops.net.canPasteInto(pane.loc)) add(L("Paste here") to { pasteHere(); Unit })
+                        add(L("Clear") to { ops.net.clearClips() })
                     },
                 )
             }
@@ -571,6 +575,14 @@ private fun LabFileManagerBody(
                     text = label + (ops.opProgress?.let { "  ${(it * 100).toInt()}%" } ?: ""),
                     progress = ops.opProgress ?: -1f,
                     actions = listOf(L("Cancel") to { ops.opJob?.cancel(); Unit }),
+                )
+            }
+            // A game being copied from a network drive ("Add to Games"): runs on when this page is left.
+            com.winlator.star.netdrive.NetHub.copying?.let { c ->
+                LabStatusLine(
+                    text = L(c.label) + (c.progress?.let { "  ${(it * 100).toInt()}%" } ?: ""),
+                    progress = c.progress ?: -1f,
+                    actions = listOf(L("Cancel") to { com.winlator.star.netdrive.NetHub.cancelGameCopy(); Unit }),
                 )
             }
             if (pane.selectionMode && pick == null) {
@@ -607,8 +619,9 @@ private fun LabFileManagerBody(
                     add(MenuAction(L("New folder"), { ops.newFolderIn = d }))
                     add(MenuAction(L("New text file"), { ops.newFileIn = d }))
                 }
-                if (pick == null && d != null && ops.clipboard.isNotEmpty()) add(MenuAction(if (ops.clipCut) L("Move here") else L("Paste here"), { pasteHere() }))
-                if (pick == null && ops.clipboard.isNotEmpty()) add(MenuAction(L("Clear clipboard"), { ops.clipboard = emptyList() }))
+                if (pick == null && l is FmLoc.Net) add(MenuAction(L("New folder"), { ops.net.newFolderIn = l }))
+                if (pick == null && ops.net.canPasteInto(l)) add(MenuAction(if (ops.clipCut && ops.clipboard.isNotEmpty()) L("Move here") else L("Paste here"), { pasteHere() }))
+                if (pick == null && ops.net.clipSummary() != null) add(MenuAction(L("Clear clipboard"), { ops.net.clearClips() }))
                 if (pick?.dirsOnly == true && d != null) add(MenuAction(L("Choose this folder"), { chooseThisFolder() }))
                 if (l != FmLoc.Home) add(MenuAction(L("Search this folder"), { searchFor = p }))
                 if (p.query.isNotBlank() && d != null && p.deepResults == null) add(MenuAction(L("Search in subfolders"), { p.searchSubfolders() }))
@@ -636,7 +649,7 @@ private fun LabFileManagerBody(
                 if (p.canGoBack) add(MenuAction(L("Back"), { p.goBack() }))
                 if (l != FmLoc.Home) add(MenuAction(L("Up one level"), { p.up() }))
             }
-            SimpleActionSheet(d?.let { it.name.ifBlank { it.absolutePath } } ?: if (l is FmLoc.InArchive) l.archive.name else L("File manager"), actions, onDismiss = { pageMenu = false }) { a -> pageMenu = false; a.run() }
+            SimpleActionSheet(d?.let { it.name.ifBlank { it.absolutePath } } ?: if (l is FmLoc.InArchive) l.archive.name else if (l is FmLoc.Net) (l.path.substringAfterLast('/').ifBlank { l.drive.name }) else L("File manager"), actions, onDismiss = { pageMenu = false }) { a -> pageMenu = false; a.run() }
         }
         if (viewMenu) {
             SimpleActionSheet(
@@ -671,6 +684,7 @@ private fun LabFileManagerBody(
             val entries = when (item) {
                 is FmItem.Disk -> ops.diskMenu(p, item)
                 is FmItem.Entry -> ops.entryMenu(p, item)
+                is FmItem.Net -> ops.net.itemMenu(p, item)
             }
             SimpleActionSheet(item.name, entries.map { MenuAction(L(it.label), it.onClick, danger = it.danger) }, onDismiss = { itemMenu = null }) { a -> itemMenu = null; a.run() }
         }
@@ -729,8 +743,11 @@ private fun LabFileManagerBody(
                 panes.forEach { if (it.loc != FmLoc.Home) it.refresh() }
             }
             is FmItem.Entry -> LabEntryProperties(item) { ops.propsTarget = null }
+            is FmItem.Net -> LabNetProperties(item) { ops.propsTarget = null }
         }
     }
+    LabNetDialogs(ops.net, containers, ::chooseFolder) { panes.forEach { it.clearSelection() } }
+    FmNetWatcher(active = pick == null && panes.any { it.loc == FmLoc.Home }, tick = storageTick)
     ops.conflict?.let { (name, isDir, batch) ->
         LabConflictDialog(name, isDir, batch) { choice, all -> ops.answerConflict(choice, all) }
     }
@@ -800,7 +817,10 @@ private fun LabFileManagerBody(
 }
 
 /** Home's fixed tile names and lines in Lab's language; a container's or a folder's own name stays as it is. */
-private val FIXED_TILE_TEXT = setOf("Internal", "System", "Drive Z:", "Downloads", "Pictures", "Documents", "Games", "Drive C:", "This container")
+private val FIXED_TILE_TEXT = setOf(
+    "Internal", "System", "Drive Z:", "Downloads", "Pictures", "Documents", "Games", "Drive C:", "This container",
+    "Network drives", "Search again", "Add drive", "Checking…", "Can't reach", "Needs login", "Searching…", "No Wi-Fi", "Checking the download…",
+)
 private fun labFixed(text: String): String = if (text in FIXED_TILE_TEXT) L(text) else text
 
 private fun viewLabel(m: FmViewMode): String = when (m) {
@@ -814,16 +834,32 @@ private fun selectionActions(pane: FmPane, dual: Boolean, panes: List<FmPane>, o
     val items = pane.selectedItems()
     val disk = items.filterIsInstance<FmItem.Disk>().map { it.file }
     val entries = items.filterIsInstance<FmItem.Entry>()
+    val netItems = items.filterIsInstance<FmItem.Net>()
     if (pane.inArchive) return buildList {
         if (entries.isNotEmpty()) add(MenuAction(L("Extract"), { ops.extractReq = pane to entries }))
         add(MenuAction(L("Select all"), { pane.selectAll() }))
     }
+    val other = if (dual) panes[if (panes.indexOf(pane) == 0) 1 else 0] else null
+    val otherDir = other?.currentDir
+    val otherNet = other?.currentNet
+    if (pane.currentNet != null) return buildList {
+        if (netItems.isEmpty()) { add(MenuAction(L("Select all"), { pane.selectAll() })); return@buildList }
+        add(MenuAction(L("Copy"), { ops.net.copy(netItems); pane.clearSelection() }))
+        val over: FmLoc? = otherDir?.let { FmLoc.Dir(it) } ?: otherNet
+        if (over != null) add(MenuAction(L("Copy to the other pane"), { pane.clearSelection(); ops.net.sendItems(netItems, over) }))
+        else add(MenuAction(L("Copy to…"), { pane.clearSelection(); chooseFolder(L("Copy to")) { ops.net.sendItems(netItems, FmLoc.Dir(it)) } }))
+        if (netItems.size == 1) add(MenuAction(L("Rename"), { ops.net.renameTarget = netItems[0]; pane.clearSelection() }))
+        add(MenuAction(L("Select all"), { pane.selectAll() }))
+        add(MenuAction(L("Delete"), { ops.net.deleteTargets = netItems }, danger = true))
+    }
     if (disk.isEmpty()) return listOf(MenuAction(L("Select all"), { pane.selectAll() }))
-    val otherDir = if (dual) panes[if (panes.indexOf(pane) == 0) 1 else 0].currentDir else null
     return buildList {
         add(MenuAction(L("Copy"), { ops.clipboard = disk; ops.clipCut = false; pane.clearSelection() }))
         add(MenuAction(L("Cut"), { ops.clipboard = disk; ops.clipCut = true; pane.clearSelection() }))
-        if (otherDir != null) {
+        if (otherNet != null) {
+            add(MenuAction(L("Copy to the other pane"), { pane.clearSelection(); ops.net.sendFiles(disk, otherNet, false) }))
+            add(MenuAction(L("Move to the other pane"), { pane.clearSelection(); ops.net.sendFiles(disk, otherNet, true) }))
+        } else if (otherDir != null) {
             add(MenuAction(L("Copy to the other pane"), { pane.clearSelection(); ops.paste(disk, otherDir, false) }))
             add(MenuAction(L("Move to the other pane"), { pane.clearSelection(); ops.paste(disk, otherDir, true) }))
         } else {
@@ -960,6 +996,8 @@ private fun LabFmLine(
             .fillMaxWidth()
             .simpleRowFocus(focused, active)
             .pointerInput(r.key) { detectTapGestures(onTap = { onTap() }, onLongPress = { onLong() }) }
+            // A network drive that can't be reached right now: greyed, and A / a tap does nothing.
+            .alpha(if (r is LTile && !r.tile.enabled) 0.45f else 1f)
             .padding(horizontal = 14.dp, vertical = if (compact) 4.dp else 8.dp),
     ) {
         var usage: Float? = null

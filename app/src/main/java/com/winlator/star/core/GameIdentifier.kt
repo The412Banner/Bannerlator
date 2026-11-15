@@ -108,7 +108,7 @@ object GameIdentifier {
 
     private val TRUSTED_NAMES = setOf(Source.STEAM_MANIFEST_ACF, Source.GOG_INFO, Source.PE_VERSION)
     /** Folders an exe sits in below its game folder ("Binaries/Win64"). */
-    private val BUILD_DIRS = setOf("bin", "bin32", "bin64", "binaries", "win32", "win64", "x86", "x64", "x86_64", "amd64", "retail", "shipping", "release")
+    internal val BUILD_DIRS = setOf("bin", "bin32", "bin64", "binaries", "win32", "win64", "x86", "x64", "x86_64", "amd64", "retail", "shipping", "release")
     /** Folders that hold games rather than being one. */
     private val NOT_A_GAME_FOLDER = setOf("games", "game", "download", "downloads", "desktop", "documents", "common", "steamapps",
         "program files", "program files (x86)", "0", "emulated", "sdcard", "storage", "files")
@@ -122,8 +122,11 @@ object GameIdentifier {
         return dir
     }
 
-    private fun isUnrealShipping(exe: File): Boolean =
-        exe.nameWithoutExtension.let { it.endsWith("-Win64-Shipping", true) || it.endsWith("-Win32-Shipping", true) }
+    private fun isUnrealShipping(exe: File): Boolean = isUnrealShippingName(exe.nameWithoutExtension)
+
+    /** An Unreal game's exe name ("<Game>-Win64-Shipping"), without ".exe". */
+    internal fun isUnrealShippingName(base: String): Boolean =
+        base.endsWith("-Win64-Shipping", true) || base.endsWith("-Win32-Shipping", true)
 
     /**
      * The name an added game shows (DroidDeck's rule): the game's own title when the disk names

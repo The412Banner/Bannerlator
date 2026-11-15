@@ -12,6 +12,7 @@ import androidx.compose.runtime.setValue
 import com.winlator.star.core.unpack.ArchiveException
 import com.winlator.star.core.unpack.ArchiveIndex
 import com.winlator.star.core.unpack.ArchiveIndexCache
+import com.winlator.star.netdrive.NetFs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -86,6 +87,8 @@ class FmPane(
 
     val currentDir: File? get() = (loc as? FmLoc.Dir)?.dir
     val inArchive: Boolean get() = loc is FmLoc.InArchive
+    /** The network folder on screen, or null. */
+    val currentNet: FmLoc.Net? get() = loc as? FmLoc.Net
     val canGoBack: Boolean get() = history.isNotEmpty()
 
     /** What the list shows: the listing filtered by the search box, or the subfolder search results. */
@@ -129,6 +132,7 @@ class FmPane(
             is FmLoc.InArchive ->
                 if (l.inner.isEmpty()) l.archive.parentFile?.let { FmLoc.Dir(it) } ?: FmLoc.Home
                 else FmLoc.InArchive(l.archive, l.inner.substringBeforeLast('/', ""))
+            is FmLoc.Net -> if (l.path.isEmpty()) FmLoc.Home else FmLoc.Net(l.drive, NetFs.parentOf(l.path))
             is FmLoc.Dir -> {
                 val d = l.dir
                 val atFloor = floors().any { it.absolutePath == d.absolutePath }
@@ -272,6 +276,23 @@ class FmPane(
                     }
                     if (list == null) error = if (target.dir.exists()) "Can't open this folder" else "This folder is gone"
                     items = list ?: emptyList()
+                    childCounts.clear()
+                }
+                is FmLoc.Net -> {
+                    index = null
+                    val hidden = showHidden
+                    val result = withContext(Dispatchers.IO) { runCatching { NetFs.list(context, target.drive, target.path) } }
+                    result.onSuccess { list ->
+                        items = list.asSequence()
+                            .filter { hidden || !it.name.startsWith(".") }
+                            .map { e -> FmItem.Net(target.drive, e.path, e.name, e.isDir, e.size, e.modified) }
+                            .distinctBy { it.key }
+                            .toList()
+                            .sortedFor(sort)
+                    }.onFailure { t ->
+                        items = emptyList()
+                        error = t.message ?: "Couldn't open this folder"
+                    }
                     childCounts.clear()
                 }
                 is FmLoc.InArchive -> {

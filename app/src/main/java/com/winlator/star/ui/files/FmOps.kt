@@ -72,7 +72,14 @@ internal class FmOps(
     private val onFavoritesChanged: () -> Unit,
 ) {
     // ── Clipboard and running operation ──
-    var clipboard by mutableStateOf<List<File>>(emptyList())
+    private var clip by mutableStateOf<List<File>>(emptyList())
+    /** Device files copied or cut. Setting it clears the network clipboard ([FmNetOps.clip]). */
+    var clipboard: List<File>
+        get() = clip
+        set(v) {
+            clip = v
+            if (v.isNotEmpty()) net.clip = emptyList()
+        }
     var clipCut by mutableStateOf(false)
     var opLabel by mutableStateOf<String?>(null)
     var opProgress by mutableStateOf<Float?>(null)
@@ -91,7 +98,13 @@ internal class FmOps(
     var conflict by mutableStateOf<Triple<String, Boolean, Boolean>?>(null)
     var conflictAnswer by mutableStateOf<CompletableDeferred<Pair<ConflictChoice?, Boolean>>?>(null)
 
+    /** Network drives: the Home section and everything done on a drive. */
+    val net = FmNetOps(context, scope, this)
+
     fun toast(msg: String) = Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+
+    /** The containers right now (games are added to one of them). */
+    fun containerList(): List<Container> = containers()
 
     /** Runs [block] as the visible operation (label + progress + cancel), one at a time. */
     fun runOp(label: String, block: suspend () -> Unit) {
@@ -384,6 +397,9 @@ internal class FmOps(
                     else -> openWith(f)
                 }
             }
+            is FmItem.Net -> {
+                if (pick == null || item.isDir) net.openItem(p, item)
+            }
             is FmItem.Entry -> {
                 if (item.isDir) { p.open(FmLoc.InArchive(item.archive, item.entry.path)); return }
                 val idx = p.index ?: return
@@ -488,8 +504,10 @@ internal class FmOps(
                 menu = if (pick == null) { { listOf(FmMenuEntry("Remove from Favorites", Icons.Filled.StarBorder) { toggleFavorite(d) }) } } else null,
             )
         }
-        return listOf(
+        return listOfNotNull(
             FmHomeSection("Storage", storage),
+            // Network drives aren't real folders, so the pickers (which hand back a path) leave them out.
+            if (pick == null) net.homeSection() else null,
             FmHomeSection("Places", places),
             FmHomeSection("Containers", drivesC),
             FmHomeSection("Favorites", favorites),

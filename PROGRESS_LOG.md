@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 00:24 EST — fix/wayland-desktop-clip MERGED into main (b543ec0e)
+
+- **User:** "merge it".
+- **Merge:** backup `refs/backup/20261115/main-before-wayland-desktop-clip` = 9270d6b4; `--no-ff` merge b543ec0e (parents 9270d6b4 + 2a30852d); tree == branch tip; code vs device-tested ac39da17: only PROGRESS_LOG.md differs. Main CI 43680928632.
+- **Streets of Rage Remake on the Wayland path:** full screen in every Fit mode (2ead3b84) and no console-window strip (b543ec0e), both device-proven on the Pocket FIT. Open: whether the controller works with DirectInput on (user to confirm); a Wine-side viewport reset in wayland_desktop_resize (would need a new Proton layer) not done.
+
 ## 2026-11-15 00:22 EST — fix/wayland-desktop-clip DEVICE-PROVEN on the Pocket FIT (branch, awaiting the user)
 
 - **Run:** user, 00:20:35-00:21:20 EST, Streets of Rage Remake. Wayland log still shows the 640x480 resize being followed.

@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 15:30 EST — fix/store-switcher-close: close button in the store menu (branch, CI next)
+
+- **Why:** user (screenshot 15:13, Steam store, portrait): the store menu under the top-left store name ("Steam ▾": Steam / GOG / Epic Games / Amazon Games / Xbox) "lacks a close button". Lab rule: every pop-up needs a tappable close.
+- **Built:** b044de50a — StoreSectionHost.kt StoreSwitcher: a header row with LabCloseButton (✕, not focusable, the controller keeps B) and a divider above the stores. One shared menu: Steam (SteamMainActivity) and GOG/Epic/Amazon/Xbox (StoreSectionHost) all get it.
+- **Next:** CI, stage APK, ask before install; test: open the menu in each store, ✕ closes it, picking a store still switches, controller B still closes.
+
 ## 2026-11-15 15:25 EST — feat/fm-network-drives MERGED into main (a27b69bd)
 - What: Network drives in the file manager — rclone engine downloaded from BFE's release, auto-search of the home network (mDNS + port sweep, open shares listed), add/edit drives (SMB/SFTP/WebDAV/FTP, logins kept encrypted), browse, copy both ways, rename/delete/new folder; Add to Games by copying a game folder from a drive (Copy to shown first and remembered; game root found from an exe several folders deep); a second copy of a game is named "Name (2)".
 - Merge: backup refs/backup/20261115/main-before-fm-network-drives = 887201c6; --no-ff; merged tree == feat/fm-network-drives (CI 43756467755 green ×4 on 00f79eac + a log commit).

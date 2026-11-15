@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.winlator.star.container.Container
 import com.winlator.star.core.WinePath
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
@@ -25,9 +26,26 @@ import java.io.RandomAccessFile
  */
 object NetStream {
     private const val TAG = "BL_NETDRIVE"
-    /** Files at most this big, and every exe / dll, are fetched whole when the stand-in is made. */
-    private const val PREFETCH_MAX = 4L * 1024 * 1024
-    private val PREFETCH_EXTS = setOf("exe", "dll", "ini", "cfg", "json", "xml", "txt", "info", "manifest", "config", "vdf")
+    /**
+     * Fetched whole when the stand-in is made, because Bannerlator itself reads them (the exe's name and icon, the
+     * checks before a launch): the game's exes and dlls, and the small files that say which game it is. Not the
+     * installers under redist folders. Everything else streams while playing (11-15: fetching every file up to
+     * 4 MB took Bayonetta 709 files / 544 MB, one at a time, which looked like a copy).
+     */
+    private val PREFETCH_EXTS = setOf("exe", "dll")
+    private val PREFETCH_NAMES = setOf("steam_appid.txt", "microsoftgame.config", "appxmanifest.xml")
+    private val SKIP_DIRS = setOf("_commonredist", "commonredist", "redist", "redistributable", "redistributables",
+        "directx", "dotnet", "dotnetfx", "vcredist", "vc_redist", "prerequisites", "prereq", "installer", "installers", "__installer")
+    private const val PREFETCH_PARALLEL = 4
+
+    private fun prefetchable(e: NetFs.Entry): Boolean {
+        if (e.isDir || e.size <= 0) return false
+        val dirs = e.path.split('/').dropLast(1).map { it.lowercase() }
+        if (dirs.any { it in SKIP_DIRS }) return false
+        val name = e.name.lowercase()
+        return name.substringAfterLast('.', "") in PREFETCH_EXTS || name in PREFETCH_NAMES ||
+            (name.startsWith("goggame-") && name.endsWith(".info") && e.size < 1L shl 20)
+    }
 
     /** One streamed game: where its stand-in is, and which folder of which drive it stands in for. */
     class Game(val dir: File, val driveId: String, val remotePath: String) {
@@ -94,17 +112,28 @@ object NetStream {
             if (++made % 50 == 0) onProgress("Making the folder (${made}/${all.size})", made.toFloat() / all.size.coerceAtLeast(1))
         }
         for (e in all) if (e.isDir && e.modified > 0) File(dir, e.path).setLastModified(e.modified)
-        val whole = all.filter { !it.isDir && it.size > 0 && (it.size <= PREFETCH_MAX || it.name.substringAfterLast('.', "").lowercase() in PREFETCH_EXTS) }
+        val whole = all.filter(::prefetchable)
         val total = whole.sumOf { it.size }.coerceAtLeast(1)
-        var done = 0L
-        for ((i, e) in whole.withIndex()) {
-            onProgress("Fetching ${e.name} (${i + 1}/${whole.size})", done.toFloat() / total)
-            val f = File(dir, e.path)
-            NetFs.transfer(app, NetFs.Side.Remote(drive, NetFs.join(remotePath, e.path)), NetFs.Side.Local(f), isDir = false, move = false) { b, _ ->
-                onProgress("Fetching ${e.name} (${i + 1}/${whole.size})", (done + b).toFloat() / total)
+        val doneBytes = java.util.concurrent.atomic.AtomicLong(0)
+        val doneFiles = java.util.concurrent.atomic.AtomicInteger(0)
+        onProgress("Fetching the game's exe and dll files (0/${whole.size})", 0f)
+        // A few at a time: one rclone job per file has a fixed cost, several in flight hide it.
+        kotlinx.coroutines.coroutineScope {
+            val gate = kotlinx.coroutines.sync.Semaphore(PREFETCH_PARALLEL)
+            whole.map { e ->
+                launch {
+                    gate.acquire()
+                    try {
+                        val f = File(dir, e.path)
+                        NetFs.transfer(app, NetFs.Side.Remote(drive, NetFs.join(remotePath, e.path)), NetFs.Side.Local(f), isDir = false, move = false) { _, _ -> }
+                        if (e.modified > 0) f.setLastModified(e.modified)
+                        val n = doneFiles.incrementAndGet()
+                        onProgress("Fetching the game's exe and dll files ($n/${whole.size})", doneBytes.addAndGet(e.size).toFloat() / total)
+                    } finally {
+                        gate.release()
+                    }
+                }
             }
-            if (e.modified > 0) f.setLastModified(e.modified)
-            done += e.size
         }
         val game = Game(dir.canonicalFile, drive.id, remotePath)
         saveGames(app, games(app).filter { it.dir != game.dir } + game)

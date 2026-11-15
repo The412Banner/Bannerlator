@@ -397,22 +397,25 @@ private fun XmbTabsBar(
                     contentAlignment = Alignment.Center,
                 ) {
                     // The badge is an overlay and the highlight is drawn behind: the tab is the size of its label with or without it.
-                    XmbTabPill(
-                        tab = t, count = count, ring = downloadRing, ss = ss, padEnd = ss.dp(14f),
-                        fill = if (on) XMB_TABS_PILL else Color.Transparent,
-                        outline = if (on && barFocused) XMB_FOCUS_OUTLINE else null,
-                        outlineWidth = 1.5.dp,
-                        accent = primary,
-                    ) {
-                        Text(
-                            stringResource(t.labelRes()).uppercase(),
-                            color = if (on) Color.White else XMB_TABS_INK,
-                            fontSize = ss.sp(11f),
-                            letterSpacing = 1.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            modifier = Modifier.padding(horizontal = ss.dp(14f), vertical = ss.dp(7f)),
-                        )
+                    // The label and the count are drawn at the tuned Font size (XmbBaseFont): the count must fit its dp-sized pill.
+                    XmbBaseFont {
+                        XmbTabPill(
+                            tab = t, count = count, ring = downloadRing, ss = ss, padEnd = ss.dp(14f),
+                            fill = if (on) XMB_TABS_PILL else Color.Transparent,
+                            outline = if (on && barFocused) XMB_FOCUS_OUTLINE else null,
+                            outlineWidth = 1.5.dp,
+                            accent = primary,
+                        ) {
+                            Text(
+                                stringResource(t.labelRes()).uppercase(),
+                                color = if (on) Color.White else XMB_TABS_INK,
+                                fontSize = ss.sp(11f),
+                                letterSpacing = 1.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                modifier = Modifier.padding(horizontal = ss.dp(14f), vertical = ss.dp(7f)),
+                            )
+                        }
                     }
                 }
             }

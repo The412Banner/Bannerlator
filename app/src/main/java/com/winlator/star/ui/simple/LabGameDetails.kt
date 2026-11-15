@@ -135,7 +135,7 @@ internal fun BoxScope.LabHeroLogo(s: Shortcut, pos: String? = null, size: String
 }
 
 /** One picture to choose: a URL (or file path) and a small one to show. */
-private class ArtChoice(val url: String, val thumb: String, val group: String, val label: String? = null)
+internal class ArtChoice(val url: String, val thumb: String, val group: String, val label: String? = null)
 
 private const val SGDB_BUILTIN_KEY = "cf89227f12c773bb1117b6b109ae1659"
 
@@ -149,7 +149,7 @@ private fun httpText(url: String, bearer: String? = null): String? = runCatching
 }.getOrNull()
 
 /** SteamGridDB's pictures for [slot] (the key from Settings › Games & library, else the app's own). BLOCKING. */
-private fun sgdbChoices(context: Context, s: Shortcut, slot: String): List<ArtChoice> {
+internal fun sgdbChoices(context: Context, s: Shortcut, slot: String): List<ArtChoice> {
     val p = androidx.preference.PreferenceManager.getDefaultSharedPreferences(context)
     val key = if (p.getBoolean("enable_custom_api_key", false)) p.getString("custom_api_key", "").orEmpty().ifBlank { SGDB_BUILTIN_KEY } else SGDB_BUILTIN_KEY
     val base = "https://www.steamgriddb.com/api/v2"
@@ -220,7 +220,7 @@ internal fun labSgdbHero(context: Context, steamId: Int?, name: String): String?
 }
 
 /** Steam's pictures for [slot] of the linked app. BLOCKING. */
-private fun steamChoices(appId: Int, slot: String): List<ArtChoice> {
+internal fun steamChoices(appId: Int, slot: String): List<ArtChoice> {
     val out = LinkedHashMap<String, ArtChoice>()
     fun add(url: String?, label: String? = null) { if (!url.isNullOrBlank() && url !in out) out[url] = ArtChoice(url, url, "Steam", label) }
     val assets = runCatching { SteamStoreSearch.libraryAssets(appId) }.getOrDefault(LinkedHashMap())
@@ -290,8 +290,8 @@ private fun labResetCover(context: Context, s: Shortcut): Boolean {
     return true
 }
 
-/** Copies a picked file into the app's own art folder, so the pick survives the original moving. */
-private fun keepFile(context: Context, src: String, s: Shortcut, slot: String): String? = runCatching {
+/** Copies a picked file into the app's own art folder, so the pick survives the original moving. BLOCKING. */
+internal fun keepFile(context: Context, src: String, s: Shortcut, slot: String): String? = runCatching {
     val dir = File(context.filesDir, "lab_art").apply { mkdirs() }
     val ext = src.substringAfterLast('.', "img").take(5)
     val safe = s.name.replace(Regex("""[^A-Za-z0-9._-]"""), "_").take(40)

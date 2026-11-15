@@ -67,6 +67,7 @@ import com.winlator.star.androidgames.AndroidGames
 import com.winlator.star.container.Shortcut
 import com.winlator.star.ui.deck.ScreenScale
 import com.winlator.star.ui.deck.XMB_FOCUS_OUTLINE
+import com.winlator.star.ui.deck.XmbBaseFont
 import com.winlator.star.ui.deck.XmbTabPill
 import com.winlator.star.ui.deck.xmbBadgeEndRoom
 import com.winlator.star.ui.deck.XmbStoreMark
@@ -183,14 +184,14 @@ internal fun XmbSteamBackdrop(game: Shortcut?, picture: Any?, fadeFrom: Float, l
     }
 }
 
-/** [game]'s landscape art to try, found (off the main thread) the first time and made again when LabArt finds more; null without a game. */
+/** [game]'s landscape art to try, found (off the main thread) the first time and made again when the game, the Shortcut the list holds for it (it was re-read from disk) or LabArt's art changes; null without a game. */
 @Composable
 private fun rememberXmbSteamHero(game: Shortcut?): XmbSteamHero? {
     val context = LocalContext.current
     val path = game?.file?.path
     LaunchedEffect(path) { if (game != null) withContext(Dispatchers.IO) { LabArt.resolve(context, game) } }
     val tick = LabArt.tick
-    return remember(path, tick) { game?.let { g -> XmbSteamHero(g.file.path, LabArt.models(g, "bg")) } }
+    return remember(path, tick, game) { game?.let { g -> XmbSteamHero(g.file.path, LabArt.models(g, "bg")) } }
 }
 
 /**
@@ -533,25 +534,28 @@ private fun XmbSteamTabs(
                         contentAlignment = Alignment.Center,
                     ) {
                         // The badge is an overlay and the highlight is drawn behind: the tab is the size of its label with or without it.
-                        XmbTabPill(
-                            tab = XMB_PAGE_TABS.getOrNull(i), count = XMB_PAGE_TABS.getOrNull(i)?.let { badges[it] } ?: 0,
-                            ring = downloadRing, ss = ss, padEnd = XMB_STEAM_TAB_PAD.dp,
-                            fill = if (on) accent.copy(alpha = 0.22f) else Color.Transparent,
-                            outline = if (on) Color.White else null,
-                            outlineWidth = 1.5.dp,
-                            accent = accent,
-                        ) {
-                            // The tabs are those of XMB_PAGE_TABS, in its order.
-                            Text(
-                                tab.label.uppercase(),
-                                color = if (on) Color.White else XMB_STEAM_TAB_INK,
-                                fontSize = ss.sp(11f),
-                                letterSpacing = 1.5.sp,
-                                fontWeight = FontWeight.Black,
-                                maxLines = 1,
-                                style = XMB_STEAM_TEXT,
-                                modifier = Modifier.padding(horizontal = XMB_STEAM_TAB_PAD.dp, vertical = 6.dp),
-                            )
+                        // The label and the count are drawn at the tuned Font size (XmbBaseFont): the count must fit its dp-sized pill.
+                        XmbBaseFont {
+                            XmbTabPill(
+                                tab = XMB_PAGE_TABS.getOrNull(i), count = XMB_PAGE_TABS.getOrNull(i)?.let { badges[it] } ?: 0,
+                                ring = downloadRing, ss = ss, padEnd = XMB_STEAM_TAB_PAD.dp,
+                                fill = if (on) accent.copy(alpha = 0.22f) else Color.Transparent,
+                                outline = if (on) Color.White else null,
+                                outlineWidth = 1.5.dp,
+                                accent = accent,
+                            ) {
+                                // The tabs are those of XMB_PAGE_TABS, in its order.
+                                Text(
+                                    tab.label.uppercase(),
+                                    color = if (on) Color.White else XMB_STEAM_TAB_INK,
+                                    fontSize = ss.sp(11f),
+                                    letterSpacing = 1.5.sp,
+                                    fontWeight = FontWeight.Black,
+                                    maxLines = 1,
+                                    style = XMB_STEAM_TEXT,
+                                    modifier = Modifier.padding(horizontal = XMB_STEAM_TAB_PAD.dp, vertical = 6.dp),
+                                )
+                            }
                         }
                     }
                 }

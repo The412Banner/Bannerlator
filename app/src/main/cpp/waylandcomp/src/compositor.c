@@ -2567,6 +2567,23 @@ static void add_surface(struct draw_list *dl, struct surface *s, int ox, int oy)
     if (s->src_set) { sx = s->src[0]; sy = s->src[1]; sw = s->src[2]; sh = s->src[3]; }
     surface_size(s, &dw, &dh);
     if (dw <= 0 || dh <= 0 || sw <= 0 || sh <= 0) return;
+    const int blend = surface_translucent(s, dw, dh);
+    /* On the Windows desktop the scene is the desktop, and a window part outside it is off-screen on
+     * Windows too: cut it off here, or it shows in the letterbox bars (a game's console window that
+     * is wider than its 640x480 desktop, say). A window wholly outside is not drawn, and its
+     * feedback is discarded like any surface outside the scene. */
+    if (g_desktop && g_scene_w > 0 && g_scene_h > 0) {
+        int x0 = ox > 0 ? ox : 0, y0 = oy > 0 ? oy : 0;
+        int x1 = ox + dw < g_scene_w ? ox + dw : g_scene_w;
+        int y1 = oy + dh < g_scene_h ? oy + dh : g_scene_h;
+        if (x1 <= x0 || y1 <= y0) return;
+        if (x0 != ox || y0 != oy || x1 != ox + dw || y1 != oy + dh) {
+            const float kx = sw / (float)dw, ky = sh / (float)dh;
+            sx += (float)(x0 - ox) * kx; sw = (float)(x1 - x0) * kx;
+            sy += (float)(y0 - oy) * ky; sh = (float)(y1 - y0) * ky;
+            ox = x0; oy = y0; dw = x1 - x0; dh = y1 - y0;
+        }
+    }
     if (dl->n == dl->cap) {
         int cap = dl->cap ? dl->cap * 2 : 32;
         struct vkp_draw *d = realloc(dl->d, (size_t)cap * sizeof(*d));
@@ -2574,8 +2591,7 @@ static void add_surface(struct draw_list *dl, struct surface *s, int ox, int oy)
         dl->d = d;
         dl->cap = cap;
     }
-    dl->d[dl->n++] = (struct vkp_draw){img, sx, sy, sw, sh, ox, oy, dw, dh,
-                                      surface_translucent(s, dw, dh)};
+    dl->d[dl->n++] = (struct vkp_draw){img, sx, sy, sw, sh, ox, oy, dw, dh, blend};
     s->drawn = 1;
 }
 

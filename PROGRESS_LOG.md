@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 16:55 EST — feat/lab-library-tile-outline: a thin outline round each Library card (branch, CI running)
+- Why: user 11-15 (screenshot Screenshot_20261115-163218): "in library, each game art needs a thin outline".
+- Built: 3ded5770 — LabGridCard (all three styles: covers, wide, icons) gets a 1 dp border in SimpleStrong at 35 % (white on dark, near-black on light), card-shaped; labTile's focus ring stays on top.
+- CI: 43764497846. Not device-tested. User: "install when green".
+
 ## 2026-11-15 16:45 EST — feat/network-games-spike MERGED into main (f8a58bc9)
 - User: "works, merge it to main" → asked what; user picked "Everything incl. streaming".
 - What: streaming games from a network drive (Add to Games → Stream (test): a stand-in folder of sparse files, libnetfs.so first in LD_PRELOAD fetching parts as the game reads them, whole small files / folder batches, "Loading from NAS" tag, Streamed games window with size limit, Free up space and per-game keep mode, *.vdf install scripts prefetched, installers skipped); Add to Games program picker (game exe over a launcher, user can choose); store-page Uninstall removes the game's shortcuts (fix/store-uninstall-shortcuts); plus main's store ✕ leaves the store (already on main).

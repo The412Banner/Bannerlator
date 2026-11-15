@@ -39,6 +39,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/uio.h>
+#include <dirent.h>
 #include <signal.h>
 #include <time.h>
 #include <unistd.h>
@@ -53,6 +54,9 @@
 #define MAX_BACKGROUND 4
 /* Files up to this size are fetched whole the first time they are used. */
 #define WHOLE_MAX ((off_t)1 << 30)
+/* Files up to this size are fetched together with the other small files of their folder. */
+#define SMALL_MAX ((off_t)1 << 20)
+#define DIR_MAX_FILES 8192
 
 enum { FD_UNKNOWN = 0, FD_PLAIN = 1, FD_NET = 2, FD_COMPLETE = 3 };
 
@@ -687,6 +691,108 @@ static int fill_whole(const char *r, int h, dev_t dev, ino_t ino, off_t size)
     }
 }
 
+/* ── A folder of small files, fetched together ── */
+#define DIR_KEY ((off_t)-2)
+
+struct dent { char *rel; off_t size; };
+struct dirjob {
+    struct dent *e;
+    int n, next, failed;
+    pthread_mutex_t m;
+    long long total, done;
+    double t0;
+    char label[PATH_MAX];
+};
+
+static void *dirjob_main(void *arg)
+{
+    struct dirjob *j = arg;
+    for (;;) {
+        pthread_mutex_lock(&j->m);
+        int i = j->next < j->n ? j->next++ : -1;
+        pthread_mutex_unlock(&j->m);
+        if (i < 0) break;
+        char path[PATH_MAX];
+        if (snprintf(path, sizeof path, "%s/%s", root, j->e[i].rel) >= (int)sizeof path) continue;
+        int h = open(path, O_RDWR | O_CLOEXEC);
+        if (h < 0) continue;
+        if (h < MAXFD) __atomic_store_n(&state[h], FD_PLAIN, __ATOMIC_RELEASE);
+        struct stat before;
+        if (real.fstat(h, &before) == 0 && before.st_size > 0 && lseek(h, 0, SEEK_HOLE) < before.st_size) {
+            if (fetch_retry(j->e[i].rel, h, 0, before.st_size) == 0) keep_date(h, &before);
+            else __atomic_add_fetch(&j->failed, 1, __ATOMIC_ACQ_REL);
+        }
+        if (h < MAXFD) __atomic_store_n(&state[h], FD_UNKNOWN, __ATOMIC_RELEASE);
+        real.close(h);
+        long long d = __atomic_add_fetch(&j->done, (long long)j->e[i].size, __ATOMIC_ACQ_REL);
+        double ms = now_ms() - j->t0;
+        status_write(j->label, d, j->total, ms > 0 ? d / 1048.576 / ms : 0.0, 0);
+    }
+    return NULL;
+}
+
+/*
+ * The first time the game opens a small file, every small file of its folder that still has holes comes over
+ * together, up to PARTS at once: games open the files of a folder of small files one after the other, and each one
+ * alone is a ~16 ms request (11-15: Streets of Rage Remake's ~480 palette files took ~8 s one by one).
+ */
+static void fill_dir(const char *rel)
+{
+    char dir_rel[PATH_MAX], dpath[PATH_MAX];
+    const char *slash = strrchr(rel, '/');
+    size_t dl = slash ? (size_t)(slash - rel) : 0;
+    if (dl >= sizeof dir_rel) return;
+    memcpy(dir_rel, rel, dl);
+    dir_rel[dl] = 0;
+    if (snprintf(dpath, sizeof dpath, dl ? "%s/%s" : "%s%s", root, dir_rel) >= (int)sizeof dpath) return;
+    struct stat ds;
+    if (real.stat(dpath, &ds) != 0 || !S_ISDIR(ds.st_mode)) return;
+    if (!claim(ds.st_dev, ds.st_ino, DIR_KEY)) return;   /* another thread fetched this folder: the caller checks again */
+    struct dirjob j;
+    memset(&j, 0, sizeof j);
+    j.e = calloc(DIR_MAX_FILES, sizeof *j.e);
+    DIR *d = j.e ? opendir(dpath) : NULL;
+    if (d) {
+        struct dirent *de;
+        while ((de = readdir(d)) && j.n < DIR_MAX_FILES) {
+            if (de->d_name[0] == '.' && (!de->d_name[1] || (de->d_name[1] == '.' && !de->d_name[2]))) continue;
+            char full[PATH_MAX];
+            if (snprintf(full, sizeof full, "%s/%s", dpath, de->d_name) >= (int)sizeof full) continue;
+            struct stat fs;
+            if (real.lstat(full, &fs) != 0 || !S_ISREG(fs.st_mode) || fs.st_size <= 0 || fs.st_size > SMALL_MAX) continue;
+            /* Already whole? st_blocks can't tell: f2fs counts a 4 KB block for a tiny file that is all hole. */
+            int t = open(full, O_RDONLY | O_CLOEXEC);
+            if (t < 0) continue;
+            off_t hole = lseek(t, 0, SEEK_HOLE);
+            real.close(t);
+            if (hole >= fs.st_size) continue;
+            char relp[PATH_MAX];
+            if (snprintf(relp, sizeof relp, dl ? "%s/%s" : "%s%s", dir_rel, de->d_name) >= (int)sizeof relp) continue;
+            j.e[j.n].rel = strdup(relp);
+            j.e[j.n].size = fs.st_size;
+            if (j.e[j.n].rel) { j.total += fs.st_size; j.n++; }
+        }
+        closedir(d);
+    }
+    if (j.n > 0) {
+        pthread_mutex_init(&j.m, NULL);
+        snprintf(j.label, sizeof j.label, "%s (%d files)", dl ? dir_rel : "game folder", j.n);
+        j.t0 = now_ms();
+        status_write(j.label, 0, j.total, 0.0, 1);
+        int workers = j.n < PARTS ? j.n : PARTS, started = 0;
+        pthread_t tids[PARTS];
+        for (int i = 0; i < workers; i++) if (spawn(&tids[started], 0, dirjob_main, &j) == 0) started++;
+        if (started == 0) dirjob_main(&j);
+        for (int i = 0; i < started; i++) pthread_join(tids[i], NULL);
+        double ms = now_ms() - j.t0;
+        status_write(j.label, j.total, j.total, 0.0, 1);
+        say("netfs: %s/ %d small files, %lld KB in %.0f ms%s", dl ? dir_rel : ".", j.n, j.total >> 10, ms, j.failed ? " (some failed)" : "");
+        pthread_mutex_destroy(&j.m);
+    }
+    if (j.e) { for (int i = 0; i < j.n; i++) free(j.e[i].rel); free(j.e); }
+    unclaim(ds.st_dev, ds.st_ino, DIR_KEY);
+}
+
 struct ahead { char *r; off_t from; int chunks; };
 
 static void *ahead_main(void *arg)
@@ -751,6 +857,14 @@ static int ensure(int fd, off_t off, size_t len, int whole)
     if (lseek(h, 0, SEEK_HOLE) >= size) {
         __atomic_store_n(&state[fd], FD_COMPLETE, __ATOMIC_RELEASE);
         goto done;
+    }
+    /* A small file: its folder's small files come over together (then this one is whole, or fetched alone below). */
+    if (size <= SMALL_MAX) {
+        fill_dir(r);
+        if (lseek(h, 0, SEEK_HOLE) >= size) {
+            __atomic_store_n(&state[fd], FD_COMPLETE, __ATOMIC_RELEASE);
+            goto done;
+        }
     }
     /* Up to WHOLE_MAX, the whole file on its first use; bigger files stream in chunks (writes still fetch all). */
     if (whole || size <= WHOLE_MAX) {

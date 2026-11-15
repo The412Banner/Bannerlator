@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-15 17:20 EST — feat/lab-start-screen-home-row: Lab start page choice + Home row starts at the latest game (branch, CI running)
+- Why: user 11-15 (screenshots 164804/164811): set to "Games" the app opened Home; wants Lab options Home / Library / Containers that open those pages; Home's Library row always showed the far end ("Add a game") instead of the latest game.
+- Found: AppSettingsRegistry "app.general.landing" (Games/Containers/Big Picture, hint "In the Deck interface, Games and Big Picture both open on Home"); MainActivity → Screen.Games.route → DeckShell keeps Deck home for Games. Home row LazyRow had no state: the list arrives after the page opens and the row keeps its only item ("Add a game") in view.
+- Built: c81d9869 — labDefs override labLanding() (Home "home" / Library "games" / Containers "containers", no hint, never-set = Home); MainActivity: Lab + "games" → LabRoutes.LIBRARY; Classic shell sanitises lab_ routes; Classic radio treats "home" as games; LabHome row rememberLazyListState + scrollToItem(0) when the list changes.
+- CI: 43766218001. Not device-tested.
+
 ## 2026-11-15 17:05 EST — feat/lab-library-tile-outline MERGED into main
 - User: "works, merge it to main" (after installing 3ded5770 on the FIT, 16:45 EST).
 - What: a 1 dp outline (strong ink at 35 %) round each Library card in all three styles; the focus ring stays on top.

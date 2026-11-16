@@ -48,7 +48,7 @@ internal fun xmbDlGroups(entries: List<DownloadEntry>): List<XmbDlGroup> {
         .sortedWith(compareBy<DownloadEntry> { if (it.state == DownloadState.FAILED) 0 else 1 }.then(NAME_ORDER))
     val installed = entries
         .filter { it.state == DownloadState.INSTALLED }
-        .sortedWith(compareBy<DownloadEntry> { if (it.updateAvailable) 0 else 1 }.then(NAME_ORDER))
+        .sortedWith(compareBy<DownloadEntry> { if (it.showsUpdate) 0 else 1 }.then(NAME_ORDER))
     return listOf(
         XmbDlGroup(XmbDlSection.ACTIVE, active),
         XmbDlGroup(XmbDlSection.QUEUED, queued),
@@ -128,7 +128,8 @@ internal enum class XmbDlAction { PAUSE, RESUME, CANCEL, DETAILS, START_NEXT, LA
 
 /**
  * The buttons of [entry]'s card, left to right (the first is where A lands). Pause is only there for a store that can pause, "start next"
- * only for a queued download that is not already next ([canMoveUp]).
+ * only for a queued download that is not already next ([canMoveUp]). Details is left out for a game found in a Steam library folder: its
+ * row is the found record's, not a store page.
  */
 internal fun xmbDlActions(entry: DownloadEntry, canMoveUp: Boolean): List<XmbDlAction> = when (entry.state) {
     DownloadState.DOWNLOADING ->
@@ -137,7 +138,8 @@ internal fun xmbDlActions(entry: DownloadEntry, canMoveUp: Boolean): List<XmbDlA
         listOfNotNull(if (entry.supportsPause) XmbDlAction.RESUME else null, XmbDlAction.CANCEL, XmbDlAction.DETAILS)
     DownloadState.QUEUED ->
         listOfNotNull(if (canMoveUp) XmbDlAction.START_NEXT else null, XmbDlAction.CANCEL, XmbDlAction.DETAILS)
-    DownloadState.INSTALLED -> listOf(XmbDlAction.LAUNCH, XmbDlAction.DETAILS, XmbDlAction.UNINSTALL)
+    DownloadState.INSTALLED ->
+        listOfNotNull(XmbDlAction.LAUNCH, if (entry.found) null else XmbDlAction.DETAILS, XmbDlAction.UNINSTALL)
     DownloadState.FAILED, DownloadState.CANCELLED -> listOf(XmbDlAction.DETAILS, XmbDlAction.DISMISS)
 }
 

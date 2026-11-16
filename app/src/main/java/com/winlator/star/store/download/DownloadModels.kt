@@ -112,6 +112,14 @@ data class DownloadEntry(
      */
     val updateAvailable: Boolean = false,
     /**
+     * True when the game was NOT downloaded here but found installed in one of the user's Steam library folders (see
+     * [com.winlator.star.store.SteamLibraryFound]). The account may own it or not, so its card hides Details either way and it
+     * never offers an update. Its Uninstall takes the library path: the folder and its appmanifest go, unless the user brought
+     * the folder or another game shares it. Transient like [updateAvailable]: NOT persisted to the durable library (the writer
+     * serializes only name/store/installPath/cover) — it is re-flagged from the found records on each seed.
+     */
+    val found: Boolean = false,
+    /**
      * 1-based position in the managed download queue while [state] is [DownloadState.QUEUED]
      * (1 = next to start); 0 for everything else (active / installed / terminal). Set and kept
      * current by [com.winlator.star.store.DownloadQueue] as items enqueue, dequeue, cancel or
@@ -126,6 +134,9 @@ data class DownloadEntry(
 ) {
     /** Stable, store-qualified key: e.g. "STEAM:220". Unique across all stores. */
     val key: String get() = "$store:$id"
+
+    /** The amber "Update available" marker: the store has a newer build and this row is not a game merely found on disk. */
+    val showsUpdate: Boolean get() = updateAvailable && !found
 
     /** In one of the three active states (counts toward the ⬇ badge). */
     val isActive: Boolean

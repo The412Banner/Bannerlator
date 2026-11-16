@@ -27,4 +27,5 @@
     <string name="xmb_dl_act_uninstall_sure">Uninstall it?</string>
     <string name="xmb_dl_act_dismiss">Dismiss</string>
     <string name="xmb_dl_added_to_games">%1$s added to your games</string>
+    <string name="xmb_dl_uninstall_files_kept">%1$s removed from Downloads. Its files were kept on disk.</string>
 </resources>

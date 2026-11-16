@@ -68,7 +68,8 @@ private const val UBISOFT_PROGRESS_STEP_MS = 250L
 
 /**
  * A SteamLite (or Headless Steam when [appSteam]) launch held back by the Steam account check: [shortcut]
- * belongs to another saved account than the one signed in, or to none of them ([check]).
+ * belongs to another saved account than the one signed in, to none of them, or ownership is not known yet
+ * (no synced list) ([check]).
  */
 internal data class AccountWarning(
     val shortcut: Shortcut,
@@ -125,7 +126,8 @@ class ShortcutLauncher internal constructor(
     // Steam account check (see SteamAccountStore.launchAccountCheck): a SteamLite / Headless Steam launch
     // whose game belongs to a different saved account waits here, before its component download and
     // pre-flight, until the user switches, picks "Launch anyway" or closes it; a game no saved account
-    // owns is refused. Goldberg/Raw never use it.
+    // owns opens the NoOwner dialog, and one "Launch anyway" is remembered for that game. Goldberg/Raw
+    // never use it.
     internal var accountWarning by mutableStateOf<AccountWarning?>(null)
     // Download-on-launch progress overlay: the game we're about to launch once its picked component
     // (SteamLite for RealSteam, or Goldberg) finishes downloading, plus a label + 0..1 fraction.
@@ -830,8 +832,10 @@ fun ShortcutLaunchDialogs(launcher: ShortcutLauncher, onRemove: (Shortcut) -> Bo
 
     // ── Steam account check — before the SteamLite / Headless Steam launch goes on ──────────────────
     launcher.accountWarning?.let { w ->
-        // "Launch anyway" and "Switch account and launch" (once the switch succeeded) both go on with the
-        // launch; the account was already checked.
+        // Both "Launch anyway" and "Switch account and launch" (once the switch succeeded) go on with the
+        // launch; the account was already checked. Only "Launch anyway" past "No account owns this game" is
+        // a standing choice for that game: it is remembered so the dialog never asks again (an owning account
+        // found later clears it). Switching account, or launching anyway past a mismatch, remembers nothing.
         val proceed = {
             launcher.accountWarning = null
             if (w.appSteam) launcher.launchWithAppSteam(w.shortcut, accountChecked = true)
@@ -839,7 +843,12 @@ fun ShortcutLaunchDialogs(launcher: ShortcutLauncher, onRemove: (Shortcut) -> Bo
         }
         SteamAccountLaunchDialog(
             check = w.check,
-            onLaunchAnyway = proceed,
+            onLaunchAnyway = {
+                if (w.check is SteamAccountStore.LaunchCheck.NoOwner) {
+                    SteamAccountStore.rememberUnowned(context, steamAppIdOf(w.shortcut))
+                }
+                proceed()
+            },
             onSwitchedLaunch = proceed,
             onClose = { launcher.accountWarning = null },
         )

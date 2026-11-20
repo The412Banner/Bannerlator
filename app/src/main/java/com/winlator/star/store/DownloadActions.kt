@@ -108,8 +108,10 @@ internal class DownloadActions(
         }
     }
 
-    /** Tap a card → open that game's detail in its store (works for downloading + installed). */
+    /** Tap a card → open that game's detail in its store (works for downloading + installed). A game found in a Steam library
+     *  has no store row of its own — the found record is its card — so its card opens nothing. */
     fun openDetail(entry: DownloadEntry) {
+        if (entry.found) return
         when (entry.store) {
             Store.STEAM -> activity.startActivity(
                 Intent(activity, SteamGameDetailActivity::class.java)
@@ -238,8 +240,20 @@ internal class DownloadActions(
 
     /** Uninstall: mark uninstalled in the store DB and delete the install dir off the UI
      *  thread; once the delete is VERIFIED complete, drop the durable-library row (which also
-     *  removes it from the live registry), dismiss the spinner, and toast the real outcome. */
+     *  removes it from the live registry), dismiss the spinner, and report the real outcome.
+     *  A game this app never downloaded takes [uninstallForeign] instead: its files and its
+     *  appmanifest belong to the library. */
     fun uninstall(entry: DownloadEntry) {
+        val steamId = if (entry.store == Store.STEAM) entry.id.toIntOrNull() else null
+        val dir = installDirOf(entry)
+        // A game this app never downloaded — found in one of the user's Steam libraries, whether or not the account owns it. Its
+        // row cannot decide that: an owned game is marked installed by the import and can carry an ordinary installed row, which
+        // would send it down the "another client's files, keep everything" path. Both cases take the library path (folder and
+        // appmanifest).
+        if (steamId != null && (entry.found || SteamLibraryFound.isForeignInstall(activity, steamId, dir))) {
+            uninstallForeign(entry, steamId, dir)
+            return
+        }
         uninstallingName = entry.name
         // A Steam game found in another Steam client's library: those files and that manifest are the client's.
         val imported = entry.store == Store.STEAM &&
@@ -252,15 +266,17 @@ internal class DownloadActions(
                         if (imported) SteamLibraryImport.releaseImported(activity, it)
                         else SteamAppManifest.removeFor(entry.installPath, it)
                         SteamRepository.getInstance().database.markUninstalled(it)
+                        // The transient `found` flag is restored by the seeder; drop the record too in case this ran before it did.
+                        SteamLibraryFound.forget(activity, it)
                     }
                 }
             },
             // A Steam game whose folder another game (a demo / server) also uses is kept.
             keepFolder = {
-                val steamId = if (entry.store == Store.STEAM) entry.id.toIntOrNull() else null
+                val keepId = if (entry.store == Store.STEAM) entry.id.toIntOrNull() else null
                 val path = entry.installPath
-                imported || steamId != null && !path.isNullOrEmpty() &&
-                    SteamInstallPaths.folderSharedWithOtherGame(activity, File(path), steamId)
+                imported || keepId != null && !path.isNullOrEmpty() &&
+                    SteamInstallPaths.folderSharedWithOtherGame(activity, File(path), keepId)
             },
         ) { ok, kept ->
             // Clear the durable-library row (also drops the live registry entry) AND the store's
@@ -275,10 +291,63 @@ internal class DownloadActions(
             uninstallingName = null
             notice = when {
                 imported -> activity.getString(R.string.steam_lib_uninstall_kept, entry.name)
+                // The folder is still there (another game uses it): the record is gone, the files are not.
+                ok && kept -> activity.getString(R.string.xmb_dl_uninstall_files_kept, entry.name)
                 ok -> "${entry.name} uninstalled"
                 else -> "Couldn't fully remove ${entry.name}"
             }
         }
+    }
+
+    /** The folder an uninstall works on: a found record's (authoritative while a seed runs) else the row's own. */
+    private fun installDirOf(entry: DownloadEntry): File? {
+        val fromRecord = if (entry.found && entry.store == Store.STEAM) {
+            entry.id.toIntOrNull()?.let { SteamLibraryFound.record(activity, it)?.installDir }
+        } else null
+        return (fromRecord?.takeIf { it.isNotEmpty() } ?: entry.installPath?.takeIf { it.isNotEmpty() })?.let(::File)
+    }
+
+    /**
+     * Uninstall of a game this app did not download: [SteamLibraryFound.deleteInstall] removes its folder and its appmanifest (it
+     * refuses everything that is not a game folder of a configured library, and keeps a folder another game uses or one the user
+     * brought), then the row, the found record and the game's shortcuts go. The store bookkeeping is the same as any uninstall's —
+     * the account may own the game, which is how it reached Downloads — and runs on this worker thread when the files did go: a
+     * refused delete keeps the record, so nothing claims the game is uninstalled while its files stand.
+     */
+    private fun uninstallForeign(entry: DownloadEntry, appId: Int, dir: File?) {
+        uninstallingName = entry.name
+        Thread {
+            val result = dir?.let { SteamLibraryFound.deleteInstall(activity, appId, it) }
+                ?: SteamLibraryFound.DeleteResult.KEPT
+            if (result != SteamLibraryFound.DeleteResult.FAILED) {
+                // The imported mark goes (and its ignore keeps the import from putting the game back), as does the Steam DB row of an
+                // owned game. Only once the delete has run: a failed one must leave the game exactly as it was.
+                SteamLibraryImport.releaseImported(activity, appId)
+                runCatching { SteamRepository.getInstance().database.markUninstalled(appId) }
+            }
+            activity.runOnUiThread {
+                if (result != SteamLibraryFound.DeleteResult.FAILED) {
+                    // The record goes too: a kept folder outside a configured library is never rescanned, and a kept shared folder
+                    // has lost its manifest, so the scan has nothing to seed the row back from.
+                    SteamLibraryFound.forget(activity, appId)
+                    DownloadRegistry.removeLibraryEntry(entry.key)
+                }
+                // The folder is gone: the shortcuts that ran from it would only fail now. A kept folder still holds its exes, so only
+                // this game's own shortcuts go (as for a downloaded game whose folder another game keeps alive).
+                val removal = when (result) {
+                    SteamLibraryFound.DeleteResult.DELETED -> ShortcutRemoval.ALL
+                    SteamLibraryFound.DeleteResult.KEPT -> ShortcutRemoval.BY_ID_ONLY
+                    SteamLibraryFound.DeleteResult.FAILED -> ShortcutRemoval.NONE
+                }
+                StoreShortcutCleanup.remove(activity, entry.store, entry.id, entry.installPath, removal)
+                uninstallingName = null
+                notice = when (result) {
+                    SteamLibraryFound.DeleteResult.DELETED -> "${entry.name} uninstalled"
+                    SteamLibraryFound.DeleteResult.KEPT -> activity.getString(R.string.xmb_dl_uninstall_files_kept, entry.name)
+                    SteamLibraryFound.DeleteResult.FAILED -> "Couldn't fully remove ${entry.name}"
+                }
+            }
+        }.start()
     }
 
     /**
@@ -372,6 +441,10 @@ internal class DownloadActions(
             GogLibrarySync.seed(context)
             EpicLibrarySync.seed(context)
             com.winlator.star.store.xbox.XboxDownloads.seed(context)
+            // Games installed in a Steam library folder by something else show in Downloads like a downloaded game (on a worker
+            // thread: the records' folders and manifests are checked on disk). A user opening the page asks for it: the throttle
+            // is skipped, so a game installed a moment ago is not hidden by a scan that ran just before it.
+            SteamLibraryFound.scanIfStaleAsync(context, force = true)
         }
     }
 }

@@ -22,7 +22,7 @@ internal class GameSortKey(
     val playMs: Long,
     container: String,
     val store: String,
-    /** Listed before everything else in every order (the Windows Steam client). */
+    /** Listed before everything else, except in Last played (the Windows Steam client). */
     val pinned: Boolean = false,
 ) {
     val nameKey: String = name.lowercase()
@@ -46,8 +46,11 @@ internal fun <T> sortGames(list: List<T>, sort: LibrarySort, key: (T) -> GameSor
         LibrarySort.CONTAINER -> compareBy<Pair<T, GameSortKey>> { it.second.containerKey }.thenBy { it.second.nameKey }
         LibrarySort.STORE -> compareBy<Pair<T, GameSortKey>> { storeRank(it.second.store) }.thenBy { it.second.nameKey }
     }
-    val pinnedFirst = compareByDescending<Pair<T, GameSortKey>> { it.second.pinned }
-    return keyed.sortedWith(pinnedFirst.then(order)).map { it.first }
+    // The pinned launcher leads every order except "Last played": there it would sit ahead of whatever the user actually
+    // played last, so the Home's wide first card could never move.
+    val comparator = if (sort == LibrarySort.RECENT) order
+    else compareByDescending<Pair<T, GameSortKey>> { it.second.pinned }.then(order)
+    return keyed.sortedWith(comparator).map { it.first }
 }
 
 /** A shortcut's sort key, from the play stats read for the library ([readPlayStats]). */

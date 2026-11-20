@@ -34,6 +34,8 @@ internal object SteamDownloadControl {
         val appId = e.id.toIntOrNull() ?: return e
         return e.copy(
             supportsPause = true,
+            // A download has taken the row over: the files are this app's now, whatever a found-library scan said before.
+            found = false,
             pause = { DownloadRegistry.appContext()?.let { pauseResume(it, appId) } },
             cancel = { DownloadRegistry.appContext()?.let { cancel(it, appId) } },
         )

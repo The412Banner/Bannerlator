@@ -322,9 +322,11 @@ fun SteamAccountLaunchDialog(
 }
 
 /**
- * Shown before a launch when none of the saved accounts' owned-game lists has the game. Those lists can miss
- * games that are still playable (installed before accounts were tracked, family sharing, free licenses), so
- * "Launch anyway" goes on with the signed-in account; "Close" cancels.
+ * Shown before a launch when none of the saved accounts' owned-game lists has the game, or an account's list
+ * is not known yet (no sync). Those lists can miss games that are still playable (installed before accounts
+ * were tracked, family sharing, free licenses), so "Launch anyway" goes on with the signed-in account;
+ * "Close" cancels. The choice is remembered per game and cleared when an owner is found later or the game is
+ * uninstalled.
  */
 @Composable
 private fun SteamNoOwnerDialog(onLaunchAnyway: () -> Unit, onClose: () -> Unit) {

@@ -765,6 +765,8 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         cv.put("install_dir",  "");
         db.update("steam_games", cv, "app_id = ?", new String[]{String.valueOf(appId)});
         SteamAccountStore.INSTANCE.clearInstaller(appId);   // forget which account downloaded it
+        // …and the remembered "launch anyway" choice for this game (the uninstall forgets both).
+        SteamAccountStore.INSTANCE.clearUnowned(appId);
         // Invalidate in-memory cache so the library list reflects the new state immediately
         SteamRepository.getInstance().invalidateGameCache();
     }

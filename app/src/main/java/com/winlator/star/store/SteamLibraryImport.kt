@@ -45,8 +45,9 @@ object SteamLibraryImport {
     fun clearIgnore(ctx: Context, appId: Int) = editIgnored(ctx) { it.remove(appId.toString()) }
 
     /**
-     * True when [appId] was marked installed by this import — its files are another Steam client's, not a
-     * download made here — so uninstalling it must leave the folder and the appmanifest alone. Never throws.
+     * True when [appId]'s files came from elsewhere — this import marked it installed, or the user brought the folder
+     * ([SteamFolderAdopt]) — so this app never downloaded them. Uninstall uses it to tell a library game from a downloaded
+     * one; whether the folder may be deleted is [SteamLibraryFound.isForeignInstall]'s question. Never throws.
      */
     @JvmStatic
     fun isImported(ctx: Context, appId: Int): Boolean = idSet(ctx, IMPORTED_KEY).contains(appId.toString())
@@ -60,7 +61,8 @@ object SteamLibraryImport {
 
     /**
      * Uninstall bookkeeping for an imported game: forgets that it was imported and keeps the import from
-     * marking it installed again (the folder stays on disk). The caller still marks it uninstalled. Never throws.
+     * marking it installed again, so a folder an uninstall left on disk does not come back as an installed
+     * game. The caller still marks it uninstalled. Never throws.
      */
     @JvmStatic
     fun releaseImported(ctx: Context, appId: Int) {
@@ -156,6 +158,9 @@ object SteamLibraryImport {
         }
         if (imported > 0) {
             try { SteamRepository.getInstance().invalidateGameCache() } catch (_: Throwable) {}
+            // The DB's installed set has changed: refresh Downloads from it now, rather than at the next process start. The imported
+            // games themselves stay out of Downloads — a game found in a library folder is [SteamLibraryFound]'s card.
+            SteamLibrarySync.seedInstalled(app)
             Log.i(TAG, "marked $imported game(s) found in the libraries as installed")
         }
         return imported

@@ -47,7 +47,7 @@ import com.winlator.star.core.WinFgCapture
 import com.winlator.star.core.WinFgDiag
 import com.winlator.star.midi.MidiManager
 import com.winlator.star.store.NetworkProbe
-import com.winlator.star.store.SteamLibraryImport
+import com.winlator.star.store.SteamLibraryFound
 import com.winlator.star.store.SteamLibraryLocations
 import com.winlator.star.store.SteamRegion
 import com.winlator.star.store.SteamSdInstall
@@ -509,8 +509,8 @@ internal fun LabSteamLibrariesPage(onBack: () -> Unit) {
             scope.launch {
                 val r = withContext(Dispatchers.IO) { SteamLibraryLocations.add(context, path) }
                 if (r is SteamLibraryLocations.AddResult.Added) {
-                    // Games another Steam client already installed in its steamapps are picked up right away.
-                    val found = withContext(Dispatchers.IO) { SteamLibraryImport.importInstalled(context) }
+                    // Games another Steam client already installed in its steamapps are picked up right away, owned or not.
+                    val found = withContext(Dispatchers.IO) { SteamLibraryFound.afterLibraryAdded(context) }
                     val added = if (found > 0) context.getString(R.string.steam_lib_added_found, r.library.label, found)
                     else context.getString(R.string.steam_lib_added, r.library.label)
                     message = if (r.lowSpace) added + " " + context.getString(R.string.steam_lib_low_space) else added

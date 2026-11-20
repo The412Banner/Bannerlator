@@ -23,6 +23,14 @@ internal fun isRealSteamName(name: String?): Boolean {
 }
 
 /**
+ * True when an account's existing owned-game CSV must survive a sync that reported no [appIds].
+ * A sync can answer before its license rows land; erasing the snapshot then would hide the account's
+ * whole library and make the launch check call every installed game unowned.
+ */
+internal fun shouldKeepOwnedSnapshot(previousCsv: String?, appIds: Collection<Int>): Boolean =
+    appIds.isEmpty() && !previousCsv.isNullOrEmpty()
+
+/**
  * Every Steam account the user has signed in to, so the app can swap between them like the real
  * Steam client's "Change account" — without asking for the password again.
  *
@@ -62,6 +70,8 @@ object SteamAccountStore {
     private const val K_OWNED_PREFIX = "owned_"
     /** `installer_<appId>` = SteamID64 of the account the game belongs to: its downloader, or the owner found at launch (absent = unknown). */
     private const val K_INSTALLER_PREFIX = "installer_"
+    /** `unowned_ok_<appId>` = the user chose "Launch anyway" for a game no saved account owns. Never a link. */
+    private const val K_UNOWNED_OK_PREFIX = "unowned_ok_"
 
     /** How long a switch waits for the target's logon before reporting "still connecting". */
     private const val SESSION_WAIT_MS = 25_000L
@@ -104,7 +114,7 @@ object SteamAccountStore {
          */
         data class Mismatch(val ownerSteamId: Long, val ownerName: String, val activeName: String) : Warn()
 
-        /** Every saved account's game list is known and none of them owns the game. */
+        /** No saved account is known to own the game (its snapshot may even be missing): ask the user. */
         object NoOwner : Warn()
     }
 
@@ -393,14 +403,24 @@ object SteamAccountStore {
 
     /**
      * Record the account's owned appIds (called once the license -> app links are complete).
-     * Also marks the account as the owner of the DB's current license rows.
+     * Also marks the account as the owner of the DB's current license rows. An empty [appIds] never
+     * replaces an existing snapshot: an early or failed sync cannot empty the account's library.
      */
     fun recordOwnedApps(ctx: Context, steamId64: Long, appIds: Collection<Int>) {
         if (steamId64 == 0L) return
         init(ctx)
         synchronized(lock) {
-            prefs().edit()
-                .putString(K_OWNED_PREFIX + steamId64, appIds.joinToString(","))
+            val sp = prefs()
+            val key = K_OWNED_PREFIX + steamId64
+            if (shouldKeepOwnedSnapshot(sp.getString(key, null), appIds)) {
+                // An empty sync for an account that already has a snapshot is ignored: the owner marker
+                // and legacy flag are left as they were. With no snapshot yet, the empty result is
+                // still written.
+                Log.w(TAG, "owned-app snapshot kept: the sync reported no appIds")
+                return@synchronized
+            }
+            sp.edit()
+                .putString(key, appIds.joinToString(","))
                 .putLong(K_LIBRARY_OWNER, steamId64)
                 .remove(K_LEGACY_PENDING)
                 .apply()
@@ -452,15 +472,26 @@ object SteamAccountStore {
         return if (cached != null && cached.first == sid) cached.second else parseOwnedLocked(sp, sid)
     }
 
-    /** 3.1.6 upgrade: snapshot the legacy account's license rows once, before another account syncs. */
+    /**
+     * 3.1.6 upgrade: snapshot the legacy account's license rows once, before another account syncs.
+     * The pending flag survives an empty read: the license rows may simply not be there yet, and the
+     * next attempt must still be allowed to migrate them.
+     */
     private fun recordLegacyOwnerLocked(ctx: Context, sid: Long) {
         val sp = prefs()
         if (!sp.getBoolean(K_LEGACY_PENDING, false) || sid == 0L) return
-        sp.edit().remove(K_LEGACY_PENDING).apply()
-        if (sp.contains(K_LIBRARY_OWNER)) return
-        val ids = try { SteamDatabase.getInstance(ctx).getLicensedAppIds() } catch (t: Throwable) { return }
+        if (sp.contains(K_LIBRARY_OWNER)) {
+            // Nothing to migrate: the DB licence rows already have a recorded owner.
+            sp.edit().remove(K_LEGACY_PENDING).apply()
+            return
+        }
+        val ids = try {
+            SteamDatabase.getInstance(ctx).getLicensedAppIds()
+        } catch (t: Throwable) {
+            return
+        }
         if (ids.isEmpty()) return
-        sp.edit().putString(K_OWNED_PREFIX + sid, ids.joinToString(",")).putLong(K_LIBRARY_OWNER, sid).apply()
+        recordOwnedApps(ctx, sid, ids)   // writes the snapshot and removes the pending flag
     }
 
     // ── Account-specific side files ───────────────────────────────────────────────────────────
@@ -518,48 +549,135 @@ object SteamAccountStore {
     }
 
     /**
+     * Remember the user's per-game "launch anyway" choice after [LaunchCheck.NoOwner]: the next launch
+     * proceeds without the dialog. Only [clearUnowned], or an owner found by the launch check, removes it.
+     */
+    fun rememberUnowned(ctx: Context, appId: Int) {
+        if (appId <= 0) return
+        try {
+            init(ctx)
+            prefs().edit().putBoolean(K_UNOWNED_OK_PREFIX + appId, true).apply()
+        } catch (t: Throwable) {
+            Log.w(TAG, "rememberUnowned failed (${t.javaClass.simpleName})")
+        }
+    }
+
+    /** Forget [appId]'s "launch anyway" choice (it was uninstalled, or an owner was found). No-op until [init]. */
+    fun clearUnowned(appId: Int) {
+        if (appContext == null) return
+        try {
+            prefs().edit().remove(K_UNOWNED_OK_PREFIX + appId).apply()
+        } catch (t: Throwable) {
+            Log.w(TAG, "clearUnowned failed (${t.javaClass.simpleName})")
+        }
+    }
+
+    private fun isUnownedRememberedLocked(sp: SharedPreferences, appId: Int): Boolean =
+        sp.getBoolean(K_UNOWNED_OK_PREFIX + appId, false)
+
+    /**
      * Whether a SteamLite / Headless Steam launch of [appId] may go on with the account signed in now.
-     * Prefs reads only, so it is cheap enough for the main thread. Never throws.
+     * Never throws. The DB is consulted only when the only saved account is the signed-in one and no
+     * license owner was recorded: one indexed `steam_games` lookup, never a license scan.
      *
-     * The account a game belongs to is the one recorded as its installer, provided it is still saved.
-     * Otherwise (no record, or its account was removed) the saved accounts' owned-game snapshots decide:
-     * the signed-in account first, then the most recently used others. The first owner found is recorded
-     * as the game's account. When none owns it the answer is [LaunchCheck.NoOwner], but only if every
-     * saved account has a snapshot: a missing one (not synced yet) makes it unknown and the launch
-     * proceeds. Nobody signed in, or no [appId]: [LaunchCheck.Proceed].
+     * The game's account is, in order: the account recorded for it (its downloader, or an owner found at
+     * an earlier launch), provided it is still saved; the saved accounts' owned-game snapshots (the
+     * signed-in one first, then the most recently used others); or, in that single legacy/unknown-owner
+     * case, the DB's own game row. A found owner is recorded as the game's account and the per-game
+     * "launch anyway" choice is cleared. With no owner, a remembered "launch anyway" lets the launch
+     * proceed; otherwise the answer is [LaunchCheck.NoOwner] — also when an account's snapshot is merely
+     * missing: unknown ownership is the user's call, not a silent proceed. Nobody signed in, or no
+     * [appId]: [LaunchCheck.Proceed].
      */
     fun launchAccountCheck(ctx: Context, appId: Int): LaunchCheck {
         if (appId <= 0) return LaunchCheck.Proceed
         return try {
             val active = activeSteamId(ctx)
             if (active == 0L) return LaunchCheck.Proceed
-            synchronized(lock) { launchAccountCheckLocked(appId, active) }
+            synchronized(lock) { launchAccountCheckLocked(ctx, appId, active) }
         } catch (t: Throwable) {
             Log.w(TAG, "launchAccountCheck failed (${t.javaClass.simpleName})")
             LaunchCheck.Proceed
         }
     }
 
-    private fun launchAccountCheckLocked(appId: Int, active: Long): LaunchCheck {
+    private fun launchAccountCheckLocked(ctx: Context, appId: Int, active: Long): LaunchCheck {
         val sp = prefs()
         val saved = readLocked().sortedByDescending { it.lastUsed }
+        val savedIds = saved.map { it.steamId64 }.filter { it != 0L }
         val recorded = sp.getLong(K_INSTALLER_PREFIX + appId, 0L)
-        var owner = if (recorded != 0L && saved.any { it.steamId64 == recorded }) recorded else 0L
-        if (owner == 0L) {
-            val snapshots = saved.map { it.steamId64 to ownedSnapshotLocked(sp, it.steamId64) }
-            val owning = snapshots.firstOrNull { it.first == active && it.second?.contains(appId) == true }
-                ?: snapshots.firstOrNull { it.second?.contains(appId) == true }
-            if (owning == null) {
-                return if (snapshots.all { it.second != null }) LaunchCheck.NoOwner else LaunchCheck.Proceed
-            }
-            owner = owning.first
-            sp.edit().putLong(K_INSTALLER_PREFIX + appId, owner).apply()
+            .takeIf { it != 0L && savedIds.contains(it) } ?: 0L
+        val owned = (savedIds + active).distinct().associateWith { ownedSnapshotLocked(sp, it) }
+        val snapshotOwner = SteamLaunchOwnership.snapshotOwner(appId, active, savedIds, owned)
+        val remembered = isUnownedRememberedLocked(sp, appId)
+        // The game's DB row is only worth reading when neither a link nor a snapshot named an owner.
+        val dbProves = recorded == 0L && snapshotOwner == 0L &&
+            dbProvesActiveLocked(ctx, sp, appId, active, savedIds)
+        val decision = SteamLaunchOwnership.decide(
+            appId, active, savedIds, recorded, owned, dbProves, remembered,
+        )
+
+        val linkOwner = when (decision) {
+            is LaunchDecision.Proceed -> decision.linkOwner
+            is LaunchDecision.SwitchTo -> decision.owner
+            LaunchDecision.NoOwner -> null
         }
-        if (owner == active) return LaunchCheck.Proceed
-        val ownerName = saved.first { it.steamId64 == owner }.label
-        val activeName = saved.firstOrNull { it.steamId64 == active }?.label
-            ?: SteamPrefs.displayName.takeIf { isRealSteamName(it) } ?: unnamedLabel(active)
-        return LaunchCheck.Mismatch(owner, ownerName, activeName)
+        val ownerFound = recorded != 0L || snapshotOwner != 0L || dbProves
+        val ed = sp.edit()
+        var changed = false
+        if (linkOwner != null && sp.getLong(K_INSTALLER_PREFIX + appId, 0L) != linkOwner) {
+            ed.putLong(K_INSTALLER_PREFIX + appId, linkOwner)
+            changed = true
+        }
+        if (ownerFound && remembered) {
+            ed.remove(K_UNOWNED_OK_PREFIX + appId)
+            changed = true
+        }
+        if (changed) ed.apply()
+
+        val owner = when {
+            recorded != 0L -> recorded
+            snapshotOwner != 0L -> snapshotOwner
+            dbProves -> active
+            else -> 0L
+        }
+        val source = when {
+            recorded != 0L -> "recorded"
+            snapshotOwner != 0L -> "snapshot"
+            dbProves -> "db"
+            remembered -> "remembered"
+            else -> "none"
+        }
+        Log.i(TAG, "launch owner check app=$appId active=${StorefrontLog.sid(active)} owner=${StorefrontLog.sid(owner)} source=$source")
+
+        return when (decision) {
+            is LaunchDecision.Proceed -> LaunchCheck.Proceed
+            is LaunchDecision.SwitchTo -> {
+                val ownerName = saved.firstOrNull { it.steamId64 == decision.owner }?.label
+                    ?: unnamedLabel(decision.owner)
+                val activeName = saved.firstOrNull { it.steamId64 == active }?.label
+                    ?: SteamPrefs.displayName.takeIf { isRealSteamName(it) } ?: unnamedLabel(active)
+                LaunchCheck.Mismatch(decision.owner, ownerName, activeName)
+            }
+            LaunchDecision.NoOwner -> LaunchCheck.NoOwner
+        }
+    }
+
+    /**
+     * The DB may still know [appId] in the one case the snapshots cannot decide: the only saved account
+     * is the signed-in one and no license owner was ever recorded. That is a single indexed
+     * `steam_games` row lookup — never a license scan. Once an owner marker exists the snapshots are
+     * authoritative, so this returns false without touching the DB.
+     */
+    private fun dbProvesActiveLocked(
+        ctx: Context, sp: SharedPreferences, appId: Int, active: Long, savedIds: List<Long>,
+    ): Boolean {
+        if (sp.getLong(K_LIBRARY_OWNER, 0L) != 0L || savedIds.singleOrNull() != active) return false
+        return try {
+            SteamDatabase.getInstance(ctx).getGame(appId) != null
+        } catch (t: Throwable) {
+            false
+        }
     }
 
     // ── Switching ─────────────────────────────────────────────────────────────────────────────

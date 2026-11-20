@@ -7079,6 +7079,23 @@ public class XServerDisplayActivity extends AppCompatActivity {
         } catch (Throwable t) {
             Log.w("BH_SAVE_SYNC", "resolveSteamAppRef errored", t);
         }
+        // Found/uninstalled games have a steamAppId but no steam_games row at all — install_dir is only
+        // ever written for a game this app installed, so the DB alone can never resolve them. Derive the
+        // folder from the shortcut's own exec path instead; only fill an empty answer, never a DB one.
+        if (installDir.isEmpty()) {
+            try {
+                String derived = SteamInstallPaths.installDirOf(execPath);
+                if (derived != null && !derived.isEmpty()) {
+                    // A host path is already an Android path; a Windows one needs the container's drive map.
+                    File host = derived.startsWith("/")
+                            ? new File(derived)
+                            : com.winlator.star.core.WinePath.INSTANCE.resolveAndroidPath(container, derived);
+                    installDir = (host != null) ? host.getAbsolutePath() : "";
+                }
+            } catch (Throwable t) {
+                installDir = "";
+            }
+        }
         if (appId <= 0 || installDir.isEmpty()) {
             logResolveSteamAppRefFailure("unresolved appId/installDir", execPath, storeSource, taggedAppId);
             return null;

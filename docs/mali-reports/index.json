@@ -1,5 +1,15 @@
 [
   {
+    "id": "2026-11-20T09-19-17-046b11",
+    "created": "2026-11-20T09:19:17.411Z",
+    "reporter": "",
+    "device": "Samsung 17LTE",
+    "gpu": "ARM Mali-G57 MC2",
+    "game": "Hades",
+    "symptom": "Black screen (no image)",
+    "logs": 0
+  },
+  {
     "id": "2026-11-15T16-14-58-577016",
     "created": "2026-11-15T16:14:58.967Z",
     "reporter": "Ian Maj Bauman",

@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-21 21:40 EST — Windows Steam client: EA app install fails INST-14-1603 (investigation, nothing changed)
+- Why: user screenshot (Pocket FIT Elite, BL 3.2.1 vc108): Windows Steam Client x64 → Play Need for Speed Most Wanted → EA app installer "couldn't finish installing (error code: INST-14-1603)".
+- Found: wine_debug.log (Documents/bannerlator/Windows Steam Client x64, two tries 21:35:15 + 21:35:59 EST): EAapp-13.827.2.6342 MSI custom action `JunoInitializeSession` (managed .NET) returns 1603 right after `mscoree:CLRRuntimeInfo_GetRuntimeDirectory error reading registry key for installroot`. Container 1 prefix: no Wine Mono (no windows\mono, no .NETFramework key), Wine Gecko only 32-bit (system32\gecko = plugin only).
+- Cause: our own EA path (storeSource=steam + eaSupport) installs mono-10.1.0 + gecko first (InstallScriptExecutor.kt:184-205, EaSupport.hasMono/hasGecko), but WindowsSteamClient.kt has no such step, so when the Windows Steam client runs the EA installer itself the prefix is not ready. Same on main d13cdddf and tag 3.2.1.
+- Quick fix (no code): Components → mono-10.1.0 + gecko for container 1, then Play again. Code fix proposed: Windows Steam client launch installs mono + gecko silently when missing (reuse EaSupport.stage* + the setup batch), plus failed-install cleanup. Awaiting user.
+- Proof level: cause read from logs + prefix + code; fix NOT tested.
+
 ## 2026-11-15 18:05 EST — 3.2.1 STABLE RELEASED + VERIFIED (Latest)
 - release.yml 43770791882 SUCCESS on main 8d38b006; tag 3.2.1 → 8d38b006 (== main == built); "Bannerlator 3.2.1", not prerelease, not draft, published 23:03:54 UTC; releases/latest = 3.2.1.
 - Assets: 4 APKs (574.8 MiB each: antutu, ludashi, pubg, standard) + update.json. Body 17.5k chars, says NAS streaming is experimental, includes "Every change since 3.2.0".

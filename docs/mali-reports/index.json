@@ -1,5 +1,15 @@
 [
   {
+    "id": "2026-11-22T16-09-16-01d6ac",
+    "created": "2026-11-22T16:09:16.468Z",
+    "reporter": "",
+    "device": "Lava lxx503",
+    "gpu": "Mediatek dimensity 700",
+    "game": "GTA V PORT",
+    "symptom": "Runs but very low FPS",
+    "logs": 1
+  },
+  {
     "id": "2026-11-20T09-19-17-046b11",
     "created": "2026-11-20T09:19:17.411Z",
     "reporter": "",

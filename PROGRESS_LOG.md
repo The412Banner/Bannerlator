@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-21 22:13 EST — NFS Most Wanted (Elite): EA install fixed, low-memory kill, shortcut moved to Steam/SteamLite
+- Relaunch after the mono + gecko fix (21:58 EST): no more JunoInitializeSession 1603; EA Desktop 13.827.2.6342 installed and ran, NFS13.exe started (DXVK device, Budget 818 MiB). Then Android killed BL: exit-reasons 22:01:47 LOW_MEMORY (Windows Steam client + its webhelpers + EA Desktop + IGOProxy32 started ~10 times + the game, 7.3 GB RAM device). Quick fix = PROVEN for the EA install.
+- User: the BL card was CUSTOM (Wine winemenubuilder made it from Steam's .url: `wine start.exe steam://rungameid/1262560`); asked for a Steam card to launch with SteamLite. Our Steam store already had the game as installed (steam.db install_dir = the Windows Steam library folder on the SD card), so store page → Add to shortcuts → NFS13.exe → Container-1 wrote storeSource=steam, steamAppId=1262560, eaSupport=1 (same file name). Old .desktop + .url backed up to Download/Bannerlator-backup/nfsmw-custom-20261121/; .url removed from the Desktop so winemenubuilder cannot bring the custom card back.
+- Proof level: shortcut written + Library shows STEAM/EA; SteamLite launch NOT yet tested (user next).
+
 ## 2026-11-21 21:53 EST — Windows Steam client EA install: quick fix applied on the Elite (no code change)
 - User: "quick fix first". Closed the Windows Steam session (in-game menu → Exit game), then Container-1 → Settings → Win Components → Browse & install: mono-10.1.0 + gecko (offline installs, no session).
 - Verified in the prefix: windows\\mono\\mono-2.0, windows\\Microsoft.NET, `.NETFramework` InstallRoot (64-bit Framework64 + Wow6432Node Framework), Gecko 2.47.4 in system32 AND syswow64; files owned by the app uid; no BL crash.

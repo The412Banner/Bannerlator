@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-21 21:53 EST — Windows Steam client EA install: quick fix applied on the Elite (no code change)
+- User: "quick fix first". Closed the Windows Steam session (in-game menu → Exit game), then Container-1 → Settings → Win Components → Browse & install: mono-10.1.0 + gecko (offline installs, no session).
+- Verified in the prefix: windows\\mono\\mono-2.0, windows\\Microsoft.NET, `.NETFramework` InstallRoot (64-bit Framework64 + Wow6432Node Framework), Gecko 2.47.4 in system32 AND syswow64; files owned by the app uid; no BL crash.
+- Next: user starts Windows Steam Client x64 → Play NFS Most Wanted; check wine_debug.log for JunoInitializeSession / 1603 / mscoree. Fallback if 0xa00a0480: clean Package Cache + EA bundle registry (EaSupport.cleanupFailedInstall logic). Code fix still awaiting the user's go.
+- Proof level: prefix fixed (verified on disk); EA install NOT yet re-tested.
+
 ## 2026-11-21 21:40 EST — Windows Steam client: EA app install fails INST-14-1603 (investigation, nothing changed)
 - Why: user screenshot (Pocket FIT Elite, BL 3.2.1 vc108): Windows Steam Client x64 → Play Need for Speed Most Wanted → EA app installer "couldn't finish installing (error code: INST-14-1603)".
 - Found: wine_debug.log (Documents/bannerlator/Windows Steam Client x64, two tries 21:35:15 + 21:35:59 EST): EAapp-13.827.2.6342 MSI custom action `JunoInitializeSession` (managed .NET) returns 1603 right after `mscoree:CLRRuntimeInfo_GetRuntimeDirectory error reading registry key for installroot`. Container 1 prefix: no Wine Mono (no windows\mono, no .NETFramework key), Wine Gecko only 32-bit (system32\gecko = plugin only).

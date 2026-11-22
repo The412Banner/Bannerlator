@@ -1,5 +1,18 @@
 # Star-Compose — Progress Log
 
+## 2026-11-22 19:0x EST — Xbox cloud sound stays on the device on an HDMI TV (`fix/xbox-audio-hdmi`, BUILT eac4a3bb, NOT device-tested)
+- Why: user on the Elite (BL 3.2.1 vc108, Xbox stream, TV over HDMI via USB hub): sound from the handheld, not the TV.
+- Found over ssh (dumpsys audio): HDMI output present and STREAM_MUSIC routed to hdmi(400), audio mode NORMAL; BL's player
+  AudioTrack (uid 10199) = USAGE_VOICE_COMMUNICATION / CONTENT_TYPE_SPEECH, mono (channelMask 0x1), deviceIds [3] = speaker.
+- Cause: `XboxNativePlayerActivity.kt` built `JavaAudioDeviceModule.builder(applicationContext).createAudioDeviceModule()` with
+  WebRTC defaults; webrtc-sdk m125 `WebRtcAudioTrack.java:52` DEFAULT_USAGE = USAGE_VOICE_COMMUNICATION (+ CONTENT_TYPE_SPEECH
+  :419-420). Android never routes voice-call audio to HDMI.
+- Fix (eac4a3bb): builder `.setAudioAttributes(USAGE_GAME, CONTENT_TYPE_MOVIE)` (JavaAudioDeviceModule.java:232) +
+  `.setUseStereoOutput(true)` (:216). Same fix in BannerCloud (fix/xbox-audio-hdmi there).
+- To test on the Elite: Xbox stream on the TV → sound from the TV; dumpsys audio shows the player with USAGE_GAME, stereo,
+  device hdmi; without the TV it plays on the speaker; mic/party chat still works (audio transceiver is SEND_RECV).
+- Resume: CI run + staged APK path in the next entry update; install on the Elite only after the user's yes.
+
 ## 2026-11-21 22:13 EST — NFS Most Wanted (Elite): EA install fixed, low-memory kill, shortcut moved to Steam/SteamLite
 - Relaunch after the mono + gecko fix (21:58 EST): no more JunoInitializeSession 1603; EA Desktop 13.827.2.6342 installed and ran, NFS13.exe started (DXVK device, Budget 818 MiB). Then Android killed BL: exit-reasons 22:01:47 LOW_MEMORY (Windows Steam client + its webhelpers + EA Desktop + IGOProxy32 started ~10 times + the game, 7.3 GB RAM device). Quick fix = PROVEN for the EA install.
 - User: the BL card was CUSTOM (Wine winemenubuilder made it from Steam's .url: `wine start.exe steam://rungameid/1262560`); asked for a Steam card to launch with SteamLite. Our Steam store already had the game as installed (steam.db install_dir = the Windows Steam library folder on the SD card), so store page → Add to shortcuts → NFS13.exe → Container-1 wrote storeSource=steam, steamAppId=1262560, eaSupport=1 (same file name). Old .desktop + .url backed up to Download/Bannerlator-backup/nfsmw-custom-20261121/; .url removed from the Desktop so winemenubuilder cannot bring the custom card back.

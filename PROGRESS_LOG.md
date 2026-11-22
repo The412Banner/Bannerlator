@@ -11,7 +11,11 @@
   `.setUseStereoOutput(true)` (:216). Same fix in BannerCloud (fix/xbox-audio-hdmi there).
 - To test on the Elite: Xbox stream on the TV → sound from the TV; dumpsys audio shows the player with USAGE_GAME, stereo,
   device hdmi; without the TV it plays on the speaker; mic/party chat still works (audio transceiver is SEND_RECV).
-- Resume: CI run + staged APK path in the next entry update; install on the Elite only after the user's yes.
+- CI: build-artifacts run 45085632424 (headSha 300f7e33 asserted). BannerCloud: fix/xbox-audio-hdmi bfc2462a, Build APK run 45085689806.
+- User decision (~19:20 EST): "install both here, and bannerlator on elite only. make sure you use pubg to update current user
+  apps" → FIT: BL pubg over com.tencent.ig 3.2.1 vc108 + BannerCloud over com.banner.cloud 0.1.1; Elite: BL pubg over 3.2.1 only.
+- Resume: after CI green, stage `/sdcard/Download/Bannerlator-xbox-audio-hdmi-300f7e33-pubg.apk` (+ BannerCloud on the FIT) with
+  sha256 host == device, check signer == installed, then pm install; check installed base.apk hash.
 
 ## 2026-11-21 22:13 EST — NFS Most Wanted (Elite): EA install fixed, low-memory kill, shortcut moved to Steam/SteamLite
 - Relaunch after the mono + gecko fix (21:58 EST): no more JunoInitializeSession 1603; EA Desktop 13.827.2.6342 installed and ran, NFS13.exe started (DXVK device, Budget 818 MiB). Then Android killed BL: exit-reasons 22:01:47 LOW_MEMORY (Windows Steam client + its webhelpers + EA Desktop + IGOProxy32 started ~10 times + the game, 7.3 GB RAM device). Quick fix = PROVEN for the EA install.

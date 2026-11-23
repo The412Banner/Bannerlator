@@ -26,7 +26,9 @@
   Quake II RTX launched 16:01:14 EST (controllerProfile=5).
 - DEVICE-PROVEN (FIT, user ~16:0x EST): "sticks work now" (Players > Bind profile: sticks now drive WASD + mouse look; before the fix only
   buttons worked). Not yet checked: Players > Bind None (raw pad passthrough) in a controller game; X11 (non-Wayland) container.
-- Next: merge to main only on the user's go (backup ref first).
+- MERGED 16:07 EST (user: "yes merge it to main"): backup refs/backup/20261123/main-before-pad-sticks = 8df51c9b (root-f5's log head,
+  held main for this); main 9b3e272a = --no-ff merge of fix/pad-sticks 2770cbed (log conflict only; code diff vs the tested build
+  89af5f48 = 0 lines, vs 8df51c9b = the 10 lines). Main CI build-artifacts 45266390610 started. Branch fix/pad-sticks kept.
 ## 2026-11-23 15:10–15:31 EST — GOG "Verifying files…" stuck label fixed; branch MERGED main 96a8629e (`fix/upstream-small-fixes-2`)
 - Why: user 15:1x EST "fix the verifying message and merge it" (found in the 13:08 test round; same on main).
 - Built: f24e740d GogGameDetailActivity.kt: Verify ends on "Files verified ✓"; Update / error / cancel go back to the

@@ -36,7 +36,12 @@
 - MERGED: backup refs/backup/20261122/main-before-xbox-audio-hdmi = 6f02e998; --no-ff merge 76b6ef75 pushed to main (tree ==
   branch tip 8f50e68b; admin bypass of the 3 required checks, as for earlier merges). Main CI build-artifacts run 45087767165 started.
   BannerCloud: backup refs/backup/20261122/main-before-xbox-audio-hdmi = 80d4394f, main ff → bfc2462a (= the installed build).
-  Branches fix/xbox-audio-hdmi kept in both repos (delete only on user word). No release.
+  No release.
+- Branches DELETED (user: "delete both branches"): BL fix/xbox-audio-hdmi (tip a4874915 = in main via 76b6ef75) and BannerCloud
+  fix/xbox-audio-hdmi (tip bfc2462a = main). Backups: refs/backup/20261122/fix-xbox-audio-hdmi in both repos. Local worktrees removed.
+  MISTAKE (BL): my command ran the delete although the backup push had failed (the /root/src/Bannerlator clone fetches only main,
+  so origin/fix/xbox-audio-hdmi did not exist locally); nothing lost (tip is in main), backup ref written right after from the full SHA.
+  Lesson: chain backup && delete, and take branch tips from `git ls-remote`, not origin/* in this clone.
 - Resume: installed = this branch on FIT (BL + BannerCloud) and Elite (BL); nothing running; to undo, install the 3.2.1 release
   APK (pubg) / BannerCloud 0.1.1 over it.
 

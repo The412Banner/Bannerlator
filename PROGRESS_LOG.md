@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-22 19:0x EST — Xbox cloud sound stays on the device on an HDMI TV (`fix/xbox-audio-hdmi`, BUILT eac4a3bb, NOT device-tested)
+## 2026-11-22 18:49–19:06 EST — Xbox cloud sound stays on the device on an HDMI TV (`fix/xbox-audio-hdmi` eac4a3bb, INSTALLED FIT + Elite, NOT device-tested)
 - Why: user on the Elite (BL 3.2.1 vc108, Xbox stream, TV over HDMI via USB hub): sound from the handheld, not the TV.
 - Found over ssh (dumpsys audio): HDMI output present and STREAM_MUSIC routed to hdmi(400), audio mode NORMAL; BL's player
   AudioTrack (uid 10199) = USAGE_VOICE_COMMUNICATION / CONTENT_TYPE_SPEECH, mono (channelMask 0x1), deviceIds [3] = speaker.
@@ -20,6 +20,15 @@
 - Staged 19:1x EST: FIT `/sdcard/Download/Bannerlator-xbox-audio-hdmi-300f7e33-pubg.apk` sha256 db12880f… (host == FIT == Elite copy
   at the same path) + FIT `/sdcard/Download/BannerCloud-xbox-audio-hdmi-bfc2462a.apk` sha256 21263858… (== CI .sha256). Signer of both
   = AOSP testkey SHA-256 a40da80a… == installed com.tencent.ig CERT.RSA. Installing next (user yes ~19:20).
+- INSTALLED (pm install -r, Success): FIT BL 19:06:05 EST + BannerCloud 19:06:07 EST; Elite BL 19:06:21 EST. Installed base.apk
+  sha256 == staged on all three (BL db12880f…, BannerCloud 21263858…). Labels stay 3.2.1 vc108 / 0.1.1 vc2 (no bump on test builds).
+  Elite had BL open on XboxGameDetailActivity (no stream/Wine/download) → closed by the install. BannerCloud NOT on the Elite (user).
+- Correction: the times "~19:10", "19:1x" and "~19:20" written above were my estimates; the real clock shows CI done ~19:03,
+  staging ~19:05, installs 19:06 EST.
+- Next: user test on the Elite: TV over the USB hub → Bannerlator → Xbox stream → sound from the TV; I check dumpsys audio for the
+  player (expect USAGE_GAME, channelMask stereo, device hdmi). Also: no TV → speaker; mic/party chat. Merge after device proof + go.
+- Resume: installed = this branch on FIT (BL + BannerCloud) and Elite (BL); nothing running; to undo, install the 3.2.1 release
+  APK (pubg) / BannerCloud 0.1.1 over it.
 
 ## 2026-11-21 22:13 EST — NFS Most Wanted (Elite): EA install fixed, low-memory kill, shortcut moved to Steam/SteamLite
 - Relaunch after the mono + gecko fix (21:58 EST): no more JunoInitializeSession 1603; EA Desktop 13.827.2.6342 installed and ran, NFS13.exe started (DXVK device, Budget 818 MiB). Then Android killed BL: exit-reasons 22:01:47 LOW_MEMORY (Windows Steam client + its webhelpers + EA Desktop + IGOProxy32 started ~10 times + the game, 7.3 GB RAM device). Quick fix = PROVEN for the EA install.

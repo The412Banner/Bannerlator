@@ -92,6 +92,9 @@
   - 087d5c29 SteamLite report reads the first 1 MB of wine_debug.log as well as the last 4 MB (readHeadAndTail).
   - Not unit-tested (no local SDK/kotlinc; CI does not run unit tests). CI build-artifacts run 45225943004 dispatched
     12:16:56 EST, headSha 087d5c29 asserted.
+  - CI GREEN 12:4x EST: run 45225943004 4/4 flavors, headSha 087d5c29 (skips = main-only cache saves + cached builds).
+    STAGED FIT /sdcard/Download/Bannerlator-usf2-087d5c29-pubg.apk sha256 567bd788…8f2a (host == device), signer
+    A4:0D:A8:0A… (same as installed 9cfd6786 build). Install waits for the user's yes.
   - Device test plan (FIT, after CI + install OK): back up appmanifest_70; (a) put back Steam's own broken record (backup
     StateFlags 1090, installdir Half-Life + empty common/Half-Life + small fake downloading/70 + state_70_1.patch) -> launch CS
     via SteamLite -> expect BL rewrites appmanifest_70 (logcat "shared-depot source app 70: recorded ... replaced"), partial

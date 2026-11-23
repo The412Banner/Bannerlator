@@ -307,6 +307,15 @@ public final class RealSteamLauncher {
                 }
             }
             writeAppManifest(acf, appId, displayName, canonicalName, steamId64);
+            // Apps this game takes depots from (Half-Life for Counter-Strike) must be installed in Steam's
+            // eyes too, or Steam reports "Update Required" and LaunchApp refuses (no secure launch).
+            try {
+                for (String line : SteamSharedDepots.stageSourceApps(ctx, appId, hostInstallDir, steamappsDir,
+                        canonicalName, steamId64, SteamGameLanguage.forSteamClient(appId)))
+                    Log.i(TAG, "prepare: shared-depot source " + line);
+            } catch (Throwable t) {
+                Log.w(TAG, "prepare: shared-depot source records skipped: " + t.getMessage());
+            }
 
             // ── 3c. Per-game spec: line1 = full Windows exe path UNDER steamapps\common (so the agent's
             //        stage_app_manifest sees the \steamapps\common\ marker), line2 = appId. ──────────

@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-23 15:10–15:40 EST — GOG "Verifying files…" stuck label fixed; branch MERGED main 96a8629e (`fix/upstream-small-fixes-2`)
+## 2026-11-23 15:10–15:31 EST — GOG "Verifying files…" stuck label fixed; branch MERGED main 96a8629e (`fix/upstream-small-fixes-2`)
 - Why: user 15:1x EST "fix the verifying message and merge it" (found in the 13:08 test round; same on main).
 - Built: f24e740d GogGameDetailActivity.kt: Verify ends on "Files verified ✓"; Update / error / cancel go back to the
   installed-build line (new helper installedBuildStatus(), same text as page open). "Updating…" had the same stuck bug.
@@ -18,7 +18,10 @@
   (only PROGRESS_LOG conflict); told main is pushed, it merges main into its branch.
 - Open: Wine fdsan double-close (sign-in hang, 1 of 7), report no-game scope quirk, new SteamLite package for launch args,
   delete branch (ask), temp worktree /root/src/Bannerlator-wt/merge-usf2 (remove after).
-- Resume: check main CI 45260137563 / 45260137242 job conclusions.
+- MAIN CI GREEN (checked 15:43 EST): app 45260137563 4/4 flavors + SteamLite agent 45260137242 on 96a8629e (headSha checked; skips =
+  cache hits / unused, no failed step). Merge done; no release.
+- Correction: this heading first said "15:10–15:40"; the merge was pushed 15:30 EST and the entry written 15:31 (guessed end
+  time again; lesson: run `date` before writing a time).
 
 ## 2026-11-23 07:45–08:23 EST — Upstream small fixes, round 2 (`fix/upstream-small-fixes-2`, CI building, NOT device-tested)
 - Why: user (FIT session) asked for a recon of what is new in Winlator Ludashi (StevenMXZ) and GameNative that BL could use;

@@ -54,6 +54,13 @@
   (install). Shortcut Exec = hl.exe with NO "-game cstrike": BL does not read Steam's launch entries (executable/arguments) for
   direct launches (pre-existing gap, not this branch) → a direct start likely opens Half-Life; workaround: launch args
   "-game cstrike" or SteamLite launch. User launch next.
+- 09:24–09:37 EST CS 1.6 via SteamLite (v9): Steam in the container computes SharedDepots 1/2/3 -> app 70 itself and wants
+  Half-Life installed as its own app -> "Update Required", LaunchApp EAppUpdateError 17 -> insecure CreateProcess fallback runs
+  plain hl.exe (v9 ignores args) -> Half-Life mod -> valve/cl_dlls/client.dll absent (HL's own depot 71 not shared) -> assert
+  LoadBlob.cpp:90. Steam also queued a 441 MB Half-Life download. Not proven to depend on this branch.
+- 09:57 EST hand test (user OK): backup Download/Bannerlator-backup/cs16-steamlite-20261123/; removed the partial download +
+  empty common/Half-Life; wrote container appmanifest_70.acf (fully installed, installdir "Counter-Strike", buildid 15961492,
+  depots 1/2/3). User launches CS via SteamLite next.
 - Still for the user (needs logins / hands): Steam install (e.g. CS 1.6), GOG Check for updates, Epic DLC install, built-in pad
   + physical keyboard, on-screen stick on WASD, external mouse, optional backup.
 - Correction: the first version of this entry had guessed times ("09:50", "09:3x"); real clock: helpers committed 07:51–08:20, dumpsys ~08:17, CI 08:22 EST.

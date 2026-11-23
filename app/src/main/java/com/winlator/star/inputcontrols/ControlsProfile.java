@@ -86,6 +86,11 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         return previewData != null;
     }
 
+    /** A preview's embedded custom icons ([{id, png}] from an .icpx), or null. */
+    public JSONArray getPreviewCustomIcons() {
+        return previewData != null ? previewData.optJSONArray("customIcons") : null;
+    }
+
     /** The profile's JSON document: the in-memory preview data, or the on-disk file (null if absent). */
     private JSONObject readProfileJSON() throws JSONException, IOException {
         if (previewData != null) return previewData;

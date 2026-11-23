@@ -449,7 +449,7 @@ public class InputControlsManager {
         return data.has(key) ? getIntegralVersion(data, key) : defaultValue;
     }
 
-    static int normalizeLegacyIconId(int iconId) {
+    public static int normalizeLegacyIconId(int iconId) {
         return iconId >= Byte.MIN_VALUE && iconId < 0 ? iconId & 0xFF : iconId;
     }
 

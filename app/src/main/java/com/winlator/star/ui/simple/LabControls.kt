@@ -60,6 +60,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.winlator.star.R
+import com.winlator.star.inputcontrols.CommunityProfile
+import com.winlator.star.inputcontrols.CommunitySection
 import com.winlator.star.core.GyroCalibrator
 import com.winlator.star.core.HttpUtils
 import com.winlator.star.inputcontrols.ControlsProfile
@@ -81,10 +83,6 @@ import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 
-/** Where Classic's Download Profiles list (index.txt) and its .icp files come from. */
-internal const val COMMUNITY_PROFILES_URL = "https://raw.githubusercontent.com/brunodev85/winlator/main/input_controls/"
-
-private fun profileTitle(file: String) = file.removeSuffix(".icpx").removeSuffix(".icp")
 
 /** A profile's on-screen layout as a small picture (Classic's On-Screen preview), read off the main thread; a tap runs [onTap]. */
 @Composable
@@ -99,51 +97,63 @@ internal fun LabProfileThumb(profileId: Int, refreshKey: Int, onTap: () -> Unit)
     LayoutPreviewFrame(profile = profile, onTap = onTap)
 }
 
+/** The second line of a Community profiles row: who shared it (Discord section) and whether it maps a controller. */
+internal fun communitySubtitle(section: CommunitySection, item: CommunityProfile): String? = listOfNotNull(
+    item.author?.takeIf { section.id != "original" }?.let { L("by %1\$s", it) },
+    when (item.type) {
+        "controller" -> L("Controller → keyboard/mouse")
+        "both" -> L("On-screen + controller")
+        else -> null
+    },
+).joinToString(" · ").ifBlank { null }
+
 /**
- * Classic's Download Profiles as a Lab list: A ticks a profile, X (or the eye) shows its layout first, Download fetches
- * and imports the ticked ones. [items] is null while the list loads.
+ * Classic's Download Profiles as a Lab list: one tab per section (Original / Discord shared), A ticks a profile,
+ * X (or the eye) shows its layout first, Download fetches and imports the ticked ones. [sections] is null while it loads.
  */
 @Composable
-internal fun LabCommunityProfilesDialog(items: List<String>?, manager: InputControlsManager, onDismiss: () -> Unit, onImported: () -> Unit) {
+internal fun LabCommunityProfilesDialog(sections: List<CommunitySection>?, manager: InputControlsManager, onDismiss: () -> Unit, onImported: () -> Unit) {
     val context = LocalContext.current
     val accent = MaterialTheme.colorScheme.primary
+    var tab by remember { mutableIntStateOf(0) }
     var picked by remember { mutableStateOf(setOf<String>()) }
-    var preview by remember { mutableStateOf<String?>(null) }
+    var preview by remember { mutableStateOf<CommunityProfile?>(null) }
     // Files fetched for a preview, so importing them needs no second download.
     val cache = remember { mutableMapOf<String, String>() }
     val first = remember { FocusRequester() }
-    LaunchedEffect(items?.size) {
+    val section = sections?.let { it.getOrNull(tab.coerceIn(0, (it.size - 1).coerceAtLeast(0))) }
+    LaunchedEffect(sections?.size, tab) {
         delay(60)
         runCatching { first.requestFocus() }
     }
-    fun toggle(f: String) { picked = if (f in picked) picked - f else picked + f }
+    fun toggle(url: String) { picked = if (url in picked) picked - url else picked + url }
     fun download() {
-        val files = items.orEmpty().filter { it in picked }
-        if (files.isEmpty()) return
+        val items = sections.orEmpty().flatMap { it.items }.filter { it.url in picked }.distinctBy { it.url }
+        if (items.isEmpty()) return
         onDismiss()
-        toast(context, if (files.size == 1) L("Downloading %1\$s…", profileTitle(files[0])) else L("Downloading %1\$s profiles…", files.size))
+        toast(context, if (items.size == 1) L("Downloading %1\$s…", items[0].title) else L("Downloading %1\$s profiles…", items.size))
         val done = AtomicInteger()
         val failed = AtomicInteger()
-        files.forEach { f ->
+        items.forEach { item ->
             val importOne: (String?) -> Unit = { content ->
                 val ok = content != null && runCatching { manager.importProfile(JSONObject(content)) != null }.getOrDefault(false)
                 if (!ok) failed.incrementAndGet()
-                if (done.incrementAndGet() == files.size) (context as? Activity)?.runOnUiThread {
+                if (done.incrementAndGet() == items.size) (context as? Activity)?.runOnUiThread {
                     onImported()
                     val bad = failed.get()
                     toast(
                         context,
                         when {
-                            bad > 0 -> L("%1\$s of %2\$s profiles could not be imported", bad, files.size)
-                            files.size == 1 -> L("Imported %1\$s", profileTitle(files[0]))
-                            else -> L("Imported %1\$s profiles", files.size)
+                            bad > 0 -> L("%1\$s of %2\$s profiles could not be imported", bad, items.size)
+                            items.size == 1 -> L("Imported %1\$s", items[0].title)
+                            else -> L("Imported %1\$s profiles", items.size)
                         },
                     )
                 }
             }
-            val cached = cache[f]
+            val cached = cache[item.url]
             if (cached != null) Thread { importOne(cached) }.start()
-            else HttpUtils.download(COMMUNITY_PROFILES_URL + f) { content -> importOne(content) }
+            else HttpUtils.download(item.url) { content -> importOne(content) }
         }
     }
 
@@ -158,18 +168,26 @@ internal fun LabCommunityProfilesDialog(items: List<String>?, manager: InputCont
                 .padding(14.dp),
         ) {
             Text(L("Community profiles"), color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(start = 8.dp, bottom = 10.dp))
+            if (sections != null && sections.size > 1) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
+                    sections.forEachIndexed { i, s ->
+                        LabButton("${L(s.title)} (${s.items.size})", primary = i == tab, onClick = { tab = i })
+                    }
+                }
+            }
             when {
-                items == null -> Text(L("Loading the list…"), color = SimpleMuted, fontSize = 14.sp, modifier = Modifier.padding(8.dp))
-                items.isEmpty() -> Text(L("Nothing in the list."), color = SimpleMuted, fontSize = 14.sp, modifier = Modifier.padding(8.dp))
+                sections == null -> Text(L("Loading the list…"), color = SimpleMuted, fontSize = 14.sp, modifier = Modifier.padding(8.dp))
+                section == null || section.items.isEmpty() -> Text(L("Nothing in the list."), color = SimpleMuted, fontSize = 14.sp, modifier = Modifier.padding(8.dp))
                 else -> Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
-                    items.forEachIndexed { i, f ->
-                        val on = f in picked
+                    section.items.forEachIndexed { i, item ->
+                        val on = item.url in picked
+                        val subtitle = communitySubtitle(section, item)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = 44.dp)
-                                .labTile(onClick = { toggle(f) }, onMenu = { preview = f }, requester = if (i == 0) first else null)
+                                .labTile(onClick = { toggle(item.url) }, onMenu = { preview = item }, requester = if (i == 0) first else null)
                                 .padding(horizontal = 10.dp, vertical = 4.dp),
                         ) {
                             Box(
@@ -180,8 +198,11 @@ internal fun LabCommunityProfilesDialog(items: List<String>?, manager: InputCont
                                     .border(1.5.dp, if (on) accent else SimpleMuted, SimpleShape),
                             ) { if (on) Text("✓", color = androidx.compose.ui.graphics.Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                             Spacer(Modifier.width(12.dp))
-                            Text(profileTitle(f), color = SimpleStrong, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(36.dp).simpleTap { preview = f }) {
+                            Column(Modifier.weight(1f)) {
+                                Text(item.title, color = SimpleStrong, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                if (subtitle != null) Text(subtitle, color = SimpleMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(36.dp).simpleTap { preview = item }) {
                                 Icon(Icons.Filled.Visibility, contentDescription = L("View example"), tint = accent, modifier = Modifier.size(20.dp))
                             }
                         }
@@ -193,20 +214,20 @@ internal fun LabCommunityProfilesDialog(items: List<String>?, manager: InputCont
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
             ) {
-                if (!items.isNullOrEmpty()) {
+                if (!sections.isNullOrEmpty()) {
                     LabButton(if (picked.isEmpty()) L("Download") else L("Download (%1\$s)", picked.size), primary = picked.isNotEmpty(), onClick = { download() })
                 }
                 LabButton(L("Close"), onClick = onDismiss)
                 Spacer(Modifier.weight(1f))
-                if (!items.isNullOrEmpty()) SimpleLegend(listOf("A" to L("Select"), "X" to L("View example")))
+                if (!sections.isNullOrEmpty()) SimpleLegend(listOf("A" to L("Select"), "X" to L("View example")))
             }
         }
     }
 
-    preview?.let { f ->
+    preview?.let { item ->
         LabCommunityPreview(
-            file = f, cache = cache, picked = f in picked,
-            onPick = { picked = picked + f; preview = null },
+            item = item, cache = cache, picked = item.url in picked,
+            onPick = { picked = picked + item.url; preview = null },
             onClose = { preview = null },
         )
     }
@@ -214,20 +235,20 @@ internal fun LabCommunityProfilesDialog(items: List<String>?, manager: InputCont
 
 /** "View example": a community profile's layout before it is imported (Classic's preview popover). */
 @Composable
-private fun LabCommunityPreview(file: String, cache: MutableMap<String, String>, picked: Boolean, onPick: () -> Unit, onClose: () -> Unit) {
+private fun LabCommunityPreview(item: CommunityProfile, cache: MutableMap<String, String>, picked: Boolean, onPick: () -> Unit, onClose: () -> Unit) {
     val context = LocalContext.current
-    var profile by remember(file) { mutableStateOf<ControlsProfile?>(null) }
-    var failed by remember(file) { mutableStateOf(false) }
+    var profile by remember(item.url) { mutableStateOf<ControlsProfile?>(null) }
+    var failed by remember(item.url) { mutableStateOf(false) }
     val focus = remember { FocusRequester() }
-    LaunchedEffect(file) {
+    LaunchedEffect(item.url) {
         val toProfile: (String?) -> ControlsProfile? = { c -> if (c == null) null else runCatching { ControlsProfile.createPreview(context, JSONObject(c)) }.getOrNull() }
-        val cached = cache[file]
+        val cached = cache[item.url]
         if (cached != null) {
             profile = toProfile(cached)
             failed = profile == null
-        } else HttpUtils.download(COMMUNITY_PROFILES_URL + file) { content ->
+        } else HttpUtils.download(item.url) { content ->
             (context as? Activity)?.runOnUiThread {
-                if (content != null) cache[file] = content
+                if (content != null) cache[item.url] = content
                 profile = toProfile(content)
                 failed = profile == null
             }
@@ -246,7 +267,10 @@ private fun LabCommunityPreview(file: String, cache: MutableMap<String, String>,
                 .border(1.dp, SimpleLine, SimpleShape)
                 .padding(14.dp),
         ) {
-            Text(profileTitle(file), color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 8.dp, bottom = 10.dp))
+            Text(item.title, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 8.dp, bottom = 2.dp))
+            item.author?.let { Text(L("by %1\$s", it), color = SimpleMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 8.dp)) }
+            item.note?.let { Text(it, color = SimpleMuted, fontSize = 12.sp, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 8.dp, top = 2.dp)) }
+            Spacer(Modifier.size(8.dp))
             val p = profile
             when {
                 p != null -> Box {

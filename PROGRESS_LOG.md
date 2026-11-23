@@ -1,5 +1,34 @@
 # Star-Compose — Progress Log
 
+## 2026-11-23 17:5x EST — Community profiles: Original + Discord shared catalog (`feat/community-catalog`, CI pending, NOT device-tested)
+- Why: user made the Discord channel #bannerlator-osc-sharing (BannerHub server) for user layouts; wants them in the app next to
+  Winlator's list, credited by Discord display name, one list with Original / Discord shared sections, preview + download as now,
+  hosted on winlator-contents as a release with a JSON the app reads. Also: a controller-only profile (Quake II RTX) should say so.
+- Data: winlator-contents release `input-controls` (published 11-23, 73 assets: index.json, LICENSE-LGPL-2.1.txt, 53 original__*.icp
+  from brunodev85 LGPL-2.1, 18 discord__*.icpx from devaspe, Babizi Games/HG99, Sr.Ed_137, UNHolyBlunts), builder on
+  winlator-contents branch feat/input-controls-catalog.
+- Code: new inputcontrols/CommunityProfiles.kt (parse index.json -> sections, fallback brunodev85 index.txt); Lab
+  LabCommunityProfilesDialog (tab buttons per section, "by <author>" + controller tag, preview shows author/note) + SimplePages loader
+  and On-screen subtitle ("Controller → keyboard/mouse" / "On-screen + controller" when a profile maps pad to keys/mouse); Classic
+  InputControlsScreen Download Profiles (tabs, author/tag, preview by URL, list loaded once in a LaunchedEffect instead of on every
+  recomposition). Unit test CommunityProfilesTest (CI does not run unit tests).
+- Was next: CI, stage pubg APK, ask before install, test both UIs (tabs, preview, download of an Original and a Discord layout).
+- CI GREEN: build-artifacts 45278771069 (headSha 31ce77e4 asserted) 4/4 success; pubg BUILD SUCCESSFUL in 7m 26s, no failed steps.
+- STAGED 18:18 EST: `/sdcard/Download/Bannerlator-community-catalog-31ce77e4-pubg.apk` sha256 0bd917f8… (host == /sdcard == device),
+  signer a40da80a… == installed, com.tencent.ig vc108 3.2.1. FIT still runs pad-sticks 89af5f48. Install awaits the user's yes.
+- INSTALLED 18:19:12 EST (user "install it"), base.apk 0bd917f8… == staged. User test (screenshots 18:21): tabs Original (53) / Discord
+  shared (18), authors + notes show; preview of AC IV / NFS MW shows text labels or stock icons instead of the posters' custom icons.
+  Button positions checked against the posters' Discord screenshots: match (relative x/y, e.g. AC IV D-pad 0.18/0.71, swords
+  0.82/0.64; NFS left column 0.025 x 0.06/0.17/0.29/0.40, N2O 0.24/0.10).
+- Cause: ControlElement.drawIcon → InputControlsView.getIcon(id) loads ids >= 100 from this device's CustomIconManager store; a
+  preview's icons live in the file's "customIcons" (import remaps them, so imported profiles are fine). Fix: ControlsProfile
+  .getPreviewCustomIcons(), CustomIconManager.decodeEncodedIcon(), InputControlsView.setEmbeddedIcons() (preview never falls back to
+  the local store), LayoutPreviewFrame passes them once per profile. InputControlsView/InputControlsManager have mixed CRLF/LF
+  lines: edited byte-exact (diff +27 / +1-1).
+- CI GREEN: build-artifacts 45288813621 (headSha 5b176b5d asserted) 4/4, pubg BUILD SUCCESSFUL in 7m 59s, no failed steps.
+  STAGED 18:38 EST `/sdcard/Download/Bannerlator-community-catalog-5b176b5d-pubg.apk` sha256 dff13f5d… (host == sdcard == device),
+  signer a40da80a… == installed. Install awaits the user's yes.
+
 ## 2026-11-23 15:26–16:10 EST — Controller sticks in a Players > Bind profile (`fix/pad-sticks`, DEVICE-PROVEN on the FIT, MERGED main)
 - Why: user built a physical-controller profile for Quake II RTX (game has no gamepad code, needs keys + mouse). Shortcut
   `controllerProfile=5` (controls-5.icp "Quake II RTX (controller)", __default__ pad: LS WASD, RS mouse, R2 fire, buttons...).

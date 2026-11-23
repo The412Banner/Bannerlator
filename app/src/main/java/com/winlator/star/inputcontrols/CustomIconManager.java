@@ -186,6 +186,23 @@ public class CustomIconManager {
         }
     }
 
+    /** Decodes an embedded .icpx icon for a preview without storing it; null when it is not a valid icon. */
+    public static Bitmap decodeEncodedIcon(String encodedData) {
+        if (encodedData == null || encodedData.length() > 8 * 1024 * 1024) return null;
+        try {
+            byte[] data = Base64.decode(encodedData, Base64.DEFAULT);
+            if (data.length == 0 || data.length > 4 * 1024 * 1024) return null;
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(data, 0, data.length, bounds);
+            if (!hasValidIconBounds(bounds.outWidth, bounds.outHeight)) return null;
+            return BitmapFactory.decodeByteArray(data, 0, data.length);
+        }
+        catch (IllegalArgumentException | OutOfMemoryError e) {
+            return null;
+        }
+    }
+
     public ImportedIcon importEncodedIcon(String encodedData) {
         if (encodedData == null || encodedData.length() > 8 * 1024 * 1024) return null;
         byte[] data;

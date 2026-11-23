@@ -47,6 +47,13 @@
     from app 70; also 20/30/40/50/60/130 (HL engine), 220 HL2 → 380/389 (Ep1), 420 (Ep2), 340 (Lost Coast), 280, 410,
     1230/1280, 35420. Downloads not tested.
   - Cleanup: temp shortcut + screenshots deleted, Termux in front 09:00, peers told done.
+- USER TEST 09:22 EST Steam store install of Counter-Strike 1.6 (app 10; user's Half-Life is a Windows-Steam-client copy in
+  F:\bannerlator\windows_steam, untouched): log "Shared depots: 1@2667117727132184734 3@6081070194444336449 2@724247850320422500
+  (app 70 public)" + own depot 11 → "4 owned depot(s) validated", 816.8 MB written in ~36 s, no denied keys, 0 FATAL, crash 0.
+  Folder imagefs/steam_games/Counter-Strike has hl.exe + valve/ (500 MB) + cstrike/ (282 MB) → SHARED DEPOTS FIX DEVICE-PROVEN
+  (install). Shortcut Exec = hl.exe with NO "-game cstrike": BL does not read Steam's launch entries (executable/arguments) for
+  direct launches (pre-existing gap, not this branch) → a direct start likely opens Half-Life; workaround: launch args
+  "-game cstrike" or SteamLite launch. User launch next.
 - Still for the user (needs logins / hands): Steam install (e.g. CS 1.6), GOG Check for updates, Epic DLC install, built-in pad
   + physical keyboard, on-screen stick on WASD, external mouse, optional backup.
 - Correction: the first version of this entry had guessed times ("09:50", "09:3x"); real clock: helpers committed 07:51–08:20, dumpsys ~08:17, CI 08:22 EST.

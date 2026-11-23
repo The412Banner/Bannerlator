@@ -1,5 +1,21 @@
 # Star-Compose — Progress Log
 
+## 2026-11-23 15:3x EST — Controller sticks in a Players > Bind profile (`fix/pad-sticks` b2451c3c, CI pending, NOT device-tested)
+- Why: user built a physical-controller profile for Quake II RTX (game has no gamepad code, needs keys + mouse). Shortcut
+  `controllerProfile=5` (controls-5.icp "Quake II RTX (controller)", __default__ pad: LS WASD, RS mouse, R2 fire, buttons...).
+  On the FIT (BL xbox-audio-hdmi 300f7e33 pubg = 3.2.1 code for input): buttons worked, sticks did nothing. Re-picking the
+  profile under Players > Bind did not help. Touch-drag on the screen does turn the view.
+- Found: dispatchKeyEvent hands keys to InputControlsView.onKeyEvent first, but dispatchGenericMotionEvent never calls
+  InputControlsView.onGenericMotionEvent; stick/trigger/hat motion only got there via super = the focused view. Live view dump
+  during the game: mInTouchMode=true, focused = full-screen overlay ComposeView (AndroidComposeView e592f22), InputControlsView
+  not focused. setPhysicalProfile's requestFocus loses to it. AYANEO Controller axes X/Y/Z/RZ/HAT match the profile.
+- Fix (b2451c3c): in dispatchGenericMotionEvent, when InputControlsView has a physical profile and is not the focused view, call
+  its onGenericMotionEvent too (winHandler/touchpad/super unchanged; when it is focused super delivers it as before, no double).
+- Test plan (FIT): install pubg build over com.tencent.ig (ask first), launch Quake II RTX: left stick moves, right stick looks,
+  D-pad in menus; Players > Bind None = raw pad still reaches games (passthrough unchanged).
+- Resume: CI build-artifacts on fix/pad-sticks (assert headSha), stage `/sdcard/Download/Bannerlator-pad-sticks-<sha8>-pubg.apk`
+  with sha256 host == device + signer == installed, then ASK before pm install.
+
 ## 2026-11-22 18:49–19:06 EST — Xbox cloud sound stays on the device on an HDMI TV (`fix/xbox-audio-hdmi` eac4a3bb, DEVICE-PROVEN on the Elite, MERGED main 76b6ef75)
 - Why: user on the Elite (BL 3.2.1 vc108, Xbox stream, TV over HDMI via USB hub): sound from the handheld, not the TV.
 - Found over ssh (dumpsys audio): HDMI output present and STREAM_MUSIC routed to hdmi(400), audio mode NORMAL; BL's player

@@ -12,7 +12,10 @@
   and On-screen subtitle ("Controller → keyboard/mouse" / "On-screen + controller" when a profile maps pad to keys/mouse); Classic
   InputControlsScreen Download Profiles (tabs, author/tag, preview by URL, list loaded once in a LaunchedEffect instead of on every
   recomposition). Unit test CommunityProfilesTest (CI does not run unit tests).
-- Next: CI, stage pubg APK, ask before install, test both UIs (tabs, preview, download of an Original and a Discord layout).
+- Was next: CI, stage pubg APK, ask before install, test both UIs (tabs, preview, download of an Original and a Discord layout).
+- CI GREEN: build-artifacts 45278771069 (headSha 31ce77e4 asserted) 4/4 success; pubg BUILD SUCCESSFUL in 7m 26s, no failed steps.
+- STAGED 18:18 EST: `/sdcard/Download/Bannerlator-community-catalog-31ce77e4-pubg.apk` sha256 0bd917f8… (host == /sdcard == device),
+  signer a40da80a… == installed, com.tencent.ig vc108 3.2.1. FIT still runs pad-sticks 89af5f48. Install awaits the user's yes.
 
 ## 2026-11-23 15:26–16:10 EST — Controller sticks in a Players > Bind profile (`fix/pad-sticks`, DEVICE-PROVEN on the FIT, MERGED main)
 - Why: user built a physical-controller profile for Quake II RTX (game has no gamepad code, needs keys + mouse). Shortcut

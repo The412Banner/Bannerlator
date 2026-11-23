@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-23 07:45–09:50 EST — Upstream small fixes, round 2 (`fix/upstream-small-fixes-2`, CI building, NOT device-tested)
+## 2026-11-23 07:45–08:23 EST — Upstream small fixes, round 2 (`fix/upstream-small-fixes-2`, CI building, NOT device-tested)
 - Why: user (FIT session) asked for a recon of what is new in Winlator Ludashi (StevenMXZ) and GameNative that BL could use;
   recon done 07:50 EST vs main 4e2218ff (code reading only). User: "start with the small fixes branch"; then "make sure these
   fixes don't conflict with what we have or use since some of our stuff is newer than theirs like our direct controller input".
@@ -20,7 +20,7 @@
     inside the data folder (Ludashi 3a3bc38e/5e2629d4; extractTar's only caller = RestoreActivity).
   - Input: fbe0233e Xiaomi uinput not a pad + profile lookups only for real pads (Ludashi e104c8d3; I KEPT the old device-id-0
     "any controller" fallback); 1b0dc688 keyboard keys of a full keyboard that is also a pad (Ludashi 64796465/8fd8ec0a) — only
-    for KEYBOARD_TYPE_ALPHABETIC game controllers: FIT "AYANEO Controller" = type 1 (non-alphabetic, dumpsys 09:3x) → no change
+    for KEYBOARD_TYPE_ALPHABETIC game controllers: FIT "AYANEO Controller" = type 1 (non-alphabetic, dumpsys ~08:17) → no change
     there; Elite pad not connected at check time; d184a73a captured external mouse works while the overlay has focus (Ludashi
     PR #750, DrarenThiralas); 619ed2b4 key bindings on sticks/d-pads/triggers release 0.05 inside the dead zone (GameNative
     #2272, kudyk; nothing sent to Bannerin changes).
@@ -29,6 +29,8 @@
   change for keyboards without sticks (7e3d5afc on wip/usf2-input, dropped: changes slots); launch-option choice/error-22 retry.
 - Not in this branch: Goldberg bump (catalog), Wine layer fixes (v17 layers, next step), FEX gn-8 / Mali GL4 wrapper / Turnip V39.
 - Next: build-artifacts CI → stage APK (hash host == device) → ASK before install → device test per item → merge only on go.
+- CI: build-artifacts run 45183318885 dispatched 08:22 EST on 46098228 (headSha asserted).
+- Correction: the first version of this entry had guessed times ("09:50", "09:3x"); real clock: helpers committed 07:51–08:20, dumpsys ~08:17, CI 08:22 EST.
 - Resume: memory `bannerlator-upstream-recon-1123`; worktree /root/src/Bannerlator-wt/upstream-small-fixes-2.
 
 ## 2026-11-22 18:49–19:06 EST — Xbox cloud sound stays on the device on an HDMI TV (`fix/xbox-audio-hdmi` eac4a3bb, DEVICE-PROVEN on the Elite, MERGED main 76b6ef75)

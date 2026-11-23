@@ -226,9 +226,7 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
 
         dlcJson = prefs.getString("gog_dlcs_$gameId", null)
         initDlcStates()
-        updateStatusText = prefs.getString("gog_build_$gameId", null)?.let {
-            "Installed build: ${it.substring(0, minOf(12, it.length))}\u2026"
-        } ?: "Build ID not recorded \u2014 tap Check to verify"
+        updateStatusText = installedBuildStatus()
         updatesInstalled = prefs.getString("gog_exe_$gameId", null) != null
         if (!updatesInstalled) updateStatusText = ""
         checkUpdateEnabled = updatesInstalled
@@ -549,6 +547,8 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
                     progressValue = 100
                     progressVisible = false
                     progressLabelVisible = false
+                    if (verify) updateStatusText = "Files verified \u2713"
+                    else if (updatesInstalled) updateStatusText = installedBuildStatus()
                     setResult(RESULT_REFRESH)
                     refreshActionState()
                 }
@@ -564,6 +564,7 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
                     installBtnColor = 0xFF5533CC.toInt()
                     launchVisible = prefs.getString("gog_exe_$gameId", null) != null
                     setExeVisible = prefs.getString("gog_dir_$gameId", null) != null
+                    if (updatesInstalled) updateStatusText = installedBuildStatus()
                     resultBarMsg = "Error: $msg"
                 }
             }
@@ -578,6 +579,7 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
                     installBtnColor = 0xFF5533CC.toInt()
                     launchVisible = prefs.getString("gog_exe_$gameId", null) != null
                     setExeVisible = prefs.getString("gog_dir_$gameId", null) != null
+                    if (updatesInstalled) updateStatusText = installedBuildStatus()
                 }
             }
             override fun onSelectExe(candidates: MutableList<String>?, onSelected: Consumer<String>?) {
@@ -592,6 +594,11 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
         else
             GogDownloadManager.startDownload(applicationContext, makeGogGame(), cb)
     }
+
+    private fun installedBuildStatus(): String =
+        prefs.getString("gog_build_$gameId", null)?.let {
+            "Installed build: ${it.substring(0, minOf(12, it.length))}\u2026"
+        } ?: "Build ID not recorded \u2014 tap Check to verify"
 
     /**
      * Verify installed files and re-download only those missing or failing MD5 (gen2). Reuses the

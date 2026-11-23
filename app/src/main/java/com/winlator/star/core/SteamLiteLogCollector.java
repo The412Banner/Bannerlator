@@ -53,6 +53,8 @@ public final class SteamLiteLogCollector {
     /** Per Steam log: how much of its (accumulating) tail to carry, and the head cap on wine_debug. */
     static final long STEAM_LOG_TAIL_BYTES = 256L * 1024;
     private static final long WINE_SCAN_TAIL_BYTES = 4L * 1024 * 1024;
+    /** Start-up lines (lsteamclient, the agent's LaunchApp) sit at the top of a long session's log. */
+    private static final long WINE_SCAN_HEAD_BYTES = 1L * 1024 * 1024;
     /** The agent's own log is small and rewritten each run; a modest tail covers the whole file. */
     static final long LAUNCHER_LOG_TAIL_BYTES = 256L * 1024;
     /** Most recent engine-log lines folded into the bundle (Rust engine only). */
@@ -194,7 +196,8 @@ public final class SteamLiteLogCollector {
             }
 
             // Sibling session logs in the SAME folder, scanned (not copied — they are their own files).
-            String wineText = readTail(new File(perGameLogDir, "wine_debug.log"), WINE_SCAN_TAIL_BYTES);
+            String wineText = readHeadAndTail(new File(perGameLogDir, "wine_debug.log"),
+                    WINE_SCAN_HEAD_BYTES, WINE_SCAN_TAIL_BYTES);
             String dxText = readFirstDxvk(perGameLogDir);
             // Our steam.exe agent's own log (C:\wn-launcher.log, rewritten every run) — the definitive
             // record of whether Steam's LaunchApp spawned the game or the agent fell back to CreateProcess.
@@ -1140,6 +1143,30 @@ public final class SteamLiteLogCollector {
             return "installed";
         }
         return null;
+    }
+
+    /** First {@code headBytes} and last {@code tailBytes} of a file, joined by one "[... N bytes left out ...]"
+     *  line (whole file if it fits), or null. A partial line at either cut is dropped. */
+    static String readHeadAndTail(File f, long headBytes, long tailBytes) {
+        if (f == null || !f.isFile()) return null;
+        long len = f.length();
+        if (len <= headBytes + tailBytes) return readTail(f, len);
+        try {
+            byte[] bytes = new byte[(int) headBytes];
+            try (RandomAccessFile raf = new RandomAccessFile(f, "r")) {
+                raf.readFully(bytes);
+            }
+            String head = new String(bytes);
+            int nl = head.lastIndexOf('\n');
+            head = nl >= 0 ? head.substring(0, nl + 1) : "";
+            String tail = readTail(f, tailBytes);
+            if (tail == null) return head;
+            long skipped = Math.max(0, len - head.getBytes().length - tail.getBytes().length);
+            return head + "[... " + skipped + " bytes left out ...]\n" + tail;
+        } catch (Throwable t) {
+            Log.w(TAG, "read failed: " + f, t);
+            return readTail(f, tailBytes);
+        }
     }
 
     /** Last {@code maxBytes} of a file as text (whole file if smaller), or null. Bounded so a huge

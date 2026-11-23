@@ -31,6 +31,8 @@
 - Next: build-artifacts CI → stage APK (hash host == device) → ASK before install → device test per item → merge only on go.
 - CI: build-artifacts run 45183318885 dispatched 08:22 EST on 46098228 (headSha asserted).
 - CI GREEN 08:34 EST: run 45183318885, 4/4 flavors (skips = main-only cache saves + unused caches; libblsteam rebuilt, 329 Rust tests pass). Staged FIT `/sdcard/Download/Bannerlator-usf2-46098228-pubg.apk` sha256 9cfd6786…3aa9 (host == device); signer A4:0D:A8:0A… == installed com.tencent.ig (base.apk db12880f). Install awaits the user's yes.
+- INSTALLED FIT only 08:50:38 EST (user: "yes install on the fit only"): pm install -r Success, installed base.apk sha256 9cfd6786 == staged. Undo build kept: /sdcard/Download/Bannerlator-xbox-audio-hdmi-300f7e33-pubg.apk (db12880f).
+- ~08:53 EST my launch test (user asked "can you run the tests?"): temp "ZZ usf2 test.desktop" (AIO cube vk, autoclose) with container_id:1 after [Extra Data]; 2 launches as from ES-DE (shortcut_path only + referrer org.es_de.frontend) + 1 normal launch. Resume if cut: delete the temp shortcut, force-stop com.tencent.ig, Termux to front.
 - Correction: the first version of this entry had guessed times ("09:50", "09:3x"); real clock: helpers committed 07:51–08:20, dumpsys ~08:17, CI 08:22 EST.
 - Resume: memory `bannerlator-upstream-recon-1123`; worktree /root/src/Bannerlator-wt/upstream-small-fixes-2.
 

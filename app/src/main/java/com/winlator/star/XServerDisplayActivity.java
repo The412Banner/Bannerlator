@@ -8705,6 +8705,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (hasFocus && waylandClipboard != null) waylandClipboard.refresh();
 
         if (hasFocus && (cursorLock || isRelativeMouseMovement || waylandPointerLocked) && inGameControlsEditor == null) {
+            // Captured mouse events go to the focused view: with none, the mouse did nothing. Only an
+            // empty focus is filled; the on-screen controls pass the events on when they hold it.
+            if (getCurrentFocus() == null) {
+                touchpadView.setFocusableInTouchMode(true);
+                touchpadView.requestFocus();
+            }
             touchpadView.requestPointerCapture();
             pointerCaptureRequested = true;
             touchpadView.setOnCapturedPointerListener(new View.OnCapturedPointerListener() {

@@ -1089,6 +1089,13 @@ public class InputControlsView extends View {
         return super.onGenericMotionEvent(event);
     }
 
+    // A captured mouse's events go to the focused view, and this view holds focus while it is shown
+    // (a physical profile's sticks and hat reach it only then), so they go on to the touchpad.
+    @Override
+    public boolean onCapturedPointerEvent(MotionEvent event) {
+        return touchpadView != null && touchpadView.dispatchCapturedPointerEvent(event);
+    }
+
     // #413 handheld split: forward an unhandled touch to the full-screen TouchpadView. When this overlay
     // owns only a half (TOP/BOTTOM), it is physically offset in the parent, so its event coords are shifted
     // from the touchpad's full-screen coords by exactly getTop() (getLeft() is always 0 — the overlay spans

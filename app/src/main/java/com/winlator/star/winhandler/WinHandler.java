@@ -3382,6 +3382,7 @@ public class WinHandler {
     }
 
     public boolean onKeyEvent(KeyEvent event) {
+        if (ExternalController.isKeyboardKeyOfController(event)) return false;
         boolean handled = false;
         ExternalController controller = getController(event.getDeviceId());
 

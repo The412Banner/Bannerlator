@@ -15269,7 +15269,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // hotkeys), exactly like X11; only the sticks arrive as motion events, so sending the
         // buttons to wl_keyboard left pads with working sticks and dead A/B/X/Y.
         // Leave system keys (back/volume/home) to Android so the device still behaves normally.
-        if (waylandMode && !ExternalController.isGameController(event.getDevice())) {
+        if (waylandMode && !ExternalController.isControllerKeyEvent(event)) {
             int kc = event.getKeyCode();
             boolean systemKey = kc == KeyEvent.KEYCODE_BACK || kc == KeyEvent.KEYCODE_HOME
                     || kc == KeyEvent.KEYCODE_VOLUME_UP || kc == KeyEvent.KEYCODE_VOLUME_DOWN
@@ -15329,7 +15329,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         // Fallback to existing input handling
         return (!inputControlsView.onKeyEvent(event) && !winHandler.onKeyEvent(event) && xServer.keyboard.onKeyEvent(event)) ||
-                (!ExternalController.isGameController(event.getDevice()) && super.dispatchKeyEvent(event));
+                (!ExternalController.isControllerKeyEvent(event) && super.dispatchKeyEvent(event));
     }
 
     /** Map an Android KeyEvent keyCode to a Linux evdev keycode (for wl_keyboard in wayland mode).

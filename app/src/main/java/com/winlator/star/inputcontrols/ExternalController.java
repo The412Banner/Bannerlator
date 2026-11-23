@@ -291,6 +291,56 @@ public class ExternalController {
         return hasGamepadMotionAxis(device) || hasGamepadButtons(device);
     }
 
+    /**
+     * Whether a key goes the controller way (profile bindings, the XInput pad) rather than to the
+     * keyboard: any key of a game controller, except the keyboard keys of a full keyboard that is
+     * also one (see isKeyboardKeyOfController). For a pad this is isGameController, as before.
+     */
+    public static boolean isControllerKeyEvent(KeyEvent event) {
+        InputDevice device = event.getDevice();
+        return isGameController(device) && !isHybridKeyboardKey(event, device);
+    }
+
+    /** A key from a game controller that goes to the keyboard instead (see isHybridKeyboardKey). */
+    public static boolean isKeyboardKeyOfController(KeyEvent event) {
+        InputDevice device = event.getDevice();
+        return isGameController(device) && isHybridKeyboardKey(event, device);
+    }
+
+    /**
+     * Only a full (alphabetic) keyboard that is also a game controller is split. Its gamepad
+     * buttons, Android's fallbacks for them (BL leaves pad keys unhandled, so X also arrives as
+     * Del, Y as Space, B as Back) and, when it has a stick, its D-pad / Back / Home stay with the
+     * pad; letters and the rest are keyboard keys.
+     */
+    private static boolean isHybridKeyboardKey(KeyEvent event, InputDevice device) {
+        if (device.getKeyboardType() != InputDevice.KEYBOARD_TYPE_ALPHABETIC) return false;
+        int key = event.getKeyCode();
+        if (KeyEvent.isGamepadButton(key)) return false;
+        // A fallback keeps the button's scan code; some vendor dispatchers drop FLAG_FALLBACK.
+        if ((event.getFlags() & KeyEvent.FLAG_FALLBACK) != 0 || isGamepadButtonScanCode(event.getScanCode()))
+            return false;
+        if (!event.isFromSource(InputDevice.SOURCE_KEYBOARD) && (event.isFromSource(InputDevice.SOURCE_GAMEPAD)
+                || event.isFromSource(InputDevice.SOURCE_JOYSTICK))) return false;
+        if (key != KeyEvent.KEYCODE_BACK && key != KeyEvent.KEYCODE_HOME
+                && (key < KeyEvent.KEYCODE_DPAD_UP || key > KeyEvent.KEYCODE_DPAD_CENTER)) return true;
+        return !hasJoystickMotionRange(device);
+    }
+
+    /** Linux BTN_0..9, BTN_JOYSTICK/BTN_GAMEPAD, BTN_DPAD_* and BTN_TRIGGER_HAPPY* codes. */
+    private static boolean isGamepadButtonScanCode(int scanCode) {
+        return (scanCode >= 0x100 && scanCode < 0x10a) || (scanCode >= 0x120 && scanCode < 0x140)
+                || (scanCode >= 0x220 && scanCode < 0x224) || (scanCode >= 0x2c0 && scanCode < 0x2e8);
+    }
+
+    /** True if one of the device's motion ranges belongs to its joystick source (a stick or a hat). */
+    private static boolean hasJoystickMotionRange(InputDevice device) {
+        for (InputDevice.MotionRange range : device.getMotionRanges()) {
+            if ((range.getSource() & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK) return true;
+        }
+        return false;
+    }
+
     /** True if the device exposes a real joystick/gamepad motion axis (analog stick, secondary
      *  stick, or a hat-encoded d-pad). Uses the source-agnostic getMotionRange(axis) overload so a
      *  device with NO ABS bits (like the AYANEO aux board) returns false on every axis. */

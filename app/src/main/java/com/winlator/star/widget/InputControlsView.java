@@ -1596,6 +1596,7 @@ public class InputControlsView extends View {
     }
 
     public boolean onKeyEvent(KeyEvent event) {
+        if (ExternalController.isKeyboardKeyOfController(event)) return false;
         if (physicalProfile != null && event.getRepeatCount() == 0) {
             ExternalController controller = physicalProfile.getController(event.getDeviceId());
             if (controller != null) {

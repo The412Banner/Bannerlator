@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-22 18:49–19:06 EST — Xbox cloud sound stays on the device on an HDMI TV (`fix/xbox-audio-hdmi` eac4a3bb, INSTALLED FIT + Elite, NOT device-tested)
+## 2026-11-22 18:49–19:06 EST — Xbox cloud sound stays on the device on an HDMI TV (`fix/xbox-audio-hdmi` eac4a3bb, DEVICE-PROVEN on the Elite (routing), not merged)
 - Why: user on the Elite (BL 3.2.1 vc108, Xbox stream, TV over HDMI via USB hub): sound from the handheld, not the TV.
 - Found over ssh (dumpsys audio): HDMI output present and STREAM_MUSIC routed to hdmi(400), audio mode NORMAL; BL's player
   AudioTrack (uid 10199) = USAGE_VOICE_COMMUNICATION / CONTENT_TYPE_SPEECH, mono (channelMask 0x1), deviceIds [3] = speaker.
@@ -27,6 +27,11 @@
   staging ~19:05, installs 19:06 EST.
 - Next: user test on the Elite: TV over the USB hub → Bannerlator → Xbox stream → sound from the TV; I check dumpsys audio for the
   player (expect USAGE_GAME, channelMask stereo, device hdmi). Also: no TV → speaker; mic/party chat. Merge after device proof + go.
+- DEVICE TEST 19:08:58 EST (Elite, user streaming Xbox on the TV): XboxNativePlayerActivity AudioTrack (uid 10199, pid 2797)
+  = usage USAGE_GAME / CONTENT_TYPE_MOVIE, channelMask 0x3 (stereo), 48 kHz, deviceIds [402] = "hdmi_out" AUDIO_DEVICE_OUT_HDMI
+  (before: VOICE_COMMUNICATION/SPEECH, mono 0x1, [3] speaker). Crash buffer since 19:06: 0. No BL mic recording active (mic path
+  not exercised). Not yet checked: user's ear confirmation, speaker without the TV, party-chat mic. BannerCloud fix: same code,
+  installed on the FIT, not tested.
 - Resume: installed = this branch on FIT (BL + BannerCloud) and Elite (BL); nothing running; to undo, install the 3.2.1 release
   APK (pubg) / BannerCloud 0.1.1 over it.
 

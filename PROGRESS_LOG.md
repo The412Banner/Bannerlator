@@ -101,6 +101,16 @@
     installdir Half-Life, no InstalledDepots); empty common/Half-Life; fake partial downloading/70/steam_api.dll +
     state_70_{1,2,3}.patch (owner 10193 + app label fixed, no root-owned files left). User launches CS via SteamLite next.
     UNDO: copy the .working acf back, delete downloading/70 + state_70_*.patch + empty common/Half-Life.
+  - 12:58:34–12:59:44 EST USER LAUNCH 1 (test state = Steam's broken app 70 record): RECORD FIX WORKED: appmanifest_70 rewritten
+    by BL (StateFlags 4, installdir Counter-Strike, buildid/TargetBuildID 15961492 from the library DB, depots 1/3/2 with journal
+    manifests, sizes 0); downloading/70 + state_70_*.patch + empty common/Half-Life removed. BUT black screen: the agent's LogOn
+    never completed — Steam's connection_log stops at "YieldingConnect -- calling ISteamDirectory/GetCMListForConnect" (12:58:37);
+    every earlier session since 11-12 got the CM list in ~1 s. No error in wine_debug (fdsan double-close + thread 0158 exception
+    are at teardown after the user quit). App's own Rust engine logged on fine at 12:58:02; network check OPEN_CONE 57 ms.
+    Most likely a one-off hang of Steam's directory web call, not the record (record is read before, and is not network);
+    not proven. Next: user relaunches (record now = our own WRITE path).
+    Report quirk (pre-existing): when the game never starts, the session scope falls back to the previous game start (11:14:32)
+    and the report claims "SECURE LAUNCH = YES" from the old session's lines.
   - Device test plan (FIT, after CI + install OK): back up appmanifest_70; (a) put back Steam's own broken record (backup
     StateFlags 1090, installdir Half-Life + empty common/Half-Life + small fake downloading/70 + state_70_1.patch) -> launch CS
     via SteamLite -> expect BL rewrites appmanifest_70 (logcat "shared-depot source app 70: recorded ... replaced"), partial

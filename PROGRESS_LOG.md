@@ -16,6 +16,15 @@
 - CI GREEN: build-artifacts 45278771069 (headSha 31ce77e4 asserted) 4/4 success; pubg BUILD SUCCESSFUL in 7m 26s, no failed steps.
 - STAGED 18:18 EST: `/sdcard/Download/Bannerlator-community-catalog-31ce77e4-pubg.apk` sha256 0bd917f8… (host == /sdcard == device),
   signer a40da80a… == installed, com.tencent.ig vc108 3.2.1. FIT still runs pad-sticks 89af5f48. Install awaits the user's yes.
+- INSTALLED 18:19:12 EST (user "install it"), base.apk 0bd917f8… == staged. User test (screenshots 18:21): tabs Original (53) / Discord
+  shared (18), authors + notes show; preview of AC IV / NFS MW shows text labels or stock icons instead of the posters' custom icons.
+  Button positions checked against the posters' Discord screenshots: match (relative x/y, e.g. AC IV D-pad 0.18/0.71, swords
+  0.82/0.64; NFS left column 0.025 x 0.06/0.17/0.29/0.40, N2O 0.24/0.10).
+- Cause: ControlElement.drawIcon → InputControlsView.getIcon(id) loads ids >= 100 from this device's CustomIconManager store; a
+  preview's icons live in the file's "customIcons" (import remaps them, so imported profiles are fine). Fix: ControlsProfile
+  .getPreviewCustomIcons(), CustomIconManager.decodeEncodedIcon(), InputControlsView.setEmbeddedIcons() (preview never falls back to
+  the local store), LayoutPreviewFrame passes them once per profile. InputControlsView/InputControlsManager have mixed CRLF/LF
+  lines: edited byte-exact (diff +27 / +1-1).
 
 ## 2026-11-23 15:26–16:10 EST — Controller sticks in a Players > Bind profile (`fix/pad-sticks`, DEVICE-PROVEN on the FIT, MERGED main)
 - Why: user built a physical-controller profile for Quake II RTX (game has no gamepad code, needs keys + mouse). Shortcut

@@ -80,6 +80,22 @@
 - Report bug found (pre-existing since 31f5888b, 08-29): SteamLite report said "CLIENT: Real Steam client mode ... = NO" for this
   45-min run because SteamLiteLogCollector scans only the last 4 MB of wine_debug.log (WINE_SCAN_TAIL_BYTES) and the 32 MB log's
   "lsteamclient disabled" lines are at the top (lines 1426/2686). Report-only, the launch was fine. Fix offered, not built.
+- 12:1x EST USER: "do both" (step 3 + report fix; the 1–4 s server drops were the user leaving). Built:
+  - 3f7e480f SteamLite: record the apps a game borrows depots from as installed. RealSteamLauncher.prepare calls new
+    SteamSharedDepots.stageSourceApps after writeAppManifest: writes appmanifest_<source>.acf (StateFlags 4, installdir = the
+    game's folder, InstalledDepots = journal manifests of the borrowed depots, same shape as the hand-written file). Build id:
+    saved at install/update (resolve() now stores src_<appId> = build/name/sizes from the source appinfo), else library DB
+    public branch, else 0. Leaves a source app installed in its own non-empty folder; replaces Steam's own unfinished record
+    (empty/missing folder) and deletes its steamapps/downloading/<source> + state_<source>_*.patch; records this app wrote
+    (prefs written_<source>) are rewritten for the next borrowing game. Java/Kotlin only: no new SteamLite package.
+    Also affects (by data on the FIT): HL2 220 (380/420/340), HL1 mods 20/30/40/50/60/130, 280, 410, 1230/1280, 35420.
+  - 087d5c29 SteamLite report reads the first 1 MB of wine_debug.log as well as the last 4 MB (readHeadAndTail).
+  - Not unit-tested (no local SDK/kotlinc; CI does not run unit tests). CI build-artifacts run 45225943004 dispatched
+    12:16:56 EST, headSha 087d5c29 asserted.
+  - Device test plan (FIT, after CI + install OK): back up appmanifest_70; (a) put back Steam's own broken record (backup
+    StateFlags 1090, installdir Half-Life + empty common/Half-Life + small fake downloading/70 + state_70_1.patch) -> launch CS
+    via SteamLite -> expect BL rewrites appmanifest_70 (logcat "shared-depot source app 70: recorded ... replaced"), partial
+    removed, secure LaunchApp; (b) report from that session shows "Real Steam client mode = YES".
 - RESUME 11:10 EST: FIT has build 9cfd6786 (this branch) + hand-written appmanifest_70.acf; next = user joins a VAC server in
   CS 1.6 via SteamLite; then ask for go on step 3 (BL writes the source-app record for borrowed depots). Undo = restore the acf
   files from /sdcard/Download/Bannerlator-backup/cs16-steamlite-20261123/. No background jobs.

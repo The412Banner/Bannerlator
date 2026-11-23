@@ -30,6 +30,7 @@
 - Not in this branch: Goldberg bump (catalog), Wine layer fixes (v17 layers, next step), FEX gn-8 / Mali GL4 wrapper / Turnip V39.
 - Next: build-artifacts CI → stage APK (hash host == device) → ASK before install → device test per item → merge only on go.
 - CI: build-artifacts run 45183318885 dispatched 08:22 EST on 46098228 (headSha asserted).
+- CI GREEN 08:34 EST: run 45183318885, 4/4 flavors (skips = main-only cache saves + unused caches; libblsteam rebuilt, 329 Rust tests pass). Staged FIT `/sdcard/Download/Bannerlator-usf2-46098228-pubg.apk` sha256 9cfd6786…3aa9 (host == device); signer A4:0D:A8:0A… == installed com.tencent.ig (base.apk db12880f). Install awaits the user's yes.
 - Correction: the first version of this entry had guessed times ("09:50", "09:3x"); real clock: helpers committed 07:51–08:20, dumpsys ~08:17, CI 08:22 EST.
 - Resume: memory `bannerlator-upstream-recon-1123`; worktree /root/src/Bannerlator-wt/upstream-small-fixes-2.
 

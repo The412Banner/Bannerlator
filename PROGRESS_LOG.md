@@ -1,5 +1,40 @@
 # Star-Compose — Progress Log
 
+## 2026-11-22 18:49–19:06 EST — Xbox cloud sound stays on the device on an HDMI TV (`fix/xbox-audio-hdmi` eac4a3bb, DEVICE-PROVEN on the Elite (routing), not merged)
+- Why: user on the Elite (BL 3.2.1 vc108, Xbox stream, TV over HDMI via USB hub): sound from the handheld, not the TV.
+- Found over ssh (dumpsys audio): HDMI output present and STREAM_MUSIC routed to hdmi(400), audio mode NORMAL; BL's player
+  AudioTrack (uid 10199) = USAGE_VOICE_COMMUNICATION / CONTENT_TYPE_SPEECH, mono (channelMask 0x1), deviceIds [3] = speaker.
+- Cause: `XboxNativePlayerActivity.kt` built `JavaAudioDeviceModule.builder(applicationContext).createAudioDeviceModule()` with
+  WebRTC defaults; webrtc-sdk m125 `WebRtcAudioTrack.java:52` DEFAULT_USAGE = USAGE_VOICE_COMMUNICATION (+ CONTENT_TYPE_SPEECH
+  :419-420). Android never routes voice-call audio to HDMI.
+- Fix (eac4a3bb): builder `.setAudioAttributes(USAGE_GAME, CONTENT_TYPE_MOVIE)` (JavaAudioDeviceModule.java:232) +
+  `.setUseStereoOutput(true)` (:216). Same fix in BannerCloud (fix/xbox-audio-hdmi there).
+- To test on the Elite: Xbox stream on the TV → sound from the TV; dumpsys audio shows the player with USAGE_GAME, stereo,
+  device hdmi; without the TV it plays on the speaker; mic/party chat still works (audio transceiver is SEND_RECV).
+- CI: build-artifacts run 45085632424 (headSha 300f7e33 asserted). BannerCloud: fix/xbox-audio-hdmi bfc2462a, Build APK run 45085689806.
+- User decision (~19:20 EST): "install both here, and bannerlator on elite only. make sure you use pubg to update current user
+  apps" → FIT: BL pubg over com.tencent.ig 3.2.1 vc108 + BannerCloud over com.banner.cloud 0.1.1; Elite: BL pubg over 3.2.1 only.
+- Resume: after CI green, stage `/sdcard/Download/Bannerlator-xbox-audio-hdmi-300f7e33-pubg.apk` (+ BannerCloud on the FIT) with
+  sha256 host == device, check signer == installed, then pm install; check installed base.apk hash.
+- CI GREEN: BL run 45085632424 all 4 flavors success (skips = cache restores / main-only saves); BannerCloud run 45085689806 success.
+- Staged 19:1x EST: FIT `/sdcard/Download/Bannerlator-xbox-audio-hdmi-300f7e33-pubg.apk` sha256 db12880f… (host == FIT == Elite copy
+  at the same path) + FIT `/sdcard/Download/BannerCloud-xbox-audio-hdmi-bfc2462a.apk` sha256 21263858… (== CI .sha256). Signer of both
+  = AOSP testkey SHA-256 a40da80a… == installed com.tencent.ig CERT.RSA. Installing next (user yes ~19:20).
+- INSTALLED (pm install -r, Success): FIT BL 19:06:05 EST + BannerCloud 19:06:07 EST; Elite BL 19:06:21 EST. Installed base.apk
+  sha256 == staged on all three (BL db12880f…, BannerCloud 21263858…). Labels stay 3.2.1 vc108 / 0.1.1 vc2 (no bump on test builds).
+  Elite had BL open on XboxGameDetailActivity (no stream/Wine/download) → closed by the install. BannerCloud NOT on the Elite (user).
+- Correction: the times "~19:10", "19:1x" and "~19:20" written above were my estimates; the real clock shows CI done ~19:03,
+  staging ~19:05, installs 19:06 EST.
+- Next: user test on the Elite: TV over the USB hub → Bannerlator → Xbox stream → sound from the TV; I check dumpsys audio for the
+  player (expect USAGE_GAME, channelMask stereo, device hdmi). Also: no TV → speaker; mic/party chat. Merge after device proof + go.
+- DEVICE TEST 19:08:58 EST (Elite, user streaming Xbox on the TV): XboxNativePlayerActivity AudioTrack (uid 10199, pid 2797)
+  = usage USAGE_GAME / CONTENT_TYPE_MOVIE, channelMask 0x3 (stereo), 48 kHz, deviceIds [402] = "hdmi_out" AUDIO_DEVICE_OUT_HDMI
+  (before: VOICE_COMMUNICATION/SPEECH, mono 0x1, [3] speaker). Crash buffer since 19:06: 0. No BL mic recording active (mic path
+  not exercised). Not yet checked: user's ear confirmation, speaker without the TV, party-chat mic. BannerCloud fix: same code,
+  installed on the FIT, not tested.
+- Resume: installed = this branch on FIT (BL + BannerCloud) and Elite (BL); nothing running; to undo, install the 3.2.1 release
+  APK (pubg) / BannerCloud 0.1.1 over it.
+
 ## 2026-11-21 22:13 EST — NFS Most Wanted (Elite): EA install fixed, low-memory kill, shortcut moved to Steam/SteamLite
 - Relaunch after the mono + gecko fix (21:58 EST): no more JunoInitializeSession 1603; EA Desktop 13.827.2.6342 installed and ran, NFS13.exe started (DXVK device, Budget 818 MiB). Then Android killed BL: exit-reasons 22:01:47 LOW_MEMORY (Windows Steam client + its webhelpers + EA Desktop + IGOProxy32 started ~10 times + the game, 7.3 GB RAM device). Quick fix = PROVEN for the EA install.
 - User: the BL card was CUSTOM (Wine winemenubuilder made it from Steam's .url: `wine start.exe steam://rungameid/1262560`); asked for a Steam card to launch with SteamLite. Our Steam store already had the game as installed (steam.db install_dir = the Windows Steam library folder on the SD card), so store page → Add to shortcuts → NFS13.exe → Container-1 wrote storeSource=steam, steamAppId=1262560, eaSupport=1 (same file name). Old .desktop + .url backed up to Download/Bannerlator-backup/nfsmw-custom-20261121/; .url removed from the Desktop so winemenubuilder cannot bring the custom card back.

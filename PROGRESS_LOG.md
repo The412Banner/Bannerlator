@@ -1,5 +1,19 @@
 # Star-Compose — Progress Log
 
+## 2026-11-23 17:5x EST — Community profiles: Original + Discord shared catalog (`feat/community-catalog`, CI pending, NOT device-tested)
+- Why: user made the Discord channel #bannerlator-osc-sharing (BannerHub server) for user layouts; wants them in the app next to
+  Winlator's list, credited by Discord display name, one list with Original / Discord shared sections, preview + download as now,
+  hosted on winlator-contents as a release with a JSON the app reads. Also: a controller-only profile (Quake II RTX) should say so.
+- Data: winlator-contents release `input-controls` (published 11-23, 73 assets: index.json, LICENSE-LGPL-2.1.txt, 53 original__*.icp
+  from brunodev85 LGPL-2.1, 18 discord__*.icpx from devaspe, Babizi Games/HG99, Sr.Ed_137, UNHolyBlunts), builder on
+  winlator-contents branch feat/input-controls-catalog.
+- Code: new inputcontrols/CommunityProfiles.kt (parse index.json -> sections, fallback brunodev85 index.txt); Lab
+  LabCommunityProfilesDialog (tab buttons per section, "by <author>" + controller tag, preview shows author/note) + SimplePages loader
+  and On-screen subtitle ("Controller → keyboard/mouse" / "On-screen + controller" when a profile maps pad to keys/mouse); Classic
+  InputControlsScreen Download Profiles (tabs, author/tag, preview by URL, list loaded once in a LaunchedEffect instead of on every
+  recomposition). Unit test CommunityProfilesTest (CI does not run unit tests).
+- Next: CI, stage pubg APK, ask before install, test both UIs (tabs, preview, download of an Original and a Discord layout).
+
 ## 2026-11-23 15:26–16:10 EST — Controller sticks in a Players > Bind profile (`fix/pad-sticks`, DEVICE-PROVEN on the FIT, MERGED main)
 - Why: user built a physical-controller profile for Quake II RTX (game has no gamepad code, needs keys + mouse). Shortcut
   `controllerProfile=5` (controls-5.icp "Quake II RTX (controller)", __default__ pad: LS WASD, RS mouse, R2 fire, buttons...).

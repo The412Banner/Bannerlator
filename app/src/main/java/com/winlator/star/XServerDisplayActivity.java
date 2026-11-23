@@ -6023,7 +6023,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                         // whatever happened above. Guarded so a torn-down activity can't crash the restart.
                         runOnUiThread(() -> {
                             try { if (preloaderDialog != null) preloaderDialog.close(); } catch (Throwable ignored) {}
-                            AppUtils.restartApplication(getApplicationContext());
+                            finishSession();
                         });
                     }
                 }, "BH-ExitSaveBackup").start();
@@ -6069,6 +6069,32 @@ public class XServerDisplayActivity extends AppCompatActivity {
         } else {
             handler.postDelayed(teardown, 1000);
         }
+    }
+
+    /**
+     * Ends the process after a session. A game started by another app (a frontend such as ES-DE)
+     * returns to that app; every other launch reopens Bannerlator as before. The process exits either
+     * way, so the next launch starts clean.
+     */
+    private void finishSession() {
+        Uri referrer = getReferrer();
+        boolean startedByOtherApp = referrer != null
+                && "android-app".equals(referrer.getScheme())
+                && referrer.getHost() != null
+                && !getPackageName().equals(referrer.getHost());
+        if (!startedByOtherApp) {
+            AppUtils.restartApplication(getApplicationContext());
+            return;
+        }
+        try {
+            if (isTaskRoot()) finishAndRemoveTask();
+            else {
+                // A singleTask launch can join a Bannerlator task with the main screen below it.
+                moveTaskToBack(true);
+                finish();
+            }
+        } catch (Throwable ignored) {}
+        Runtime.getRuntime().exit(0);
     }
 
     /**

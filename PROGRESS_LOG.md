@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-23 17:5x EST — Community profiles: Original + Discord shared catalog (`feat/community-catalog`, CI pending, NOT device-tested)
+## 2026-11-23 17:58–18:45 EST — Community profiles: Original + Discord shared catalog (`feat/community-catalog`, DEVICE-PROVEN on the FIT, MERGED main a884ad61)
 - Why: user made the Discord channel #bannerlator-osc-sharing (BannerHub server) for user layouts; wants them in the app next to
   Winlator's list, credited by Discord display name, one list with Original / Discord shared sections, preview + download as now,
   hosted on winlator-contents as a release with a JSON the app reads. Also: a controller-only profile (Quake II RTX) should say so.
@@ -28,6 +28,10 @@
 - CI GREEN: build-artifacts 45288813621 (headSha 5b176b5d asserted) 4/4, pubg BUILD SUCCESSFUL in 7m 59s, no failed steps.
   STAGED 18:38 EST `/sdcard/Download/Bannerlator-community-catalog-5b176b5d-pubg.apk` sha256 dff13f5d… (host == sdcard == device),
   signer a40da80a… == installed. Install awaits the user's yes.
+- INSTALLED 18:39:43 EST (base.apk dff13f5d… == staged). User: "perfect, merge it" (previews show the custom icons).
+- MERGED 18:4x EST: backup refs/backup/20261123/main-before-community-catalog = 607594d0; main a884ad61 = --no-ff merge of
+  feat/community-catalog b17ebd14 (no conflicts; code diff vs the tested build 5b176b5d = 0 lines). Main CI build-artifacts 45290962010.
+  winlator-contents: feat/input-controls-catalog merged too (main ca5d020, backup main-before-input-controls-catalog = a8ce4d61).
 
 ## 2026-11-23 15:26–16:10 EST — Controller sticks in a Players > Bind profile (`fix/pad-sticks`, DEVICE-PROVEN on the FIT, MERGED main)
 - Why: user built a physical-controller profile for Quake II RTX (game has no gamepad code, needs keys + mouse). Shortcut

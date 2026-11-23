@@ -1962,6 +1962,32 @@ public class InputControlsView extends View {
         }
     }
 
+    // Preview of a profile file that is not imported: its custom icons come from the file, never from this
+    // device's icon store (whose ids belong to other profiles).
+    private boolean embeddedIconsOnly = false;
+    private final java.util.HashSet<Integer> embeddedIconIds = new java.util.HashSet<>();
+
+    public void setEmbeddedIcons(org.json.JSONArray customIcons) {
+        for (int id : embeddedIconIds) {
+            Bitmap old = icons[id];
+            icons[id] = null;
+            if (old != null && !old.isRecycled()) old.recycle();
+        }
+        embeddedIconIds.clear();
+        embeddedIconsOnly = true;
+        if (customIcons == null) return;
+        for (int i = 0; i < customIcons.length(); i++) {
+            org.json.JSONObject icon = customIcons.optJSONObject(i);
+            if (icon == null) continue;
+            int id = com.winlator.star.inputcontrols.InputControlsManager.normalizeLegacyIconId(icon.optInt("id", -1));
+            if (id < CustomIconManager.CUSTOM_ICON_ID_OFFSET || id >= icons.length || embeddedIconIds.contains(id)) continue;
+            Bitmap bitmap = CustomIconManager.decodeEncodedIcon(icon.optString("png", null));
+            if (bitmap == null) continue;
+            icons[id] = bitmap;
+            embeddedIconIds.add(id);
+        }
+    }
+
     public Bitmap getIcon(int id) {
         int index = id;
         if (index >= icons.length) return null;
@@ -1969,6 +1995,7 @@ public class InputControlsView extends View {
         if (icons[index] == null) {
             // Check if it's a custom icon (ID >= 100)
             if (index >= CustomIconManager.CUSTOM_ICON_ID_OFFSET) {
+                if (embeddedIconsOnly) return null;
                 icons[index] = customIconManager.loadIcon((short) index);
             } else {
                 // Built-in icon from assets

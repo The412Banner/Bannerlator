@@ -1202,6 +1202,11 @@ internal fun LayoutPreviewFrame(profile: ControlsProfile?, onTap: (() -> Unit)?)
                     }
                 },
                 update = { view ->
+                    // A downloaded file that is not imported draws its own embedded custom icons.
+                    if (profile.isPreview && view.tag !== profile) {
+                        view.tag = profile
+                        view.setEmbeddedIcons(profile.previewCustomIcons)
+                    }
                     view.setProfile(profile)          // fresh instance; loads lazily in onDraw once measured
                     view.invalidate()
                 },

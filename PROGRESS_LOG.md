@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-23 15:10–15:20 EST — GOG "Verifying files…" stuck label fixed + merge (`fix/upstream-small-fixes-2`, CI running)
+- Why: user 15:1x EST "fix the verifying message and merge it" (found in the 13:08 test round; same on main).
+- Built: f24e740d GogGameDetailActivity.kt: Verify ends on "Files verified ✓"; Update / error / cancel go back to the
+  installed-build line (new helper installedBuildStatus(), same text as page open). "Updating…" had the same stuck bug.
+- CI: run 45257873048 dispatched 15:17 EST on f24e740d (headSha asserted).
+- Device test: label fix NOT device-tested (compile/CI only); rest of the branch device-proven on the FIT (entry below).
+- Plan: CI green -> backup ref refs/backup/20261123/main-before-upstream-small-fixes-2 -> merge to main (user's go) -> main CI.
+- Resume: if cut before the merge, check `gh run view 45257873048 -R The412Banner/Bannerlator --json conclusion,jobs`, then merge.
+
 ## 2026-11-23 07:45–08:23 EST — Upstream small fixes, round 2 (`fix/upstream-small-fixes-2`, CI building, NOT device-tested)
 - Why: user (FIT session) asked for a recon of what is new in Winlator Ludashi (StevenMXZ) and GameNative that BL could use;
   recon done 07:50 EST vs main 4e2218ff (code reading only). User: "start with the small fixes branch"; then "make sure these

@@ -111,6 +111,16 @@
     not proven. Next: user relaunches (record now = our own WRITE path).
     Report quirk (pre-existing): when the game never starts, the session scope falls back to the previous game start (11:14:32)
     and the report claims "SECURE LAUNCH = YES" from the old session's lines.
+  - 13:02:46–13:03:49 EST USER LAUNCH 2 ("worked"): agent logged_in 2.0 s, launch_accepted, game_spawned hl.exe secure:true;
+    Steam ran `hl.exe -steam -game cstrike`; report: SECURE LAUNCH YES, CLIENT lsteamclient disabled YES, cloud OK.
+    appmanifest_70 still StateFlags 4 / Counter-Strike / 15961492; downloading empty; no common/Half-Life; no BL crash/FATAL
+    (crash buffer: only a uTorrent OOM at 13:01, not ours). => STEP 3 DEVICE-PROVEN on the FIT (auto record from Steam's
+    broken state + secure launch). Report head+tail fix NOT exercised (log 1.7 MB < 5 MB) -> needs a ~10 min session.
+  - Launch-1 hang cause found: logcat crash buffer 12:58:37.836 pid 28679 "F libc: fdsan: double-close of file descriptor 172"
+    = same second as the stuck GetCMListForConnect; wine_debug shows thread 0158 (the one that loaded winhttp) got exception
+    0xafeedc in bionic libc and Wine could not dispatch it -> Steam's HTTP thread died -> sign-in hung. fdsan appears only in
+    that session's log (0 in the other 6 today). Wine fd double-close (race) in the Proton layer, not the record change.
+    Open item, not fixed. Temp test files in Download/.bl-cs16-test removed.
   - Device test plan (FIT, after CI + install OK): back up appmanifest_70; (a) put back Steam's own broken record (backup
     StateFlags 1090, installdir Half-Life + empty common/Half-Life + small fake downloading/70 + state_70_1.patch) -> launch CS
     via SteamLite -> expect BL rewrites appmanifest_70 (logcat "shared-depot source app 70: recorded ... replaced"), partial

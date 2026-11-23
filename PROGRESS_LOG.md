@@ -1,5 +1,32 @@
 # Star-Compose — Progress Log
 
+## 2026-11-23 15:26–16:10 EST — Controller sticks in a Players > Bind profile (`fix/pad-sticks`, DEVICE-PROVEN on the FIT, MERGED main)
+- Why: user built a physical-controller profile for Quake II RTX (game has no gamepad code, needs keys + mouse). Shortcut
+  `controllerProfile=5` (controls-5.icp "Quake II RTX (controller)", __default__ pad: LS WASD, RS mouse, R2 fire, buttons...).
+  On the FIT (BL xbox-audio-hdmi 300f7e33 pubg = 3.2.1 code for input): buttons worked, sticks did nothing. Re-picking the
+  profile under Players > Bind did not help. Touch-drag on the screen does turn the view.
+- Found: dispatchKeyEvent hands keys to InputControlsView.onKeyEvent first, but dispatchGenericMotionEvent never calls
+  InputControlsView.onGenericMotionEvent; stick/trigger/hat motion only got there via super = the focused view. Live view dump
+  during the game: mInTouchMode=true, focused = full-screen overlay ComposeView (AndroidComposeView e592f22), InputControlsView
+  not focused. setPhysicalProfile's requestFocus loses to it. AYANEO Controller axes X/Y/Z/RZ/HAT match the profile.
+- Fix (b2451c3c): in dispatchGenericMotionEvent, when InputControlsView has a physical profile and is not the focused view, call
+  its onGenericMotionEvent too (winHandler/touchpad/super unchanged; when it is focused super delivers it as before, no double).
+- Test plan (FIT): install pubg build over com.tencent.ig (ask first), launch Quake II RTX: left stick moves, right stick looks,
+  D-pad in menus; Players > Bind None = raw pad still reaches games (passthrough unchanged).
+- Resume: CI build-artifacts on fix/pad-sticks (assert headSha), stage `/sdcard/Download/Bannerlator-pad-sticks-<sha8>-pubg.apk`
+  with sha256 host == device + signer == installed, then ASK before pm install.
+- 15:32 EST: merged main 96a8629e (root-f5's fix/upstream-small-fixes-2 merge) into the branch = 89af5f48 (log conflict only, both
+  entries kept; diff vs main excluding the log = only the 10 lines above). First CI 45259390179 (b14a2277) cancelled as outdated.
+- CI GREEN: build-artifacts 45260392195 (headSha 89af5f48 asserted), 4/4 flavors success 15:42 EST; skips = cache restores and
+  main-only saves; "error" lines in the log = echoed script source. pubg job BUILD SUCCESSFUL in 8m 2s.
+- STAGED 15:47 EST: `/sdcard/Download/Bannerlator-pad-sticks-89af5f48-pubg.apk` sha256 90e071d1… (host == /sdcard == rootsh device),
+  signer SHA-256 a40da80a… == installed com.tencent.ig; package com.tencent.ig vc108 3.2.1 (no bump). FIT installed now =
+  usf2 087d5c29 pubg (base.apk 567bd788… == /sdcard/Download/Bannerlator-usf2-087d5c29-pubg.apk = undo). Install awaits the user's yes.
+- INSTALLED 16:00:58 EST (user: "yes install it and launch quake"; pm install -r Success), installed base.apk sha256 90e071d1… == staged.
+  Quake II RTX launched 16:01:14 EST (controllerProfile=5).
+- DEVICE-PROVEN (FIT, user ~16:0x EST): "sticks work now" (Players > Bind profile: sticks now drive WASD + mouse look; before the fix only
+  buttons worked). Not yet checked: Players > Bind None (raw pad passthrough) in a controller game; X11 (non-Wayland) container.
+- Next: merge to main only on the user's go (backup ref first).
 ## 2026-11-23 15:10–15:31 EST — GOG "Verifying files…" stuck label fixed; branch MERGED main 96a8629e (`fix/upstream-small-fixes-2`)
 - Why: user 15:1x EST "fix the verifying message and merge it" (found in the 13:08 test round; same on main).
 - Built: f24e740d GogGameDetailActivity.kt: Verify ends on "Files verified ✓"; Update / error / cancel go back to the

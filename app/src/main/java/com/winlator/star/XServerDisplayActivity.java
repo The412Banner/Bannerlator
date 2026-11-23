@@ -15219,6 +15219,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
         }
 
+        // Physical lane (Players > Bind): sticks, triggers and the hat are motion, which super only
+        // gives to the focused view. With focus elsewhere (touch mode, a Compose overlay) the profile's
+        // stick bindings never ran while its buttons did (dispatchKeyEvent calls onKeyEvent directly).
+        boolean handledByPhysicalProfile = false;
+        if (inputControlsView != null && !inputControlsView.isFocused()
+                && inputControlsView.getPhysicalProfile() != null) {
+            handledByPhysicalProfile = inputControlsView.onGenericMotionEvent(event);
+        }
+
         // Pass the event to the super method to ensure system-level handling
         boolean handledBySuper = super.dispatchGenericMotionEvent(event);
         if (!handledBySuper) {
@@ -15226,7 +15235,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
 
         // Combine the results: any handler consuming the event indicates it was handled
-        return handledByWinHandler || handledByTouchpadView || handledBySuper;
+        return handledByWinHandler || handledByTouchpadView || handledByPhysicalProfile || handledBySuper;
     }
 
 

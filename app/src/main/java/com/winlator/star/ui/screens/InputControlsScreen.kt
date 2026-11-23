@@ -90,6 +90,9 @@ import com.winlator.star.core.FileUtils
 import com.winlator.star.core.GyroCalibrator
 import com.winlator.star.core.HttpUtils
 import com.winlator.star.inputcontrols.Binding
+import com.winlator.star.inputcontrols.CommunityProfile
+import com.winlator.star.inputcontrols.CommunityProfiles
+import com.winlator.star.inputcontrols.CommunitySection
 import com.winlator.star.inputcontrols.ControlsProfile
 import com.winlator.star.inputcontrols.ExternalController
 import com.winlator.star.inputcontrols.InputControlsManager
@@ -159,9 +162,9 @@ fun InputControlsScreen(deckHost: (@Composable (InputControlsDeckState) -> Unit)
     var showDownloadDialog by remember { mutableStateOf(false) }
     // Import ICP / ICpx source chooser (Open File / Pick via system / Download File) — Compose dialog.
     var showImportChooser by remember { mutableStateOf(false) }
-    // Download Profiles → "view example": the community .icp file name whose layout popover is open.
-    var previewItem by remember { mutableStateOf<String?>(null) }
-    // Fetched community .icp text by file name, so re-opening a preview (or downloading it) is instant.
+    // Download Profiles → "view example": the community profile whose layout popover is open.
+    var previewItem by remember { mutableStateOf<CommunityProfile?>(null) }
+    // Fetched community profile text by URL, so re-opening a preview (or downloading it) is instant.
     val previewCache = remember { mutableMapOf<String, String>() }
     var isDownloading by remember { mutableStateOf(false) }
     var importProfileCallback by remember { mutableStateOf<((ControlsProfile) -> Unit)?>(null) }
@@ -396,17 +399,18 @@ fun InputControlsScreen(deckHost: (@Composable (InputControlsDeckState) -> Unit)
     }
 
     if (showDownloadDialog) {
-        var items by remember { mutableStateOf(listOf<String>()) }
-        var selectedItems by remember { mutableStateOf(setOf<Int>()) }
+        // Community profiles: index.json from the winlator-contents release (Original + Discord shared),
+        // or Winlator's own index.txt when that cannot be read.
+        var sections by remember { mutableStateOf(listOf<CommunitySection>()) }
+        var tab by remember { mutableStateOf(0) }
+        var selectedItems by remember { mutableStateOf(setOf<String>()) }
         var isLoadingList by remember { mutableStateOf(true) }
 
-        if (isLoadingList) {
-            HttpUtils.download(
-                "https://raw.githubusercontent.com/brunodev85/winlator/main/input_controls/index.txt"
-            ) { content ->
+        LaunchedEffect(Unit) {
+            CommunityProfiles.load { loaded ->
                 (context as? Activity)?.runOnUiThread {
                     isLoadingList = false
-                    if (content != null) items = content.split("\n").filter { it.isNotBlank() }
+                    if (loaded != null) sections = loaded
                     else AppUtils.showToast(context, R.string.unable_to_load_profile_list)
                 }
             }
@@ -421,39 +425,55 @@ fun InputControlsScreen(deckHost: (@Composable (InputControlsDeckState) -> Unit)
                 dismissButton = { TextButton(onClick = { showDownloadDialog = false }) { Text("Cancel") } }
             )
         } else {
+            val section = sections.getOrNull(tab.coerceIn(0, (sections.size - 1).coerceAtLeast(0)))
             OutlinedAlertDialog(
                 onDismissRequest = { showDownloadDialog = false },
                 title = { Text("Download Profiles") },
                 text = {
+                    Column {
+                        if (sections.size > 1) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+                                sections.forEachIndexed { i, s ->
+                                    TextButton(onClick = { tab = i }, modifier = Modifier.xmbBtn(RoundedCornerShape(8.dp), first = i == 0)) {
+                                        Text("${s.title} (${s.items.size})", fontSize = 14.sp,
+                                            fontWeight = if (i == tab) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (i == tab) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                            }
+                        }
                     // Scroll the profile list inside the dialog: the list can be long
                     // (dozens of .icp files), so without this the bottom rows overflow
                     // the dialog's bounded height and overlap the Cancel/Download bar —
                     // worst in landscape where there's even less vertical room.
                     Column(Modifier.verticalScroll(rememberScrollState())) {
-                        items.forEachIndexed { i, item ->
+                        section?.items.orEmpty().forEach { item ->
+                            val url = item.url
+                            fun toggle() { selectedItems = if (url in selectedItems) selectedItems - url else selectedItems + url }
+                            val subtitle = listOfNotNull(
+                                item.author?.takeIf { section?.id != "original" }?.let { "by $it" },
+                                when (item.type) { "controller" -> "Controller → keyboard/mouse"; "both" -> "On-screen + controller"; else -> null },
+                            ).joinToString(" · ")
                             // XMB interface: the row is one stop (A enters it: tick, then View example); a tap still ticks it.
                             val itemGroup = rememberXmbFocusGroup()
                             XmbGroupRow(
                                 group = itemGroup,
                                 shape = RoundedCornerShape(8.dp),
-                                classicModifier = Modifier.fillMaxWidth().clickable {
-                                    selectedItems = if (i in selectedItems) selectedItems - i
-                                    else selectedItems + i
-                                }.padding(vertical = 2.dp),
+                                classicModifier = Modifier.fillMaxWidth().clickable { toggle() }.padding(vertical = 2.dp),
                                 contentPadding = PaddingValues(vertical = 2.dp),
                                 card = false,
                                 verticalAlignment = Alignment.CenterVertically,
-                                rowModifier = Modifier.xmbNoFocus().clickable {
-                                    selectedItems = if (i in selectedItems) selectedItems - i
-                                    else selectedItems + i
-                                },
+                                rowModifier = Modifier.xmbNoFocus().clickable { toggle() },
                             ) {
-                                androidx.compose.material3.Checkbox(checked = i in selectedItems, onCheckedChange = {
-                                    selectedItems = if (it) selectedItems + i else selectedItems - i
+                                androidx.compose.material3.Checkbox(checked = url in selectedItems, onCheckedChange = {
+                                    selectedItems = if (it) selectedItems + url else selectedItems - url
                                 }, modifier = Modifier.xmbBtn(CircleShape, first = true))
                                 Spacer(Modifier.width(8.dp))
-                                Text(item, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                                // View example: fetch the .icp and draw its on-screen layout (no import).
+                                Column(Modifier.weight(1f)) {
+                                    Text(item.title, fontSize = 14.sp)
+                                    if (subtitle.isNotEmpty()) Text(subtitle, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                // View example: fetch the file and draw its on-screen layout (no import).
                                 IconButton(onClick = { previewItem = item }, modifier = Modifier.size(36.dp).xmbBtn(CircleShape)) {
                                     Icon(Icons.Default.Visibility, contentDescription = "View example",
                                         tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
@@ -461,25 +481,24 @@ fun InputControlsScreen(deckHost: (@Composable (InputControlsDeckState) -> Unit)
                             }
                         }
                     }
+                    }
                 },
                 confirmButton = {
                     TextButton(onClick = {
-                        if (selectedItems.isNotEmpty()) {
+                        val picked = sections.flatMap { it.items }.filter { it.url in selectedItems }.distinctBy { it.url }
+                        if (picked.isNotEmpty()) {
                             isDownloading = true
                             showDownloadDialog = false
-                            val positions = selectedItems.toList()
                             currentProfile = null
                             val processedCount = AtomicInteger()
                             val failedCount = AtomicInteger()
-                            for (position in positions) {
-                                HttpUtils.download(
-                                    "https://raw.githubusercontent.com/brunodev85/winlator/main/input_controls/${items[position]}"
-                                ) { content ->
+                            for (item in picked) {
+                                val onContent: (String?) -> Unit = { content ->
                                     val imported = if (content != null) {
                                         try { manager.importProfile(JSONObject(content)) } catch (_: Exception) { null }
                                     } else null
                                     if (imported == null) failedCount.incrementAndGet()
-                                    if (processedCount.incrementAndGet() == positions.size) {
+                                    if (processedCount.incrementAndGet() == picked.size) {
                                         (context as? Activity)?.runOnUiThread {
                                             isDownloading = false
                                             refreshProfiles()
@@ -497,6 +516,9 @@ fun InputControlsScreen(deckHost: (@Composable (InputControlsDeckState) -> Unit)
                                         }
                                     }
                                 }
+                                val cached = previewCache[item.url]
+                                if (cached != null) Thread { onContent(cached) }.start()
+                                else HttpUtils.download(item.url) { content -> onContent(content) }
                             }
                         }
                     }) { Text("Download") }
@@ -505,28 +527,26 @@ fun InputControlsScreen(deckHost: (@Composable (InputControlsDeckState) -> Unit)
             )
         }
 
-        // "View example" popover: stacks above the list. Fetches the community .icp once (cached), builds a
+        // "View example" popover: stacks above the list. Fetches the community profile once (cached), builds a
         // throwaway file-less ControlsProfile.createPreview() and draws it through the same read-only
         // LayoutPreviewFrame the On-Screen tab uses, so the thumbnail is pixel-honest with the real overlay.
-        previewItem?.let { itemName ->
-            var previewProfile by remember(itemName) { mutableStateOf<ControlsProfile?>(null) }
-            var previewFailed by remember(itemName) { mutableStateOf(false) }
-            LaunchedEffect(itemName) {
+        previewItem?.let { item ->
+            var previewProfile by remember(item.url) { mutableStateOf<ControlsProfile?>(null) }
+            var previewFailed by remember(item.url) { mutableStateOf(false) }
+            LaunchedEffect(item.url) {
                 val toProfile: (String?) -> ControlsProfile? = { content ->
                     if (content == null) null
                     else try { ControlsProfile.createPreview(context, JSONObject(content)) } catch (_: Exception) { null }
                 }
-                val cached = previewCache[itemName]
+                val cached = previewCache[item.url]
                 if (cached != null) {
                     previewProfile = toProfile(cached)
                     previewFailed = previewProfile == null
                 } else {
-                    HttpUtils.download(
-                        "https://raw.githubusercontent.com/brunodev85/winlator/main/input_controls/$itemName"
-                    ) { content ->
+                    HttpUtils.download(item.url) { content ->
                         (context as? Activity)?.runOnUiThread {
-                            if (content != null) previewCache[itemName] = content
-                            if (previewItem == itemName) {
+                            if (content != null) previewCache[item.url] = content
+                            if (previewItem?.url == item.url) {
                                 previewProfile = toProfile(content)
                                 previewFailed = previewProfile == null
                             }
@@ -536,10 +556,12 @@ fun InputControlsScreen(deckHost: (@Composable (InputControlsDeckState) -> Unit)
             }
             OutlinedAlertDialog(
                 onDismissRequest = { previewItem = null },
-                title = { Text(itemName.removeSuffix(".icpx").removeSuffix(".icp")) },
+                title = { Text(item.title) },
                 text = {
                     // Scrollable + width-driven aspect box → fits portrait and landscape alike.
                     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+                        item.author?.let { Text("by $it", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        item.note?.let { Text(it, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                         Text("Preview — layout on the game screen (not imported yet)",
                             color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                         Spacer(Modifier.height(8.dp))
@@ -555,8 +577,7 @@ fun InputControlsScreen(deckHost: (@Composable (InputControlsDeckState) -> Unit)
                 },
                 confirmButton = {
                     TextButton(onClick = {
-                        val idx = items.indexOf(itemName)
-                        if (idx >= 0) selectedItems = selectedItems + idx
+                        selectedItems = selectedItems + item.url
                         previewItem = null
                     }) { Text("Select") }
                 },

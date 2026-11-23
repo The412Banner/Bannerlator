@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.key
-import com.winlator.star.core.HttpUtils
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Edit
@@ -94,6 +93,8 @@ import com.winlator.star.contents.DriverInstaller
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.core.GameSaveBackup
+import com.winlator.star.inputcontrols.CommunityProfiles
+import com.winlator.star.inputcontrols.CommunitySection
 import com.winlator.star.inputcontrols.ControlsProfile
 import com.winlator.star.inputcontrols.ExternalController
 import com.winlator.star.inputcontrols.InputControlsManager
@@ -417,6 +418,14 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
     var selId by androidx.compose.runtime.saveable.rememberSaveable { mutableIntStateOf(-1) }
     val sel = profiles.firstOrNull { it.id == selId } ?: profiles.firstOrNull()
     val layouts = remember(tick) { profiles.associate { it.id to runCatching { it.hasElementsOnDisk() }.getOrDefault(false) } }
+    // Profiles that turn a physical controller's buttons/sticks into keys or mouse.
+    val padMaps = remember(tick) {
+        profiles.associate { p ->
+            p.id to runCatching {
+                p.controllers.any { c -> (0 until c.controllerBindingCount).any { i -> c.getControllerBindingAt(i).binding.let { it.isKeyboard || it.isMouse } } }
+            }.getOrDefault(false)
+        }
+    }
     // As Classic: the profile's saved controllers plus the connected ones, the Default template on its own row.
     val loaded = remember(tick, sel?.id) { runCatching { sel?.loadControllers()?.toList() }.getOrNull().orEmpty() }
     val controllers = remember(tick, sel?.id) {
@@ -429,7 +438,7 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
     var renaming by remember { mutableStateOf<ControlsProfile?>(null) }
     var testOpen by remember { mutableStateOf(false) }
     // The online list, kept once it loaded; a failed fetch leaves it unset so opening it again retries.
-    var community by remember { mutableStateOf<List<String>?>(null) }
+    var community by remember { mutableStateOf<List<CommunitySection>?>(null) }
     var communityLoading by remember { mutableStateOf(false) }
     var communityOpen by remember { mutableStateOf(false) }
     fun importFrom(uri: Uri) {
@@ -468,7 +477,12 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
         val on = p.id == sel?.id
         MenuEntry(
             key = "p${p.id}", title = p.name,
-            subtitle = if (layouts[p.id] == true) L("On-screen layout") else L("No on-screen layout yet"),
+            subtitle = when {
+                layouts[p.id] == true && padMaps[p.id] == true -> L("On-screen + controller")
+                layouts[p.id] == true -> L("On-screen layout")
+                padMaps[p.id] == true -> L("Controller → keyboard/mouse")
+                else -> L("No on-screen layout yet")
+            },
             trailing = if (on) L("Selected") else null, current = on,
             icon = Icons.Filled.Gamepad, group = L("Profiles"),
             thumb = if (layouts[p.id] == true) ({ LabProfileThumb(p.id, tick) { selId = p.id; editLayout(p) } }) else null,
@@ -494,10 +508,10 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
                 communityOpen = true
                 if (community == null && !communityLoading) {
                     communityLoading = true
-                    HttpUtils.download(COMMUNITY_PROFILES_URL + "index.txt") { content ->
+                    CommunityProfiles.load { sections ->
                         (context as? Activity)?.runOnUiThread {
                             communityLoading = false
-                            if (content != null) community = content.split("\n").map { it.trim() }.filter { it.isNotBlank() }
+                            if (sections != null) community = sections
                             else { communityOpen = false; toast(context, L("Could not load the list")) }
                         }
                     }
@@ -560,7 +574,7 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
     extra.dialogs()
     if (creating) LabTextEntryDialog(L("New profile"), L("Profile %1\$s", profiles.size + 1), L("OK"), onDismiss = { creating = false }) { name -> creating = false; manager.createProfile(name)?.let { selId = it.id }; tick++ }
     renaming?.let { p -> LabTextEntryDialog(L("Rename"), p.name, L("OK"), onDismiss = { renaming = null }) { name -> renaming = null; p.name = name; p.save(); tick++ } }
-    if (communityOpen) LabCommunityProfilesDialog(items = community, manager = manager, onDismiss = { communityOpen = false }, onImported = { tick++ })
+    if (communityOpen) LabCommunityProfilesDialog(sections = community, manager = manager, onDismiss = { communityOpen = false }, onImported = { tick++ })
     if (testOpen) {
         SettingsControllerTestDialog(
             onDismiss = { testOpen = false; tick++ },

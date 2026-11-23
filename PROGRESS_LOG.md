@@ -15,6 +15,13 @@
   D-pad in menus; Players > Bind None = raw pad still reaches games (passthrough unchanged).
 - Resume: CI build-artifacts on fix/pad-sticks (assert headSha), stage `/sdcard/Download/Bannerlator-pad-sticks-<sha8>-pubg.apk`
   with sha256 host == device + signer == installed, then ASK before pm install.
+- 15:32 EST: merged main 96a8629e (root-f5's fix/upstream-small-fixes-2 merge) into the branch = 89af5f48 (log conflict only, both
+  entries kept; diff vs main excluding the log = only the 10 lines above). First CI 45259390179 (b14a2277) cancelled as outdated.
+- CI GREEN: build-artifacts 45260392195 (headSha 89af5f48 asserted), 4/4 flavors success 15:42 EST; skips = cache restores and
+  main-only saves; "error" lines in the log = echoed script source. pubg job BUILD SUCCESSFUL in 8m 2s.
+- STAGED 15:47 EST: `/sdcard/Download/Bannerlator-pad-sticks-89af5f48-pubg.apk` sha256 90e071d1… (host == /sdcard == rootsh device),
+  signer SHA-256 a40da80a… == installed com.tencent.ig; package com.tencent.ig vc108 3.2.1 (no bump). FIT installed now =
+  usf2 087d5c29 pubg (base.apk 567bd788… == /sdcard/Download/Bannerlator-usf2-087d5c29-pubg.apk = undo). Install awaits the user's yes.
 ## 2026-11-23 15:10–15:20 EST — GOG "Verifying files…" stuck label fixed + merge (`fix/upstream-small-fixes-2`, CI running)
 - Why: user 15:1x EST "fix the verifying message and merge it" (found in the 13:08 test round; same on main).
 - Built: f24e740d GogGameDetailActivity.kt: Verify ends on "Files verified ✓"; Update / error / cancel go back to the

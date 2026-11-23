@@ -2168,6 +2168,8 @@ public final class SteamRepository {
                         // points at: no manifest of their own here, kept for the Windows-components
                         // recommendations (SteamRedists).
                         java.util.List<String> sharedDepots = new java.util.ArrayList<>();
+                        // Depots installed from another app's manifest (SteamSharedDepots): depot id -> source app.
+                        java.util.Map<Integer, Integer> borrowedDepots = new java.util.LinkedHashMap<>();
                         if (depotChildren != null) {
                             for (KeyValue d : depotChildren) {
                                 int depotId;
@@ -2181,7 +2183,11 @@ public final class SteamRepository {
                                 KeyValue pub = d.get("manifests").get("public");
                                 String manifestGid = kvStr(pub.get("gid"));
                                 if (manifestGid.isEmpty()) manifestGid = kvStr(d.get("manifest")); // older format
-                                if (manifestGid.isEmpty()) { skippedCount++; continue; }
+                                // No manifest here but taken from another app (CS 1.6's Half-Life depots 1-3
+                                // from app 70): filtered like the rest, then resolved there at download time.
+                                int borrowedFrom = manifestGid.isEmpty() ? SteamSharedDepots.sourceApp(
+                                        kvStr(d.get("depotfromapp")), kvStr(d.get("sharedinstall"))) : 0;
+                                if (manifestGid.isEmpty() && borrowedFrom == 0) { skippedCount++; continue; }
 
                                 // Mirror the DepotDownloader oslist/language/lowviolence filter.
                                 KeyValue config = d.get("config");
@@ -2233,6 +2239,7 @@ public final class SteamRepository {
                                     }
                                     if (!includedDlcIds.contains(depotId)) includedDlcIds.add(depotId);
                                 }
+                                if (borrowedFrom != 0) { borrowedDepots.put(depotId, borrowedFrom); continue; }
 
                                 // Selected — count it.
                                 if (depotSb.length() > 0) depotSb.append(',');
@@ -2268,6 +2275,12 @@ public final class SteamRepository {
                         try {
                             com.winlator.star.components.SteamRedists.rememberShared(appContext, appId, sharedDepots);
                         } catch (Throwable ignored) {}
+                        try {
+                            String free = kvStr(common.get("freetodownload")).trim();
+                            if (free.isEmpty()) free = kvStr(common.get("FreeToDownload")).trim();
+                            SteamSharedDepots.remember(appContext, appId, borrowedDepots,
+                                    "1".equals(free) || "true".equalsIgnoreCase(free));
+                        } catch (Throwable ignored) {}
 
                         // Beta branches — depots/branches/* (skipped by the numeric-name depot loop
                         // above). Each child is a branch: name = branch id ("public", "beta", …) with
@@ -2296,6 +2309,7 @@ public final class SteamRepository {
                         // a cache miss on a later session falls back to an estimate.
                         downloadSizeByApp.put(appId, totalDownload);
                         Log.i(TAG, "app " + appId + " depots: selected=" + selectedCount
+                                + " shared=" + borrowedDepots.size()
                                 + " skipped=" + skippedCount + " install=" + totalSize
                                 + "B download=" + totalDownload + "B");
 

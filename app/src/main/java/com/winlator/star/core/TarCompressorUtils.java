@@ -33,6 +33,11 @@ public abstract class TarCompressorUtils {
         boolean shouldInclude(File file);
     }
 
+    // Bytes to store for a file instead of what is on disk; null keeps the file as it is.
+    public interface ContentFilter {
+        byte[] contentOf(File file);
+    }
+
 
     private static void addFile(ArchiveOutputStream tar, File file, String entryName) {
         try {
@@ -40,6 +45,22 @@ public abstract class TarCompressorUtils {
             try (BufferedInputStream inStream = new BufferedInputStream(new FileInputStream(file), StreamUtils.BUFFER_SIZE)) {
                 StreamUtils.copy(inStream, tar);
             }
+            tar.closeArchiveEntry();
+        }
+        catch (Exception e) {}
+    }
+
+    private static void addFile(ArchiveOutputStream tar, File file, String entryName, ContentFilter contentFilter) {
+        byte[] content = contentFilter != null ? contentFilter.contentOf(file) : null;
+        if (content == null) {
+            addFile(tar, file, entryName);
+            return;
+        }
+        try {
+            TarArchiveEntry entry = (TarArchiveEntry)tar.createArchiveEntry(file, entryName);
+            entry.setSize(content.length);
+            tar.putArchiveEntry(entry);
+            tar.write(content);
             tar.closeArchiveEntry();
         }
         catch (Exception e) {}
@@ -55,7 +76,7 @@ public abstract class TarCompressorUtils {
         catch (Exception e) {}
     }
 
-    private static void addDirectory(ArchiveOutputStream tar, File folder, String basePath, ExclusionFilter filter) throws IOException {
+    private static void addDirectory(ArchiveOutputStream tar, File folder, String basePath, ExclusionFilter filter, ContentFilter contentFilter) throws IOException {
         File[] files = folder.listFiles();
         if (files == null) return;
         for (File file : files) {
@@ -68,9 +89,9 @@ public abstract class TarCompressorUtils {
                 String entryName = basePath + file.getName() + "/";
                 tar.putArchiveEntry(tar.createArchiveEntry(folder, entryName));
                 tar.closeArchiveEntry();
-                addDirectory(tar, file, entryName, filter);
+                addDirectory(tar, file, entryName, filter, contentFilter);
             } else {
-                addFile(tar, file, basePath + file.getName());
+                addFile(tar, file, basePath + file.getName(), contentFilter);
             }
         }
     }
@@ -96,7 +117,7 @@ public abstract class TarCompressorUtils {
                     String basePath = file.getName() + "/";
                     tar.putArchiveEntry(tar.createArchiveEntry(file, basePath));
                     tar.closeArchiveEntry();
-                    addDirectory(tar, file, basePath, filter);
+                    addDirectory(tar, file, basePath, filter, null);
                 } else {
                     addFile(tar, file, file.getName());
                 }
@@ -424,6 +445,10 @@ public abstract class TarCompressorUtils {
     }
 
     public static void archive(File[] files, File destination, ExclusionFilter filter) {
+        archive(files, destination, filter, null);
+    }
+
+    public static void archive(File[] files, File destination, ExclusionFilter filter, ContentFilter contentFilter) {
         try (OutputStream outStream = new BufferedOutputStream(new FileOutputStream(destination), StreamUtils.BUFFER_SIZE);
              TarArchiveOutputStream tar = new TarArchiveOutputStream(outStream)) {
             tar.setLongFileMode(TarArchiveOutputStream.LONGFILE_GNU);
@@ -437,9 +462,9 @@ public abstract class TarCompressorUtils {
                     String basePath = file.getName() + "/";
                     tar.putArchiveEntry(tar.createArchiveEntry(file, basePath));
                     tar.closeArchiveEntry();
-                    addDirectory(tar, file, basePath, filter);
+                    addDirectory(tar, file, basePath, filter, contentFilter);
                 } else {
-                    addFile(tar, file, file.getName());
+                    addFile(tar, file, file.getName(), contentFilter);
                 }
             }
             tar.finish();
@@ -448,12 +473,21 @@ public abstract class TarCompressorUtils {
         }
     }
 
+    private static boolean isPlainEntryName(String name) {
+        if (name.startsWith("/")) return false;
+        for (String part : name.split("/")) {
+            if (part.equals("..")) return false;
+        }
+        return true;
+    }
+
     public static boolean extractTar(File source, File destination, OnExtractFileListener onExtractFileListener) {
         if (source == null || !source.isFile()) return false;
         try (InputStream inStream = new BufferedInputStream(new FileInputStream(source), StreamUtils.BUFFER_SIZE);
              TarArchiveInputStream tar = new TarArchiveInputStream(inStream)) {
             TarArchiveEntry entry;
             String topLevelDirectory = null;
+            String base = destination.getCanonicalPath() + File.separator;
             while ((entry = (TarArchiveEntry) tar.getNextEntry()) != null) {
                 if (!tar.canReadEntryData(entry)) continue;
 
@@ -475,6 +509,16 @@ public abstract class TarCompressorUtils {
                 // Adjust the extraction path to remove the top-level directory
                 String adjustedName = entryName.replaceFirst("^" + topLevelDirectory, "");
                 File file = new File(destination, adjustedName);
+
+                // Nothing is written outside the destination: no absolute or ".." names, and no file or
+                // folder that a symbolic link already on disk would put elsewhere. A link entry itself is
+                // restored as it is (Wine prefixes link outside on purpose, e.g. z: -> /).
+                File landing = entry.isSymbolicLink() ? file.getParentFile() : file;
+                if (!isPlainEntryName(entryName) || landing == null
+                        || !(landing.getCanonicalPath() + File.separator).startsWith(base)) {
+                    Log.w("RestoreOp", "Skipping entry outside the destination: " + entryName);
+                    continue;
+                }
 
                 if (onExtractFileListener != null) {
                     file = onExtractFileListener.onExtractFile(file, entry.getSize());

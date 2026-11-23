@@ -175,10 +175,18 @@ import java.nio.file.Files;
 
         public void saveData() {
             String content = "[Desktop Entry]\n";
+            // Frontend launches read the container from this line; moves and exports append it after
+            // [Extra Data], so it is kept from anywhere in the file and written back under [Desktop Entry].
+            String containerIdLine = null;
+            boolean extraSection = false;
             for (String line : FileUtils.readLines(file)) {
-                if (line.contains("[Extra Data]")) break;
-                if (!line.contains("[Desktop Entry]") && !line.isEmpty()) content += line + "\n";
+                if (line.startsWith("container_id:")) {
+                    if (containerIdLine == null) containerIdLine = line;
+                }
+                else if (line.contains("[Extra Data]")) extraSection = true;
+                else if (!extraSection && !line.contains("[Desktop Entry]") && !line.isEmpty()) content += line + "\n";
             }
+            if (containerIdLine != null) content += containerIdLine + "\n";
 
             if (extraData.length() > 0) {
                 content += "\n[Extra Data]\n";

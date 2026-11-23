@@ -274,7 +274,7 @@ internal fun LabBackupPage(onBack: () -> Unit) {
             val dataDir = ctx.filesDir.parentFile
             val backupFile = File(Environment.getExternalStorageDirectory(), "app_data_backup.tar")
             val ok = try {
-                com.winlator.star.core.TarCompressorUtils.archive(arrayOf(dataDir), backupFile) { file -> !file.absolutePath.contains("imagefs/tmp/.sysvshm") }
+                com.winlator.star.core.AppDataBackup.archive(dataDir, backupFile)
                 true
             } catch (_: Exception) { false }
             mainHandler.post {

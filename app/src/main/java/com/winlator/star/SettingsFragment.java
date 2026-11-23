@@ -44,12 +44,12 @@ import com.winlator.star.box64.Box64Preset;
 import com.winlator.star.box64.Box64PresetManager;
 import com.winlator.star.contentdialog.ContentDialog;
 import com.winlator.star.contents.ContentsManager;
+import com.winlator.star.core.AppDataBackup;
 import com.winlator.star.core.AppUtils;
 import com.winlator.star.core.ArrayUtils;
 import com.winlator.star.core.Callback;
 import com.winlator.star.core.FileUtils;
 import com.winlator.star.core.PreloaderDialog;
-import com.winlator.star.core.TarCompressorUtils;
 import com.winlator.star.fexcore.FEXCoreEditPresetDialog;
 import com.winlator.star.fexcore.FEXCorePreset;
 import com.winlator.star.fexcore.FEXCorePresetManager;
@@ -704,11 +704,7 @@ public class SettingsFragment extends Fragment {
 
         compressionExecutor.execute(() -> {
             try {
-                TarCompressorUtils.archive(new File[]{dataDir}, backupFile, file -> {
-                    // Exclude the problematic directory
-                    String excludePath = "imagefs/tmp/.sysvshm";
-                    return !file.getAbsolutePath().contains(excludePath);
-                });
+                AppDataBackup.archive(dataDir, backupFile);
                 getActivity().runOnUiThread(() -> {
                     preloaderDialog.closeOnUiThread();
                     AppUtils.showToast(getContext(), "Backup completed: " + backupFile.getPath());

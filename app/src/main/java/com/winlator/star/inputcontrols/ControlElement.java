@@ -29,6 +29,9 @@ import java.util.Arrays;
 
 public class ControlElement {
     public static final float STICK_DEAD_ZONE = 0.15f;
+    // A key on a stick, d-pad or trigger presses past the dead zone and lets go only this far
+    // inside it, so a value resting on the edge does not press and release it over and over.
+    public static final float KEY_RELEASE_MARGIN = 0.05f;
     public static final float STICK_SENSITIVITY = 2.0f;
     public static final float TRACKPAD_MIN_SPEED = 0.8f;
     public static final float TRACKPAD_MAX_SPEED = 20.0f;
@@ -2685,6 +2688,15 @@ public class ControlElement {
         }
     }
 
+    /** The dead zone direction slot index must pass; a held key-only slot lets go a little inside it. */
+    private float directionDeadZone(int index) {
+        if (!isValidBindingIndex(index) || !activeBindingSlots[index]) return deadZone;
+        Binding[] slotBindings = getEffectiveBindingsForSlot(index);
+        if (slotBindings.length == 0) return deadZone;
+        for (Binding binding : slotBindings) if (binding == Binding.NONE || !binding.isKeyboard()) return deadZone;
+        return Math.max(0f, deadZone - KEY_RELEASE_MARGIN);
+    }
+
     private boolean slotContainsMouseMove(int index) {
         if (getBindingAt(index).isMouseMove()) return true;
         Binding[] combo = getCombo(index);
@@ -2827,8 +2839,8 @@ public class ControlElement {
                     inputControlsView.handleStickInput(this, firstBinding, finalX, finalY);
                     for (byte i = 0; i < 4; i++) this.states[i] = true;
                 } else {
-                    final boolean[] st = {normY < -deadZone, normX > deadZone,
-                                          normY > deadZone, normX < -deadZone};
+                    final boolean[] st = {normY < -directionDeadZone(0), normX > directionDeadZone(1),
+                                          normY > directionDeadZone(2), normX < -directionDeadZone(3)};
                     for (byte i = 0; i < 4; i++) {
                         float value = i == 1 || i == 3 ? normX : normY;
                         Binding binding = getBindingAt(i);
@@ -2916,7 +2928,8 @@ public class ControlElement {
                     }
                 } else {
                     // Fallback to per-direction handling for mouse/keyboard bindings
-                    final boolean[] states = {deltaY < -deadZone, deltaX > deadZone, deltaY > deadZone, deltaX < -deadZone};
+                    final boolean[] states = {deltaY < -directionDeadZone(0), deltaX > directionDeadZone(1),
+                            deltaY > directionDeadZone(2), deltaX < -directionDeadZone(3)};
                     for (byte i = 0; i < 4; i++) {
                         float value = i == 1 || i == 3 ? deltaX : deltaY;
                         Binding binding = getBindingAt(i);
@@ -2990,7 +3003,8 @@ public class ControlElement {
                 }
             }
             else {
-                final boolean[] states = {deltaY < -deadZone, deltaX > deadZone, deltaY > deadZone, deltaX < -deadZone};
+                final boolean[] states = {deltaY < -directionDeadZone(0), deltaX > directionDeadZone(1),
+                        deltaY > directionDeadZone(2), deltaX < -directionDeadZone(3)};
 
                 for (byte i = 0; i < 4; i++) {
                     float value = i == 1 || i == 3 ? deltaX : deltaY;

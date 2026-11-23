@@ -360,6 +360,32 @@ public class EpicDownloadManager {
             List<String> installTags,
             AtomicBoolean cancelFlag,
             ProgressCallback progressCallback) {
+        return install(ctx, manifestApiJson, accessToken, installDirPath, installTags, cancelFlag, progressCallback, false);
+    }
+
+    /**
+     * Installs a DLC into its base game's install folder {@code gameDirPath} (every file of the DLC
+     * manifest, no cancel flag), like the 5-argument {@link #install}, but leaves the folder's
+     * prerequisite record, which belongs to the game.
+     */
+    public static boolean installDlcIntoGameFolder(
+            android.content.Context ctx,
+            String manifestApiJson,
+            String accessToken,
+            String gameDirPath,
+            ProgressCallback progressCallback) {
+        return install(ctx, manifestApiJson, accessToken, gameDirPath, null, null, progressCallback, true);
+    }
+
+    private static boolean install(
+            android.content.Context ctx,
+            String manifestApiJson,
+            String accessToken,
+            String installDirPath,
+            List<String> installTags,
+            AtomicBoolean cancelFlag,
+            ProgressCallback progressCallback,
+            boolean intoGameFolder) {
         lastFailureReason = null;
         StringBuilder dbg = new StringBuilder();
         dbg.append("=== BH Epic Debug ===\n");
@@ -429,7 +455,9 @@ public class EpicDownloadManager {
             File installDir  = new File(installDirPath);
             installDir.mkdirs();
             // Its prerequisite, for the Windows-components recommendations (kept by install folder).
-            com.winlator.star.components.StoreRedists.rememberEpicPrereq(ctx, installDir, manifest.prereqName, manifest.prereqPath);
+            // A DLC shares its game's folder, so it leaves the game's record alone.
+            if (!intoGameFolder)
+                com.winlator.star.components.StoreRedists.rememberEpicPrereq(ctx, installDir, manifest.prereqName, manifest.prereqPath);
             // Its launch command, added to the game's arguments at launch.
             EpicLaunchArgs.rememberManifestLaunchCommand(ctx, manifest.appName, manifest.launchCommand);
             File chunkCacheDir = new File(installDir, ".chunks");

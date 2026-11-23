@@ -307,6 +307,15 @@ public final class RealSteamLauncher {
                 }
             }
             writeAppManifest(acf, appId, displayName, canonicalName, steamId64);
+            // Apps this game takes depots from (Half-Life for Counter-Strike) must be installed in Steam's
+            // eyes too, or Steam reports "Update Required" and LaunchApp refuses (no secure launch).
+            try {
+                for (String line : SteamSharedDepots.stageSourceApps(ctx, appId, hostInstallDir, steamappsDir,
+                        canonicalName, steamId64, SteamGameLanguage.forSteamClient(appId)))
+                    Log.i(TAG, "prepare: shared-depot source " + line);
+            } catch (Throwable t) {
+                Log.w(TAG, "prepare: shared-depot source records skipped: " + t.getMessage());
+            }
 
             // ── 3c. Per-game spec: line1 = full Windows exe path UNDER steamapps\common (so the agent's
             //        stage_app_manifest sees the \steamapps\common\ marker), line2 = appId. ──────────
@@ -332,6 +341,10 @@ public final class RealSteamLauncher {
             env.put("WN_STEAM_APPID", String.valueOf(appId));
             // Absolute, drive-qualified path so the agent's fopen resolves it regardless of cwd.
             env.put("WN_STEAM_GAMEEXE_FILE", "C:\\" + appId + ".spec");
+            // The shortcut's launch arguments: the agent hands them to LaunchApp and to its direct start.
+            // An agent without the feature ignores the variable.
+            String userArgs = shortcut.getExtra("execArgs").trim();
+            if (!userArgs.isEmpty()) env.put("WN_STEAM_USER_ARGS", userArgs);
             // Cap the pre-launch app-info wait. The agent blocks up to this long for the CM's
             // AppInfoUpdateComplete before launching; for a game whose access tokens the CM denies
             // (strict live-service titles that aren't part of the VAC path) that update never lands,
@@ -396,7 +409,8 @@ public final class RealSteamLauncher {
             // sees a complete install (the agent writes appmanifest_<id>.acf from these).
             try {
                 String depots = SteamGameLanguage.depotsForLaunch(appId, hostInstallDir,
-                        SteamRepository.getInstance().getDatabase().getDepotManifestsCsv(appId));
+                        SteamSharedDepots.withInstalled(ctx, appId, hostInstallDir,
+                                SteamRepository.getInstance().getDatabase().getDepotManifestsCsv(appId)));
                 if (depots != null && !depots.isEmpty()) env.put("WN_STEAM_DEPOTS", depots);
             } catch (Throwable ignored) {}
 

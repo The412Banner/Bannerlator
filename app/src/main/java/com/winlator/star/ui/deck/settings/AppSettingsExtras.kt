@@ -512,9 +512,7 @@ internal class AppSettingsExtras(
             val dataDir = ctx.filesDir.parentFile
             val backupFile = File(Environment.getExternalStorageDirectory(), "app_data_backup.tar")
             try {
-                com.winlator.star.core.TarCompressorUtils.archive(
-                    arrayOf(dataDir), backupFile
-                ) { file -> !file.absolutePath.contains("imagefs/tmp/.sysvshm") }
+                com.winlator.star.core.AppDataBackup.archive(dataDir, backupFile)
                 onUi {
                     backingUp = false
                     AppUtils.showToast(ctx, "Backup completed: ${backupFile.path}")

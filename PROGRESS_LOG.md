@@ -1,13 +1,24 @@
 # Star-Compose — Progress Log
 
-## 2026-11-23 15:10–15:20 EST — GOG "Verifying files…" stuck label fixed + merge (`fix/upstream-small-fixes-2`, CI running)
+## 2026-11-23 15:10–15:40 EST — GOG "Verifying files…" stuck label fixed; branch MERGED main 96a8629e (`fix/upstream-small-fixes-2`)
 - Why: user 15:1x EST "fix the verifying message and merge it" (found in the 13:08 test round; same on main).
 - Built: f24e740d GogGameDetailActivity.kt: Verify ends on "Files verified ✓"; Update / error / cancel go back to the
   installed-build line (new helper installedBuildStatus(), same text as page open). "Updating…" had the same stuck bug.
 - CI: run 45257873048 dispatched 15:17 EST on f24e740d (headSha asserted).
 - Device test: label fix NOT device-tested (compile/CI only); rest of the branch device-proven on the FIT (entry below).
-- Plan: CI green -> backup ref refs/backup/20261123/main-before-upstream-small-fixes-2 -> merge to main (user's go) -> main CI.
-- Resume: if cut before the merge, check `gh run view 45257873048 -R The412Banner/Bannerlator --json conclusion,jobs`, then merge.
+- CI GREEN: run 45257873048 4/4 flavors on f24e740d (skips = main-only cache saves + unused caches, same as before).
+- MERGED (user's "merge it"): backup ref refs/backup/20261123/main-before-upstream-small-fixes-2 = 4e2218ff; --no-ff merge
+  96a8629e pushed to main; merged tree 4f6abd7b == branch tree (main had nothing new). Main CI: app 45260137563 + SteamLite
+  agent 45260137242 started on 96a8629e. No release, no version bump.
+- Proof levels in the merge: device-proven on the FIT = shared-depot install + secure SteamLite CS 1.6 + VAC join + auto
+  source record, container_id, frontend return, GOG check/verify, built-in pad; JVM-proven = backup filter + report head/tail;
+  NOT device-tested = GOG label fix, Epic DLC folder, launch args (need a new SteamLite package), QR logon id, folder picks,
+  driver removal by id, hybrid keyboard keys, captured mouse, stick-key release (hand tests skipped by the user's merge call).
+- Peer root-19: fix/pad-sticks (XServerDisplayActivity.dispatchGenericMotionEvent) trial-merged clean over this branch
+  (only PROGRESS_LOG conflict); told main is pushed, it merges main into its branch.
+- Open: Wine fdsan double-close (sign-in hang, 1 of 7), report no-game scope quirk, new SteamLite package for launch args,
+  delete branch (ask), temp worktree /root/src/Bannerlator-wt/merge-usf2 (remove after).
+- Resume: check main CI 45260137563 / 45260137242 job conclusions.
 
 ## 2026-11-23 07:45–08:23 EST — Upstream small fixes, round 2 (`fix/upstream-small-fixes-2`, CI building, NOT device-tested)
 - Why: user (FIT session) asked for a recon of what is new in Winlator Ludashi (StevenMXZ) and GameNative that BL could use;

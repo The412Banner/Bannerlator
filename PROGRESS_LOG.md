@@ -70,6 +70,16 @@
   Only Steam's usual "video64.dll" assert. Proof: secure launch DEVICE-PROVEN with the hand-written app 70 record (FIT only).
   NOT yet proven: joining a VAC server and playing online. Fix is by hand on this device only: BL does not write the app 70
   record yet (step 3, needs go); a new Half-Life build from Valve could bring "update required" back.
+- 11:14–11:59 EST ONLINE VAC TEST PASSED (user): secure LaunchApp again (game_spawned secure:true, Steam ran `hl.exe -steam
+  -game cstrike`). Steam game-server connections to 2.56.222.10:27022 at 11:16:24 (ended 11:16:25), 11:58:55 (ended 11:58:59)
+  and 11:59:26 (held until the game closed ~11:59:55); server downloaded custom models/sounds into cstrike_downloads
+  11:59:00–11:59:07; Steam server history LastPlayed 11:59:34. Screenshot 11:59:36 = in a match (server welcome text, ~80 fps).
+  A2S_INFO query of 2.56.222.10:27022 at 12:0x EST: appid 10, VAC = 1 (secured), 24/32 players. No crash / FATAL / lmkd kill
+  since 11:13; appmanifest_70 + _10 still StateFlags 4, downloading empty. Proof: VAC-secured server join DEVICE-PROVEN
+  (FIT, hand-written app 70 record); in-server time shown in logs ~30 s at the end (earlier tries 1–4 s, cause not known).
+- Report bug found (pre-existing since 31f5888b, 08-29): SteamLite report said "CLIENT: Real Steam client mode ... = NO" for this
+  45-min run because SteamLiteLogCollector scans only the last 4 MB of wine_debug.log (WINE_SCAN_TAIL_BYTES) and the 32 MB log's
+  "lsteamclient disabled" lines are at the top (lines 1426/2686). Report-only, the launch was fine. Fix offered, not built.
 - RESUME 11:10 EST: FIT has build 9cfd6786 (this branch) + hand-written appmanifest_70.acf; next = user joins a VAC server in
   CS 1.6 via SteamLite; then ask for go on step 3 (BL writes the source-app record for borrowed depots). Undo = restore the acf
   files from /sdcard/Download/Bannerlator-backup/cs16-steamlite-20261123/. No background jobs.

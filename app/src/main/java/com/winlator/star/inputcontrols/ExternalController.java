@@ -60,7 +60,7 @@ public class ExternalController {
         if (this.deviceId == -1) {
             for (int deviceId : InputDevice.getDeviceIds()) {
                 InputDevice device = InputDevice.getDevice(deviceId);
-                if (device != null && device.getDescriptor().equals(id)) {
+                if (device != null && device.getDescriptor().equals(id) && isGameController(device)) {
                     this.deviceId = deviceId;
                     break;
                 }
@@ -72,7 +72,7 @@ public class ExternalController {
     public boolean isConnected() {
         for (int deviceId : InputDevice.getDeviceIds()) {
             InputDevice device = InputDevice.getDevice(deviceId);
-            if (device != null && device.getDescriptor().equals(id)) return true;
+            if (device != null && device.getDescriptor().equals(id) && isGameController(device)) return true;
         }
         return false;
     }
@@ -257,12 +257,13 @@ public class ExternalController {
         if (device.isVirtual()) return false;
         // Fingerprint-reader / uinput daemons advertise gamepad-like sources on some phones and
         // would otherwise steal slot 0 from the real pad. Reject them by name before the source
-        // check (uinput-fpc, goodix_fp, and the generic uinput- prefix cover the known offenders).
+        // check (uinput-fpc, goodix_fp, and the generic uinput- prefix cover the known offenders;
+        // Xiaomi also names its uinput device "ui-input-xiaomi", which the prefix misses).
         String name = device.getName();
         if (name != null) {
             String lowerName = name.toLowerCase();
             if (lowerName.contains("uinput-fpc") || lowerName.contains("goodix_fp")
-                    || lowerName.contains("uinput-")) {
+                    || lowerName.contains("uinput-") || lowerName.equals("ui-input-xiaomi")) {
                 return false;
             }
         }

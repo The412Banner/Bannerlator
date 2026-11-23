@@ -22,6 +22,11 @@
 - STAGED 15:47 EST: `/sdcard/Download/Bannerlator-pad-sticks-89af5f48-pubg.apk` sha256 90e071d1… (host == /sdcard == rootsh device),
   signer SHA-256 a40da80a… == installed com.tencent.ig; package com.tencent.ig vc108 3.2.1 (no bump). FIT installed now =
   usf2 087d5c29 pubg (base.apk 567bd788… == /sdcard/Download/Bannerlator-usf2-087d5c29-pubg.apk = undo). Install awaits the user's yes.
+- INSTALLED 16:00:58 EST (user: "yes install it and launch quake"; pm install -r Success), installed base.apk sha256 90e071d1… == staged.
+  Quake II RTX launched 16:01:14 EST (controllerProfile=5).
+- DEVICE-PROVEN (FIT, user ~16:0x EST): "sticks work now" (Players > Bind profile: sticks now drive WASD + mouse look; before the fix only
+  buttons worked). Not yet checked: Players > Bind None (raw pad passthrough) in a controller game; X11 (non-Wayland) container.
+- Next: merge to main only on the user's go (backup ref first).
 ## 2026-11-23 15:10–15:20 EST — GOG "Verifying files…" stuck label fixed + merge (`fix/upstream-small-fixes-2`, CI running)
 - Why: user 15:1x EST "fix the verifying message and merge it" (found in the 13:08 test round; same on main).
 - Built: f24e740d GogGameDetailActivity.kt: Verify ends on "Files verified ✓"; Update / error / cancel go back to the

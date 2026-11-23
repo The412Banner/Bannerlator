@@ -16,6 +16,10 @@
   apps" → FIT: BL pubg over com.tencent.ig 3.2.1 vc108 + BannerCloud over com.banner.cloud 0.1.1; Elite: BL pubg over 3.2.1 only.
 - Resume: after CI green, stage `/sdcard/Download/Bannerlator-xbox-audio-hdmi-300f7e33-pubg.apk` (+ BannerCloud on the FIT) with
   sha256 host == device, check signer == installed, then pm install; check installed base.apk hash.
+- CI GREEN: BL run 45085632424 all 4 flavors success (skips = cache restores / main-only saves); BannerCloud run 45085689806 success.
+- Staged 19:1x EST: FIT `/sdcard/Download/Bannerlator-xbox-audio-hdmi-300f7e33-pubg.apk` sha256 db12880f… (host == FIT == Elite copy
+  at the same path) + FIT `/sdcard/Download/BannerCloud-xbox-audio-hdmi-bfc2462a.apk` sha256 21263858… (== CI .sha256). Signer of both
+  = AOSP testkey SHA-256 a40da80a… == installed com.tencent.ig CERT.RSA. Installing next (user yes ~19:20).
 
 ## 2026-11-21 22:13 EST — NFS Most Wanted (Elite): EA install fixed, low-memory kill, shortcut moved to Steam/SteamLite
 - Relaunch after the mono + gecko fix (21:58 EST): no more JunoInitializeSession 1603; EA Desktop 13.827.2.6342 installed and ran, NFS13.exe started (DXVK device, Budget 818 MiB). Then Android killed BL: exit-reasons 22:01:47 LOW_MEMORY (Windows Steam client + its webhelpers + EA Desktop + IGOProxy32 started ~10 times + the game, 7.3 GB RAM device). Quick fix = PROVEN for the EA install.

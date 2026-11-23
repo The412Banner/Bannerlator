@@ -721,6 +721,12 @@ static uint32_t find_game_pid(const char* exeName) {
 // pid of the last CreateProcess fallback spawn (agent-channel decoration only).
 static uint32_t g_lastSpawnPid = 0;
 
+// The shortcut's launch arguments (WN_STEAM_USER_ARGS), "" when none.
+static const char* user_args() {
+    const char* v = getenv("WN_STEAM_USER_ARGS");
+    return v ? v : "";
+}
+
 // Direct launch when LaunchApp dispatches cleanly but never spawns the game (no
 // real Steam UI/reaper under Wine to consume the request). Safe vs AlreadyRunning
 // because the clean-shutdown arm reaps the CM session on exit. Logs the "game
@@ -731,8 +737,9 @@ static bool create_process_game(const char* gameExe, const char* exeName) {
     char* slash = strrchr(cwd, '\\');
     if (slash) *slash = '\0'; else cwd[0] = '\0';
 
-    char cmd[MAX_PATH + 8];
-    snprintf(cmd, sizeof(cmd), "\"%s\"", gameExe);
+    // The same arguments LaunchApp is given, so they survive the fallback.
+    std::string cmd = std::string("\"") + gameExe + "\"";
+    if (*user_args()) cmd += std::string(" ") + user_args();
 
     STARTUPINFOA si;
     memset(&si, 0, sizeof(si));
@@ -742,7 +749,7 @@ static bool create_process_game(const char* gameExe, const char* exeName) {
 
     // Inherit our env (SteamAppId etc.) so the game's SteamAPI_Init attaches to
     // our logged-on steamclient session.
-    BOOL ok = CreateProcessA(gameExe, cmd, NULL, NULL, FALSE,
+    BOOL ok = CreateProcessA(gameExe, &cmd[0], NULL, NULL, FALSE,
                              0, NULL, cwd[0] ? cwd : NULL, &si, &pi);
     if (!ok) {
         log_line("[wn-launcher] CreateProcess fallback FAILED for \"%s\" (GLE=%lu)",
@@ -2056,8 +2063,11 @@ static int agent_main(int argc, char** argv) {
             // Cold launch may see 1-2 fast MissingConfig(9) retries; 5 stays inside
             // the 35s watchdog.
             const int kMaxLaunchAttempts = 5;
+            if (*user_args())
+                log_line("[wn-launcher] launch arguments from the shortcut: %zu chars (WN_STEAM_USER_ARGS)",
+                         strlen(user_args()));
             for (int attempt = 1; attempt <= kMaxLaunchAttempts && !launchedViaApp; ++attempt) {
-                uint64_t apiCall = launchApp(appMgr, &gameId, 0, 300, "");
+                uint64_t apiCall = launchApp(appMgr, &gameId, 0, 300, user_args());
                 log_line("[wn-launcher] IClientAppManager.LaunchApp(appId=%u) "
                          "attempt=%d/%d -> HSteamAPICall=0x%llx", appId,
                          attempt, kMaxLaunchAttempts,

@@ -781,13 +781,11 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
                     val j = org.json.JSONObject(body)
                     val items = j.optJSONArray("items")
                     if (items != null) {
-                        for (i in 0 until items.length()) {
-                            val item = items.getJSONObject(i)
-                            if ("windows" == item.optString("os")) {
-                                latestBuild = item.optString("build_id")
-                                break
-                            }
-                        }
+                        // The latest build on the installed build's branch (default branch if unknown).
+                        val installedBuild = prefs.getString("gog_build_$gameId", null)
+                        latestBuild = GogDownloadManager.selectWindowsBuild(
+                            items, GogDownloadManager.installedBranch(items, installedBuild),
+                        )?.optString("build_id")
                     }
                 }
 

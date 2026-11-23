@@ -61,6 +61,18 @@
 - 09:57 EST hand test (user OK): backup Download/Bannerlator-backup/cs16-steamlite-20261123/; removed the partial download +
   empty common/Half-Life; wrote container appmanifest_70.acf (fully installed, installdir "Counter-Strike", buildid 15961492,
   depots 1/2/3). User launches CS via SteamLite next.
+- 11:08 EST HAND TEST PASSED (user launch, SteamLite v9): LaunchApp COMPLETED in 100 ms, EAppUpdateError=0; Steam itself ran
+  `hl.exe -steam -game cstrike` (gameprocess_log); agent events launch_accepted + game_spawned secure:true; report "SECURE
+  LAUNCH = YES (VAC-eligible)". Counter-Strike menu + Find servers listed 300 internet servers (screenshot 11:08:37, ~46 fps).
+  Session ended 11:08:45 (wine log cut, no game-exit line; assumed user exit, to confirm). After the session: appmanifest_70
+  StateFlags 4 / buildid 15961492 (Steam kept it), appmanifest_10 StateFlags 4 + SharedDepots 1/2/3 -> 70 (Steam wrote it),
+  steamapps/downloading empty, no Half-Life re-download queued. logcat crash buffer empty, no FATAL / lmkd since 11:07.
+  Only Steam's usual "video64.dll" assert. Proof: secure launch DEVICE-PROVEN with the hand-written app 70 record (FIT only).
+  NOT yet proven: joining a VAC server and playing online. Fix is by hand on this device only: BL does not write the app 70
+  record yet (step 3, needs go); a new Half-Life build from Valve could bring "update required" back.
+- RESUME 11:10 EST: FIT has build 9cfd6786 (this branch) + hand-written appmanifest_70.acf; next = user joins a VAC server in
+  CS 1.6 via SteamLite; then ask for go on step 3 (BL writes the source-app record for borrowed depots). Undo = restore the acf
+  files from /sdcard/Download/Bannerlator-backup/cs16-steamlite-20261123/. No background jobs.
 - Still for the user (needs logins / hands): Steam install (e.g. CS 1.6), GOG Check for updates, Epic DLC install, built-in pad
   + physical keyboard, on-screen stick on WASD, external mouse, optional backup.
 - Correction: the first version of this entry had guessed times ("09:50", "09:3x"); real clock: helpers committed 07:51–08:20, dumpsys ~08:17, CI 08:22 EST.

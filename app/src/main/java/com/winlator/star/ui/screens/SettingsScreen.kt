@@ -509,9 +509,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                         val dataDir = context.filesDir.parentFile
                         val backupFile = File(Environment.getExternalStorageDirectory(), "app_data_backup.tar")
                         try {
-                            com.winlator.star.core.TarCompressorUtils.archive(
-                                arrayOf(dataDir), backupFile
-                            ) { file -> !file.absolutePath.contains("imagefs/tmp/.sysvshm") }
+                            com.winlator.star.core.AppDataBackup.archive(dataDir, backupFile)
                             (context as? Activity)?.runOnUiThread {
                                 isBackingUp = false
                                 AppUtils.showToast(context, "Backup completed: ${backupFile.path}")

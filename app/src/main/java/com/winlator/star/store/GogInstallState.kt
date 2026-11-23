@@ -23,18 +23,21 @@ object GogInstallState {
      * cached install size, the installed build id, and the (legacy) cover key. Idempotent —
      * removing an absent key is a no-op — so it's safe from any uninstall path (or the seed
      * self-heal). Deliberately LEAVES the user's cloud-save folder (`gog_save_dir_`) and owned-DLC
-     * list (`gog_dlcs_`) alone: those are user data / entitlement, not install state.
+     * list (`gog_dlcs_`) alone: those are user data / entitlement, not install state. The
+     * installed-DLC records of the game (`gog_dlc_installed_`, `gog_dlc_files_`) go with it.
      */
     fun purge(ctx: Context, gameId: String) {
-        ctx.applicationContext
-            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
+        val prefs = ctx.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val editor = prefs.edit()
             .remove("gog_exe_$gameId")
             .remove("gog_dir_$gameId")
             .remove("gog_size_$gameId")
             .remove("gog_build_$gameId")
             .remove("gog_cover_$gameId")
-            .apply()
+        for (k in prefs.all.keys) {
+            if (k.startsWith("gog_dlc_installed_${gameId}_") || k.startsWith("gog_dlc_files_${gameId}_")) editor.remove(k)
+        }
+        editor.apply()
     }
 
     /**

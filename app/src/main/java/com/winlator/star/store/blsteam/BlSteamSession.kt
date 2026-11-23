@@ -112,11 +112,14 @@ class BlSteamSession : AutoCloseable {
     // Start an async native depot download; [listener] runs on a worker thread.
     // [maxWorkers] sizes the network fetch pool, [decompressWorkers] the decrypt+decompress+write
     // pool (the tier's maxDownloads / maxDecompress) — see the engine's decoupled 2-stage pipeline.
+    // Per depot, [manifestAppIds] / [manifestBranches] name the app and branch its manifest request
+    // code is asked under (another app for a depot taken from it); depot keys always use [appId].
     fun downloadApp(
         appId: Int,
         depotIds: IntArray,
         manifestIds: LongArray,
-        branch: String,
+        manifestAppIds: IntArray,
+        manifestBranches: Array<String>,
         installDir: String,
         fresh: Boolean,
         caBundlePath: String,
@@ -124,15 +127,16 @@ class BlSteamSession : AutoCloseable {
         decompressWorkers: Int,
         listener: BlDownloadListener,
     ) {
-        require(depotIds.size == manifestIds.size) {
-            "blsteam: depotIds/manifestIds size mismatch"
+        require(depotIds.size == manifestIds.size && depotIds.size == manifestAppIds.size &&
+            depotIds.size == manifestBranches.size) {
+            "blsteam: mismatched depot metadata arrays"
         }
         val h = nativeHandle.get()
         if (h == 0L) {
             listener.onComplete(false, "session closed", 0L, 0, 0)
             return
         }
-        nativeDownloadApp(h, appId, depotIds, manifestIds, branch, installDir,
+        nativeDownloadApp(h, appId, depotIds, manifestIds, manifestAppIds, manifestBranches, installDir,
                           fresh, caBundlePath, maxWorkers, decompressWorkers, listener)
     }
 
@@ -932,7 +936,8 @@ class BlSteamSession : AutoCloseable {
             appId: Int,
             depotIds: IntArray,
             manifestIds: LongArray,
-            branch: String,
+            manifestAppIds: IntArray,
+            manifestBranches: Array<String>,
             installDir: String,
             fresh: Boolean,
             caBundlePath: String,

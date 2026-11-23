@@ -749,6 +749,17 @@ class EpicGameDetailActivity : ComponentActivity() {
     private fun dlcInstall(dlcApp: String, dlcNs: String, dlcCat: String, dlcTitle: String) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
+                // DLC files go into the base game's own folder, as the Epic launcher installs them;
+                // the game does not look for them anywhere else.
+                val an = appName
+                val baseDir = an?.takeIf { EpicInstallState.isInstalled(this@EpicGameDetailActivity, it) }
+                    ?.let { prefs!!.getString("epic_dir_$it", null) }?.takeIf { it.isNotBlank() }
+                    ?.let { File(it) }?.takeIf { it.isDirectory }
+                if (an == null || baseDir == null) {
+                    runOnUiThread { resultBarMsg = "Not installed" }
+                    return@launch
+                }
+
                 val token = EpicCredentialStore.getValidAccessToken(this@EpicGameDetailActivity)
                 if (token == null) {
                     runOnUiThread { resultBarMsg = "Login required" }
@@ -761,19 +772,11 @@ class EpicGameDetailActivity : ComponentActivity() {
                     return@launch
                 }
 
-                var sanitized = dlcTitle.replace(Regex("[^a-zA-Z0-9 \\-_]"), "").trim()
-                if (sanitized.isEmpty()) sanitized = "dlc_${dlcApp.hashCode()}"
-                // Beside the base game, wherever it was installed.
-                val dlcBase = appName?.let { prefs!!.getString("epic_dir_$it", null) }?.takeIf { it.isNotBlank() }
-                    ?.let { File(it).parentFile } ?: File(filesDir, "imagefs/epic_games")
-                val installDir = File(dlcBase, sanitized)
-                prefs!!.edit().putString("epic_dir_$dlcApp", installDir.absolutePath).apply()
-
-                val ok = EpicDownloadManager.install(
+                val ok = EpicDownloadManager.installDlcIntoGameFolder(
                     this@EpicGameDetailActivity,
                     manifestJson,
                     token,
-                    installDir.absolutePath,
+                    baseDir.absolutePath,
                 ) { _, _ -> }
                 if (!ok) {
                     val failMsg = EpicDownloadManager.withFailureReason("DLC download failed")
@@ -781,15 +784,9 @@ class EpicGameDetailActivity : ComponentActivity() {
                     return@launch
                 }
 
-                val exeFiles = mutableListOf<File>()
-                AmazonLaunchHelper.collectExe(installDir, exeFiles)
-                if (exeFiles.isNotEmpty()) {
-                    val lowerT = dlcTitle.lowercase()
-                    exeFiles.sortWith { a, b ->
-                        AmazonLaunchHelper.scoreExe(b, lowerT) - AmazonLaunchHelper.scoreExe(a, lowerT)
-                    }
-                    prefs!!.edit().putString("epic_exe_$dlcApp", exeFiles[0].absolutePath).apply()
-                }
+                // Not epic_dir_/epic_exe_: those make an installed game (library rows, uninstall,
+                // cloud saves), and this folder belongs to the base game.
+                EpicInstallState.rememberDlc(this@EpicGameDetailActivity, dlcApp, an)
 
                 runOnUiThread {
                     setResult(RESULT_REFRESH)
@@ -1132,7 +1129,9 @@ private fun EpicGameDetailScreen(
                             val dlcNs = dlc.optString("ns", "")
                             val dlcCat = dlc.optString("cat", "")
                             val dlcTitle = dlc.optString("title", "Unknown DLC")
-                            val dlcInstalled = prefs.getString("epic_exe_$dlcApp", null) != null
+                            // epic_exe_ = a DLC installed by older builds into a folder of its own.
+                            val dlcInstalled = EpicInstallState.isDlcInstalled(context, dlcApp) ||
+                                prefs.getString("epic_exe_$dlcApp", null) != null
 
                             Spacer(Modifier.height(8.dp))
                             Column(

@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-23 15:3x EST — Controller sticks in a Players > Bind profile (`fix/pad-sticks` b2451c3c, CI pending, NOT device-tested)
+## 2026-11-23 15:26 EST — Controller sticks in a Players > Bind profile (`fix/pad-sticks` b2451c3c, CI pending, NOT device-tested)
 - Why: user built a physical-controller profile for Quake II RTX (game has no gamepad code, needs keys + mouse). Shortcut
   `controllerProfile=5` (controls-5.icp "Quake II RTX (controller)", __default__ pad: LS WASD, RS mouse, R2 fire, buttons...).
   On the FIT (BL xbox-audio-hdmi 300f7e33 pubg = 3.2.1 code for input): buttons worked, sticks did nothing. Re-picking the
@@ -15,6 +15,165 @@
   D-pad in menus; Players > Bind None = raw pad still reaches games (passthrough unchanged).
 - Resume: CI build-artifacts on fix/pad-sticks (assert headSha), stage `/sdcard/Download/Bannerlator-pad-sticks-<sha8>-pubg.apk`
   with sha256 host == device + signer == installed, then ASK before pm install.
+## 2026-11-23 15:10–15:20 EST — GOG "Verifying files…" stuck label fixed + merge (`fix/upstream-small-fixes-2`, CI running)
+- Why: user 15:1x EST "fix the verifying message and merge it" (found in the 13:08 test round; same on main).
+- Built: f24e740d GogGameDetailActivity.kt: Verify ends on "Files verified ✓"; Update / error / cancel go back to the
+  installed-build line (new helper installedBuildStatus(), same text as page open). "Updating…" had the same stuck bug.
+- CI: run 45257873048 dispatched 15:17 EST on f24e740d (headSha asserted).
+- Device test: label fix NOT device-tested (compile/CI only); rest of the branch device-proven on the FIT (entry below).
+- Plan: CI green -> backup ref refs/backup/20261123/main-before-upstream-small-fixes-2 -> merge to main (user's go) -> main CI.
+- Resume: if cut before the merge, check `gh run view 45257873048 -R The412Banner/Bannerlator --json conclusion,jobs`, then merge.
+
+## 2026-11-23 07:45–08:23 EST — Upstream small fixes, round 2 (`fix/upstream-small-fixes-2`, CI building, NOT device-tested)
+- Why: user (FIT session) asked for a recon of what is new in Winlator Ludashi (StevenMXZ) and GameNative that BL could use;
+  recon done 07:50 EST vs main 4e2218ff (code reading only). User: "start with the small fixes branch"; then "make sure these
+  fixes don't conflict with what we have or use since some of our stuff is newer than theirs like our direct controller input".
+- How: 4 helper sessions ported in their own worktrees (wip/usf2-steam, -stores, -input, -app off 4e2218ff); each checked its port
+  against BL's newer systems (Bannerin/direct XInput, Steam controller, AYANEO rule, drawer focus, SteamLite/Real Steam, game
+  language, Goldberg, Cloud, redists, download locations, NAS, move-to-container, launcher resume, SD paths); I reviewed each diff.
+- In the branch (one commit each, credits in each body + README 9f1f97db):
+  - GOG: 3bc68098 default-branch build, not a beta (GameNative #2458); 6a8bf21f Verify/Update keep DLC replacement files (#2401);
+    7b9e204c uninstall also forgets the game's DLC records (found while porting; old bug).
+  - Epic: 9684162f DLC installs into the game's folder (#2457); old sibling-folder DLC still counts as installed.
+  - Steam: ba9a4312 depots taken from another app (depotfromapp) install (Ludashi 4aded9b0, issue #757); 833ea412 + 10b5f944 launch
+    arguments to Real Steam games (Ludashi 54fa905f) — the agent half needs a NEW SteamLite package (user's call; agent build
+    run 45181774077 green = compiles); 195b7f0c QR logon account id from the header (Ludashi 77b51403; 329 Rust tests pass).
+  - Shortcuts/app: 47a206a2 container_id survives saves; 0ceaaf39 a game a frontend started returns to it (only when the referrer is
+    another app; BL launches unchanged) (Ludashi 122e3977, #767); f8ea7ecf driver removal by exact id (Ludashi 13b40d63);
+    1f15baeb Downloads/raw:/msd:/home: folder picks (GameNative #2473); 38d9da60 backup leaves out store logins + restore stays
+    inside the data folder (Ludashi 3a3bc38e/5e2629d4; extractTar's only caller = RestoreActivity).
+  - Input: fbe0233e Xiaomi uinput not a pad + profile lookups only for real pads (Ludashi e104c8d3; I KEPT the old device-id-0
+    "any controller" fallback); 1b0dc688 keyboard keys of a full keyboard that is also a pad (Ludashi 64796465/8fd8ec0a) — only
+    for KEYBOARD_TYPE_ALPHABETIC game controllers: FIT "AYANEO Controller" = type 1 (non-alphabetic, dumpsys ~08:17) → no change
+    there; Elite pad not connected at check time; d184a73a captured external mouse works while the overlay has focus (Ludashi
+    PR #750, DrarenThiralas); 619ed2b4 key bindings on sticks/d-pads/triggers release 0.05 inside the dead zone (GameNative
+    #2272, kudyk; nothing sent to Bannerin changes).
+- Skipped: Steam install scripts deeper (GameNative #2384: would change install-script handling for every game); GOG stale-file
+  cleanup (BL keeps no base file list); Steam protected metadata (already done by the Rust engine); upstream's player-slot
+  change for keyboards without sticks (7e3d5afc on wip/usf2-input, dropped: changes slots); launch-option choice/error-22 retry.
+- Not in this branch: Goldberg bump (catalog), Wine layer fixes (v17 layers, next step), FEX gn-8 / Mali GL4 wrapper / Turnip V39.
+- Next: build-artifacts CI → stage APK (hash host == device) → ASK before install → device test per item → merge only on go.
+- CI: build-artifacts run 45183318885 dispatched 08:22 EST on 46098228 (headSha asserted).
+- CI GREEN 08:34 EST: run 45183318885, 4/4 flavors (skips = main-only cache saves + unused caches; libblsteam rebuilt, 329 Rust tests pass). Staged FIT `/sdcard/Download/Bannerlator-usf2-46098228-pubg.apk` sha256 9cfd6786…3aa9 (host == device); signer A4:0D:A8:0A… == installed com.tencent.ig (base.apk db12880f). Install awaits the user's yes.
+- INSTALLED FIT only 08:50:38 EST (user: "yes install on the fit only"): pm install -r Success, installed base.apk sha256 9cfd6786 == staged. Undo build kept: /sdcard/Download/Bannerlator-xbox-audio-hdmi-300f7e33-pubg.apk (db12880f).
+- ~08:53 EST my launch test (user asked "can you run the tests?"): temp "ZZ usf2 test.desktop" (AIO cube vk, autoclose) with container_id:1 after [Extra Data]; 2 launches as from ES-DE (shortcut_path only + referrer org.es_de.frontend) + 1 normal launch. Resume if cut: delete the temp shortcut, force-stop com.tencent.ig, Termux to front.
+- MY DEVICE TESTS 08:53–09:00 EST (FIT, this build):
+  - L1 "ZZ usf2 test" (copy of AIO.desktop, container_id:1 after [Extra Data]) started like ES-DE (shortcut_path only +
+    referrer org.es_de.frontend): log "Final Container ID: 1" (container read from the file). AIO itself is GONE from
+    E:\Winlator\games\AIO-2.2.0 (ShortcutPathRepair: game file missing) → Wine "File not found" (setup, not the build).
+    Exit via drawer → process ended, Termux (the caller) in front, NOT BL home → frontend return works (simulated).
+    File after the save: container_id:1 moved to line 7 under [Desktop Entry], lastPlayed updated → container_id fix PROVEN.
+  - L2 Undertale (container_id extra, referrer = own package = in-app launch): game runs (30 fps intro, Wayland, D3D9 DXVK);
+    exit via drawer → BL MainActivity reopened (old restart path unchanged). Injected `input keyevent` Enter/Z did not
+    visibly reach the game (inconclusive; the virtual-keyboard path is unchanged by this branch).
+  - Logcat since 08:53: 0 FATAL / 0 Fatal signal / 0 ANR (xsu echo lines excluded), crash buffer 0.
+  - Steam: steam_borrowed_depots.xml written at BL start 08:53 (library sync ran, no crash): app 10 (CS 1.6) → depots 1,2,3
+    from app 70; also 20/30/40/50/60/130 (HL engine), 220 HL2 → 380/389 (Ep1), 420 (Ep2), 340 (Lost Coast), 280, 410,
+    1230/1280, 35420. Downloads not tested.
+  - Cleanup: temp shortcut + screenshots deleted, Termux in front 09:00, peers told done.
+- USER TEST 09:22 EST Steam store install of Counter-Strike 1.6 (app 10; user's Half-Life is a Windows-Steam-client copy in
+  F:\bannerlator\windows_steam, untouched): log "Shared depots: 1@2667117727132184734 3@6081070194444336449 2@724247850320422500
+  (app 70 public)" + own depot 11 → "4 owned depot(s) validated", 816.8 MB written in ~36 s, no denied keys, 0 FATAL, crash 0.
+  Folder imagefs/steam_games/Counter-Strike has hl.exe + valve/ (500 MB) + cstrike/ (282 MB) → SHARED DEPOTS FIX DEVICE-PROVEN
+  (install). Shortcut Exec = hl.exe with NO "-game cstrike": BL does not read Steam's launch entries (executable/arguments) for
+  direct launches (pre-existing gap, not this branch) → a direct start likely opens Half-Life; workaround: launch args
+  "-game cstrike" or SteamLite launch. User launch next.
+- 09:24–09:37 EST CS 1.6 via SteamLite (v9): Steam in the container computes SharedDepots 1/2/3 -> app 70 itself and wants
+  Half-Life installed as its own app -> "Update Required", LaunchApp EAppUpdateError 17 -> insecure CreateProcess fallback runs
+  plain hl.exe (v9 ignores args) -> Half-Life mod -> valve/cl_dlls/client.dll absent (HL's own depot 71 not shared) -> assert
+  LoadBlob.cpp:90. Steam also queued a 441 MB Half-Life download. Not proven to depend on this branch.
+- 09:57 EST hand test (user OK): backup Download/Bannerlator-backup/cs16-steamlite-20261123/; removed the partial download +
+  empty common/Half-Life; wrote container appmanifest_70.acf (fully installed, installdir "Counter-Strike", buildid 15961492,
+  depots 1/2/3). User launches CS via SteamLite next.
+- 11:08 EST HAND TEST PASSED (user launch, SteamLite v9): LaunchApp COMPLETED in 100 ms, EAppUpdateError=0; Steam itself ran
+  `hl.exe -steam -game cstrike` (gameprocess_log); agent events launch_accepted + game_spawned secure:true; report "SECURE
+  LAUNCH = YES (VAC-eligible)". Counter-Strike menu + Find servers listed 300 internet servers (screenshot 11:08:37, ~46 fps).
+  Session ended 11:08:45 (wine log cut, no game-exit line; assumed user exit, to confirm). After the session: appmanifest_70
+  StateFlags 4 / buildid 15961492 (Steam kept it), appmanifest_10 StateFlags 4 + SharedDepots 1/2/3 -> 70 (Steam wrote it),
+  steamapps/downloading empty, no Half-Life re-download queued. logcat crash buffer empty, no FATAL / lmkd since 11:07.
+  Only Steam's usual "video64.dll" assert. Proof: secure launch DEVICE-PROVEN with the hand-written app 70 record (FIT only).
+  NOT yet proven: joining a VAC server and playing online. Fix is by hand on this device only: BL does not write the app 70
+  record yet (step 3, needs go); a new Half-Life build from Valve could bring "update required" back.
+- 11:14–11:59 EST ONLINE VAC TEST PASSED (user): secure LaunchApp again (game_spawned secure:true, Steam ran `hl.exe -steam
+  -game cstrike`). Steam game-server connections to 2.56.222.10:27022 at 11:16:24 (ended 11:16:25), 11:58:55 (ended 11:58:59)
+  and 11:59:26 (held until the game closed ~11:59:55); server downloaded custom models/sounds into cstrike_downloads
+  11:59:00–11:59:07; Steam server history LastPlayed 11:59:34. Screenshot 11:59:36 = in a match (server welcome text, ~80 fps).
+  A2S_INFO query of 2.56.222.10:27022 at 12:0x EST: appid 10, VAC = 1 (secured), 24/32 players. No crash / FATAL / lmkd kill
+  since 11:13; appmanifest_70 + _10 still StateFlags 4, downloading empty. Proof: VAC-secured server join DEVICE-PROVEN
+  (FIT, hand-written app 70 record); in-server time shown in logs ~30 s at the end (earlier tries 1–4 s, cause not known).
+- Report bug found (pre-existing since 31f5888b, 08-29): SteamLite report said "CLIENT: Real Steam client mode ... = NO" for this
+  45-min run because SteamLiteLogCollector scans only the last 4 MB of wine_debug.log (WINE_SCAN_TAIL_BYTES) and the 32 MB log's
+  "lsteamclient disabled" lines are at the top (lines 1426/2686). Report-only, the launch was fine. Fix offered, not built.
+- 12:1x EST USER: "do both" (step 3 + report fix; the 1–4 s server drops were the user leaving). Built:
+  - 3f7e480f SteamLite: record the apps a game borrows depots from as installed. RealSteamLauncher.prepare calls new
+    SteamSharedDepots.stageSourceApps after writeAppManifest: writes appmanifest_<source>.acf (StateFlags 4, installdir = the
+    game's folder, InstalledDepots = journal manifests of the borrowed depots, same shape as the hand-written file). Build id:
+    saved at install/update (resolve() now stores src_<appId> = build/name/sizes from the source appinfo), else library DB
+    public branch, else 0. Leaves a source app installed in its own non-empty folder; replaces Steam's own unfinished record
+    (empty/missing folder) and deletes its steamapps/downloading/<source> + state_<source>_*.patch; records this app wrote
+    (prefs written_<source>) are rewritten for the next borrowing game. Java/Kotlin only: no new SteamLite package.
+    Also affects (by data on the FIT): HL2 220 (380/420/340), HL1 mods 20/30/40/50/60/130, 280, 410, 1230/1280, 35420.
+  - 087d5c29 SteamLite report reads the first 1 MB of wine_debug.log as well as the last 4 MB (readHeadAndTail).
+  - Not unit-tested (no local SDK/kotlinc; CI does not run unit tests). CI build-artifacts run 45225943004 dispatched
+    12:16:56 EST, headSha 087d5c29 asserted.
+  - CI GREEN 12:4x EST: run 45225943004 4/4 flavors, headSha 087d5c29 (skips = main-only cache saves + cached builds).
+    STAGED FIT /sdcard/Download/Bannerlator-usf2-087d5c29-pubg.apk sha256 567bd788…8f2a (host == device), signer
+    A4:0D:A8:0A… (same as installed 9cfd6786 build). Install waits for the user's yes.
+  - INSTALLED FIT 12:45:56 EST (user "yes install it on the fit"): pm install -r Success, installed base.apk sha256 567bd788 == staged.
+  - 12:47 EST test state set (rootsh): working records backed up to Download/Bannerlator-backup/cs16-steamlite-20261123/
+    appmanifest_{70,10}.working-20261123-1247.acf; container appmanifest_70.acf = Steam's own broken one (StateFlags 1090,
+    installdir Half-Life, no InstalledDepots); empty common/Half-Life; fake partial downloading/70/steam_api.dll +
+    state_70_{1,2,3}.patch (owner 10193 + app label fixed, no root-owned files left). User launches CS via SteamLite next.
+    UNDO: copy the .working acf back, delete downloading/70 + state_70_*.patch + empty common/Half-Life.
+  - 12:58:34–12:59:44 EST USER LAUNCH 1 (test state = Steam's broken app 70 record): RECORD FIX WORKED: appmanifest_70 rewritten
+    by BL (StateFlags 4, installdir Counter-Strike, buildid/TargetBuildID 15961492 from the library DB, depots 1/3/2 with journal
+    manifests, sizes 0); downloading/70 + state_70_*.patch + empty common/Half-Life removed. BUT black screen: the agent's LogOn
+    never completed — Steam's connection_log stops at "YieldingConnect -- calling ISteamDirectory/GetCMListForConnect" (12:58:37);
+    every earlier session since 11-12 got the CM list in ~1 s. No error in wine_debug (fdsan double-close + thread 0158 exception
+    are at teardown after the user quit). App's own Rust engine logged on fine at 12:58:02; network check OPEN_CONE 57 ms.
+    Most likely a one-off hang of Steam's directory web call, not the record (record is read before, and is not network);
+    not proven. Next: user relaunches (record now = our own WRITE path).
+    Report quirk (pre-existing): when the game never starts, the session scope falls back to the previous game start (11:14:32)
+    and the report claims "SECURE LAUNCH = YES" from the old session's lines.
+  - 13:02:46–13:03:49 EST USER LAUNCH 2 ("worked"): agent logged_in 2.0 s, launch_accepted, game_spawned hl.exe secure:true;
+    Steam ran `hl.exe -steam -game cstrike`; report: SECURE LAUNCH YES, CLIENT lsteamclient disabled YES, cloud OK.
+    appmanifest_70 still StateFlags 4 / Counter-Strike / 15961492; downloading empty; no common/Half-Life; no BL crash/FATAL
+    (crash buffer: only a uTorrent OOM at 13:01, not ours). => STEP 3 DEVICE-PROVEN on the FIT (auto record from Steam's
+    broken state + secure launch). Report head+tail fix NOT exercised (log 1.7 MB < 5 MB) -> needs a ~10 min session.
+  - Launch-1 hang cause found: logcat crash buffer 12:58:37.836 pid 28679 "F libc: fdsan: double-close of file descriptor 172"
+    = same second as the stuck GetCMListForConnect; wine_debug shows thread 0158 (the one that loaded winhttp) got exception
+    0xafeedc in bionic libc and Wine could not dispatch it -> Steam's HTTP thread died -> sign-in hung. fdsan appears only in
+    that session's log (0 in the other 6 today). Wine fd double-close (race) in the Proton layer, not the record change.
+    Open item, not fixed. Temp test files in Download/.bl-cs16-test removed.
+  - 13:08–13:20 EST "finish tests" (user). Peers root-bf/-b7/-19 told before + after screen use.
+    - GOG (FIT, UI): DOOM + DOOM II "Check for Updates" -> "Up to date ✓" (correct: GOG public builds API newest default build
+      58563798976908944 == installed; this game has no beta branch, so a no-regression check of 3bc68098). DLC tab: none owned.
+      "Verify / Repair Files": bh_gog_debug.txt build=58563798976908944 branch=null, 450 files OK, done 13:10:29, no file
+      changed, no .bhtmp left; app process alive (pid 715 since 13:03:53, no crash). Pre-existing UI bug (same on main): after
+      a verify the page keeps "Verifying files…" (onComplete never resets updateStatusText).
+    - Pad: CS 45-min session controller.txt = "AYANEO Controller" slot 0, 3 pass 0 fail (built-in pad still found, fbe0233e).
+    - Epic DLC: NOT testable on the FIT (only DLC list on record = Fortnite, not installed; Metalstorm / WRC Generations none).
+    - Backup (38d9da60): NOT run on device (app data 120 GB, 135 GB free). JVM test of the REAL AppDataBackup.java +
+      TarCompressorUtils.java (Android stand-ins, commons-compress 1.20) with fake tokens: 24/24 PASS (login files, .bak,
+      WebView Cookies, sysvshm left out; tokens stripped, other keys kept; symlink stored as link; extractTar skips "..",
+      absolute and through-link entries, restores normal files + link entries). Harness: session scratchpad backup-test/.
+    - Report head+tail (087d5c29): real readTail/readHeadAndTail extracted verbatim, run on the 32 MB 11:14 log: old = line NOT
+      found, new = found; 1.7 MB log unchanged. Device proof of a long session still open (optional).
+    - Telegram came to the front at ~13:14 (user on the device): screen work stopped; a UI dump that caught the chat was
+      deleted unread. Left the user's app in front (no Termux switch while they use the device).
+    - Still needs the user's hands: on-screen stick on WASD, external mouse (if they have one), physical keyboard, Epic DLC
+      (needs a game with owned DLC).
+  - Device test plan (FIT, after CI + install OK): back up appmanifest_70; (a) put back Steam's own broken record (backup
+    StateFlags 1090, installdir Half-Life + empty common/Half-Life + small fake downloading/70 + state_70_1.patch) -> launch CS
+    via SteamLite -> expect BL rewrites appmanifest_70 (logcat "shared-depot source app 70: recorded ... replaced"), partial
+    removed, secure LaunchApp; (b) report from that session shows "Real Steam client mode = YES".
+- RESUME 11:10 EST: FIT has build 9cfd6786 (this branch) + hand-written appmanifest_70.acf; next = user joins a VAC server in
+  CS 1.6 via SteamLite; then ask for go on step 3 (BL writes the source-app record for borrowed depots). Undo = restore the acf
+  files from /sdcard/Download/Bannerlator-backup/cs16-steamlite-20261123/. No background jobs.
+- Still for the user (needs logins / hands): Steam install (e.g. CS 1.6), GOG Check for updates, Epic DLC install, built-in pad
+  + physical keyboard, on-screen stick on WASD, external mouse, optional backup.
+- Correction: the first version of this entry had guessed times ("09:50", "09:3x"); real clock: helpers committed 07:51–08:20, dumpsys ~08:17, CI 08:22 EST.
+- Resume: memory `bannerlator-upstream-recon-1123`; worktree /root/src/Bannerlator-wt/upstream-small-fixes-2.
 
 ## 2026-11-22 18:49–19:06 EST — Xbox cloud sound stays on the device on an HDMI TV (`fix/xbox-audio-hdmi` eac4a3bb, DEVICE-PROVEN on the Elite, MERGED main 76b6ef75)
 - Why: user on the Elite (BL 3.2.1 vc108, Xbox stream, TV over HDMI via USB hub): sound from the handheld, not the TV.

@@ -874,16 +874,17 @@ public class InputControlsView extends View {
             }
         }
 
+        Set<Binding> heldKeys = activeControllerBindings.get(controller);
         ExternalControllerBinding triggerL = controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_L2);
         if (triggerL != null) {
-            boolean active = controller.state.triggerL > ControlElement.STICK_DEAD_ZONE;
+            boolean active = controller.state.triggerL > keyAwareDeadZone(triggerL.getBinding(), heldKeys);
             mergeAxisBindingState(mappedAxes, triggerL.getBinding(), active, controller.state.triggerL);
             pulseState = addActiveControllerPulseSource(
                     pulseState, triggerL.getKeyCode(), triggerL.getBinding(), active);
         }
         ExternalControllerBinding triggerR = controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_R2);
         if (triggerR != null) {
-            boolean active = controller.state.triggerR > ControlElement.STICK_DEAD_ZONE;
+            boolean active = controller.state.triggerR > keyAwareDeadZone(triggerR.getBinding(), heldKeys);
             mergeAxisBindingState(mappedAxes, triggerR.getBinding(), active, controller.state.triggerR);
             pulseState = addActiveControllerPulseSource(
                     pulseState, triggerR.getKeyCode(), triggerR.getBinding(), active);
@@ -921,6 +922,12 @@ public class InputControlsView extends View {
         }
     }
 
+    /** STICK_DEAD_ZONE, or a little less for a keyboard key this controller already holds. */
+    private static float keyAwareDeadZone(Binding binding, Set<Binding> heldKeys) {
+        return binding.isKeyboard() && heldKeys != null && heldKeys.contains(binding)
+                ? ControlElement.STICK_DEAD_ZONE - ControlElement.KEY_RELEASE_MARGIN : ControlElement.STICK_DEAD_ZONE;
+    }
+
     private static ControllerPulseState addActiveControllerPulseSource(
             ControllerPulseState pulseState,
             int sourceKeyCode,
@@ -950,17 +957,17 @@ public class InputControlsView extends View {
     }
 
     private void updateHeldControllerBindingState(ExternalController controller, Map<Binding, Float> mappedInputs) {
+        Set<Binding> previousBindings = activeControllerBindings.get(controller);
+        if (previousBindings == null) previousBindings = Collections.emptySet();
         Set<Binding> currentBindings = new HashSet<>();
         for (Map.Entry<Binding, Float> input : mappedInputs.entrySet()) {
             Binding binding = input.getKey();
             if (!binding.isGamepad() && !isMomentaryBinding(binding)
-                    && Math.abs(input.getValue()) > ControlElement.STICK_DEAD_ZONE) {
+                    && Math.abs(input.getValue()) > keyAwareDeadZone(binding, previousBindings)) {
                 currentBindings.add(binding);
             }
         }
 
-        Set<Binding> previousBindings = activeControllerBindings.get(controller);
-        if (previousBindings == null) previousBindings = Collections.emptySet();
         Map<Binding, Integer> previousCounts = new EnumMap<>(Binding.class);
         previousCounts.putAll(activeControllerBindingCounts);
         for (Binding binding : previousBindings) {

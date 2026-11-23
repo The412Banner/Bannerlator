@@ -121,6 +121,24 @@
     0xafeedc in bionic libc and Wine could not dispatch it -> Steam's HTTP thread died -> sign-in hung. fdsan appears only in
     that session's log (0 in the other 6 today). Wine fd double-close (race) in the Proton layer, not the record change.
     Open item, not fixed. Temp test files in Download/.bl-cs16-test removed.
+  - 13:08–13:20 EST "finish tests" (user). Peers root-bf/-b7/-19 told before + after screen use.
+    - GOG (FIT, UI): DOOM + DOOM II "Check for Updates" -> "Up to date ✓" (correct: GOG public builds API newest default build
+      58563798976908944 == installed; this game has no beta branch, so a no-regression check of 3bc68098). DLC tab: none owned.
+      "Verify / Repair Files": bh_gog_debug.txt build=58563798976908944 branch=null, 450 files OK, done 13:10:29, no file
+      changed, no .bhtmp left; app process alive (pid 715 since 13:03:53, no crash). Pre-existing UI bug (same on main): after
+      a verify the page keeps "Verifying files…" (onComplete never resets updateStatusText).
+    - Pad: CS 45-min session controller.txt = "AYANEO Controller" slot 0, 3 pass 0 fail (built-in pad still found, fbe0233e).
+    - Epic DLC: NOT testable on the FIT (only DLC list on record = Fortnite, not installed; Metalstorm / WRC Generations none).
+    - Backup (38d9da60): NOT run on device (app data 120 GB, 135 GB free). JVM test of the REAL AppDataBackup.java +
+      TarCompressorUtils.java (Android stand-ins, commons-compress 1.20) with fake tokens: 24/24 PASS (login files, .bak,
+      WebView Cookies, sysvshm left out; tokens stripped, other keys kept; symlink stored as link; extractTar skips "..",
+      absolute and through-link entries, restores normal files + link entries). Harness: session scratchpad backup-test/.
+    - Report head+tail (087d5c29): real readTail/readHeadAndTail extracted verbatim, run on the 32 MB 11:14 log: old = line NOT
+      found, new = found; 1.7 MB log unchanged. Device proof of a long session still open (optional).
+    - Telegram came to the front at ~13:14 (user on the device): screen work stopped; a UI dump that caught the chat was
+      deleted unread. Left the user's app in front (no Termux switch while they use the device).
+    - Still needs the user's hands: on-screen stick on WASD, external mouse (if they have one), physical keyboard, Epic DLC
+      (needs a game with owned DLC).
   - Device test plan (FIT, after CI + install OK): back up appmanifest_70; (a) put back Steam's own broken record (backup
     StateFlags 1090, installdir Half-Life + empty common/Half-Life + small fake downloading/70 + state_70_1.patch) -> launch CS
     via SteamLite -> expect BL rewrites appmanifest_70 (logcat "shared-depot source app 70: recorded ... replaced"), partial

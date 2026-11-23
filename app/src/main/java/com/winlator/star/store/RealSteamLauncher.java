@@ -332,6 +332,10 @@ public final class RealSteamLauncher {
             env.put("WN_STEAM_APPID", String.valueOf(appId));
             // Absolute, drive-qualified path so the agent's fopen resolves it regardless of cwd.
             env.put("WN_STEAM_GAMEEXE_FILE", "C:\\" + appId + ".spec");
+            // The shortcut's launch arguments: the agent hands them to LaunchApp and to its direct start.
+            // An agent without the feature ignores the variable.
+            String userArgs = shortcut.getExtra("execArgs").trim();
+            if (!userArgs.isEmpty()) env.put("WN_STEAM_USER_ARGS", userArgs);
             // Cap the pre-launch app-info wait. The agent blocks up to this long for the CM's
             // AppInfoUpdateComplete before launching; for a game whose access tokens the CM denies
             // (strict live-service titles that aren't part of the VAC path) that update never lands,

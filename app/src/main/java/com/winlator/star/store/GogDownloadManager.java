@@ -443,6 +443,30 @@ public final class GogDownloadManager {
             File chunksDir = new File(installPath, ".gog_chunks");
             chunksDir.mkdirs();
 
+            // Some DLC ship files at the base game's paths (replacement patches); doInstallDlc
+            // wrote the DLC copies there. On a verify or update of an installed game, leave the
+            // paths an installed DLC wrote that are on disk, so the base copies are not put back.
+            if (ctx.getSharedPreferences("bh_gog_prefs", 0).contains("gog_dir_" + game.gameId)) {
+                java.util.Set<String> dlcPaths = installedDlcPathKeys(ctx, game.gameId);
+                java.util.Set<String> leave = new java.util.HashSet<>();
+                int left = 0;
+                for (DepotFile df : files) {
+                    String key = depotPathKey(df.relativePath);
+                    if (dlcPaths.contains(key) && new File(installPath, df.relativePath).isFile()) {
+                        leave.add(key);
+                        left++;
+                    }
+                }
+                if (left > 0 && left < files.size()) {
+                    files.removeIf(df -> leave.contains(depotPathKey(df.relativePath)));
+                    for (int j = 0; j < depotJsons.size(); j++)
+                        depotJsons.set(j, withoutDepotFiles(depotJsons.get(j), leave));
+                    dbg.append("left ").append(left).append(" file(s) an installed DLC replaces\n");
+                    GogCloudSaveManager.debug(ctx, "DLC: base pass leaves " + left
+                            + " file(s) an installed DLC replaces, game=" + game.gameId);
+                }
+            }
+
             // Free-space guard: sum planned (decompressed) size, compare to usable bytes
             // on the install target. Hard-stop (via DISK_GUARD sentinel) before writing.
             long plannedBytes = 0;
@@ -1364,6 +1388,74 @@ public final class GogDownloadManager {
             }
         } catch (Exception e) {
             Log.w(TAG, "parseDepotManifest error", e);
+        }
+    }
+
+    /** A depot path as the same file on a case-insensitive filesystem: '/' separators, no empty segments, lower case. */
+    private static String depotPathKey(String path) {
+        StringBuilder sb = new StringBuilder();
+        for (String seg : path.replace('\\', '/').split("/")) {
+            if (seg.isEmpty()) continue;
+            if (sb.length() > 0) sb.append('/');
+            sb.append(seg);
+        }
+        return sb.toString().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    /**
+     * Path keys ({@link #depotPathKey}) of the files the installed DLCs of {@code gameId} wrote:
+     * the {@code gog_dlc_files_} list of each DLC with its installed marker ({@link #markDlcInstalled}).
+     */
+    private static java.util.Set<String> installedDlcPathKeys(Context ctx, String gameId) {
+        java.util.Set<String> keys = new java.util.HashSet<>();
+        SharedPreferences prefs = ctx.getSharedPreferences("bh_gog_prefs", 0);
+        String markerPrefix = "gog_dlc_installed_" + gameId + "_";
+        for (java.util.Map.Entry<String, ?> e : prefs.getAll().entrySet()) {
+            if (!e.getKey().startsWith(markerPrefix) || !Boolean.TRUE.equals(e.getValue())) continue;
+            String dlcId = e.getKey().substring(markerPrefix.length());
+            try {
+                JSONArray arr = new JSONArray(prefs.getString("gog_dlc_files_" + gameId + "_" + dlcId, "[]"));
+                for (int i = 0; i < arr.length(); i++) {
+                    String p = arr.optString(i, "");
+                    if (!p.isEmpty()) keys.add(depotPathKey(p));
+                }
+            } catch (Exception ignored) {}
+        }
+        return keys;
+    }
+
+    /**
+     * Depot manifest {@code json} without the file entries {@link #parseDepotManifest} would take
+     * whose path key is in {@code dropKeys}; the same string when none match. Keeps the Rust
+     * engine's plan equal to the Java file list.
+     */
+    private static String withoutDepotFiles(String json, java.util.Set<String> dropKeys) {
+        try {
+            JSONObject root = new JSONObject(json);
+            JSONObject depotObj = root.optJSONObject("depot");
+            JSONArray items = depotObj == null ? null : depotObj.optJSONArray("items");
+            if (items == null) return json;
+            JSONArray kept = new JSONArray();
+            boolean dropped = false;
+            for (int i = 0; i < items.length(); i++) {
+                JSONObject entry = items.optJSONObject(i);
+                if (entry != null) {
+                    JSONArray chunks = entry.optJSONArray("chunks");
+                    String path = entry.optString("path", "");
+                    if (chunks != null && chunks.length() > 0 && !path.isEmpty()
+                            && dropKeys.contains(depotPathKey(path))) {
+                        dropped = true;
+                        continue;
+                    }
+                }
+                kept.put(items.get(i));
+            }
+            if (!dropped) return json;
+            depotObj.put("items", kept);
+            return root.toString();
+        } catch (Exception e) {
+            Log.w(TAG, "withoutDepotFiles error", e);
+            return json;
         }
     }
 

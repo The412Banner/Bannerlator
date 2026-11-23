@@ -1,22 +1,35 @@
 # Star-Compose — Progress Log
 
-## 2026-11-23 07:45 EST — Upstream small fixes, round 2 (`fix/upstream-small-fixes-2`, IN PROGRESS, not built)
+## 2026-11-23 07:45–09:50 EST — Upstream small fixes, round 2 (`fix/upstream-small-fixes-2`, CI building, NOT device-tested)
 - Why: user (FIT session) asked for a recon of what is new in Winlator Ludashi (StevenMXZ) and GameNative that BL could use;
-  recon done 07:50 EST vs main 4e2218ff (code reading only). User: "start with the small fixes branch".
-- Plan: one commit per item, each credits the upstream author + commit/PR (all GPL-3.0). Items:
-  Steam — shared depots via `depotfromapp` (Ludashi 4aded9b0, issue #757), launch options to Real Steam games (Ludashi 54fa905f),
-  QR login account-id fallback (Ludashi 77b51403), protected app metadata (Ludashi 0f9c7aee, only if the gap is real);
-  GOG — default-branch build pick (GameNative #2458), Verify keeps DLC replacement files (GameNative #2401);
-  Epic — DLC into the game's folder (GameNative #2457); Steam install scripts up to 4 levels deep (GameNative #2384);
-  input — hybrid keyboard/controller routing + Xiaomi virtual device (Ludashi 64796465/8fd8ec0a/e104c8d3), external mouse focus
-  (Ludashi PR #750, DrarenThiralas), stick/d-pad hysteresis (GameNative #2272, kudyk);
-  app — shortcut keeps `container_id` (Ludashi 122e3977, issue #767), driver removal by exact id (Ludashi 13b40d63),
-  SAF Downloads/msd/raw folder picks (GameNative #2473), backup leaves out store logins (Ludashi 3a3bc38e/5e2629d4).
-- How: 4 helper sessions port in their own worktrees (wip/usf2-steam, -stores, -input, -app off 4e2218ff), I review each diff
-  and cherry-pick here. Then build-artifacts CI, stage APK, ask before install, device test, merge only on the user's go.
-- Not in this branch: Goldberg bump (catalog), Wine layer fixes (v17 layers, next step), FEX gn-8 / Mali GL4 wrapper /
-  Turnip V39 (catalog).
-- Resume: memory `bannerlator-upstream-recon-1123`; `git -C /root/src/Bannerlator worktree list | grep usf2`.
+  recon done 07:50 EST vs main 4e2218ff (code reading only). User: "start with the small fixes branch"; then "make sure these
+  fixes don't conflict with what we have or use since some of our stuff is newer than theirs like our direct controller input".
+- How: 4 helper sessions ported in their own worktrees (wip/usf2-steam, -stores, -input, -app off 4e2218ff); each checked its port
+  against BL's newer systems (Bannerin/direct XInput, Steam controller, AYANEO rule, drawer focus, SteamLite/Real Steam, game
+  language, Goldberg, Cloud, redists, download locations, NAS, move-to-container, launcher resume, SD paths); I reviewed each diff.
+- In the branch (one commit each, credits in each body + README 9f1f97db):
+  - GOG: 3bc68098 default-branch build, not a beta (GameNative #2458); 6a8bf21f Verify/Update keep DLC replacement files (#2401);
+    7b9e204c uninstall also forgets the game's DLC records (found while porting; old bug).
+  - Epic: 9684162f DLC installs into the game's folder (#2457); old sibling-folder DLC still counts as installed.
+  - Steam: ba9a4312 depots taken from another app (depotfromapp) install (Ludashi 4aded9b0, issue #757); 833ea412 + 10b5f944 launch
+    arguments to Real Steam games (Ludashi 54fa905f) — the agent half needs a NEW SteamLite package (user's call; agent build
+    run 45181774077 green = compiles); 195b7f0c QR logon account id from the header (Ludashi 77b51403; 329 Rust tests pass).
+  - Shortcuts/app: 47a206a2 container_id survives saves; 0ceaaf39 a game a frontend started returns to it (only when the referrer is
+    another app; BL launches unchanged) (Ludashi 122e3977, #767); f8ea7ecf driver removal by exact id (Ludashi 13b40d63);
+    1f15baeb Downloads/raw:/msd:/home: folder picks (GameNative #2473); 38d9da60 backup leaves out store logins + restore stays
+    inside the data folder (Ludashi 3a3bc38e/5e2629d4; extractTar's only caller = RestoreActivity).
+  - Input: fbe0233e Xiaomi uinput not a pad + profile lookups only for real pads (Ludashi e104c8d3; I KEPT the old device-id-0
+    "any controller" fallback); 1b0dc688 keyboard keys of a full keyboard that is also a pad (Ludashi 64796465/8fd8ec0a) — only
+    for KEYBOARD_TYPE_ALPHABETIC game controllers: FIT "AYANEO Controller" = type 1 (non-alphabetic, dumpsys 09:3x) → no change
+    there; Elite pad not connected at check time; d184a73a captured external mouse works while the overlay has focus (Ludashi
+    PR #750, DrarenThiralas); 619ed2b4 key bindings on sticks/d-pads/triggers release 0.05 inside the dead zone (GameNative
+    #2272, kudyk; nothing sent to Bannerin changes).
+- Skipped: Steam install scripts deeper (GameNative #2384: would change install-script handling for every game); GOG stale-file
+  cleanup (BL keeps no base file list); Steam protected metadata (already done by the Rust engine); upstream's player-slot
+  change for keyboards without sticks (7e3d5afc on wip/usf2-input, dropped: changes slots); launch-option choice/error-22 retry.
+- Not in this branch: Goldberg bump (catalog), Wine layer fixes (v17 layers, next step), FEX gn-8 / Mali GL4 wrapper / Turnip V39.
+- Next: build-artifacts CI → stage APK (hash host == device) → ASK before install → device test per item → merge only on go.
+- Resume: memory `bannerlator-upstream-recon-1123`; worktree /root/src/Bannerlator-wt/upstream-small-fixes-2.
 
 ## 2026-11-22 18:49–19:06 EST — Xbox cloud sound stays on the device on an HDMI TV (`fix/xbox-audio-hdmi` eac4a3bb, DEVICE-PROVEN on the Elite, MERGED main 76b6ef75)
 - Why: user on the Elite (BL 3.2.1 vc108, Xbox stream, TV over HDMI via USB hub): sound from the handheld, not the TV.

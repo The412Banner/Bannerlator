@@ -25,6 +25,9 @@
   .getPreviewCustomIcons(), CustomIconManager.decodeEncodedIcon(), InputControlsView.setEmbeddedIcons() (preview never falls back to
   the local store), LayoutPreviewFrame passes them once per profile. InputControlsView/InputControlsManager have mixed CRLF/LF
   lines: edited byte-exact (diff +27 / +1-1).
+- CI GREEN: build-artifacts 45288813621 (headSha 5b176b5d asserted) 4/4, pubg BUILD SUCCESSFUL in 7m 59s, no failed steps.
+  STAGED 18:38 EST `/sdcard/Download/Bannerlator-community-catalog-5b176b5d-pubg.apk` sha256 dff13f5d… (host == sdcard == device),
+  signer a40da80a… == installed. Install awaits the user's yes.
 
 ## 2026-11-23 15:26–16:10 EST — Controller sticks in a Players > Bind profile (`fix/pad-sticks`, DEVICE-PROVEN on the FIT, MERGED main)
 - Why: user built a physical-controller profile for Quake II RTX (game has no gamepad code, needs keys + mouse). Shortcut

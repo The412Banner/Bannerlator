@@ -95,6 +95,12 @@
   - CI GREEN 12:4x EST: run 45225943004 4/4 flavors, headSha 087d5c29 (skips = main-only cache saves + cached builds).
     STAGED FIT /sdcard/Download/Bannerlator-usf2-087d5c29-pubg.apk sha256 567bd788…8f2a (host == device), signer
     A4:0D:A8:0A… (same as installed 9cfd6786 build). Install waits for the user's yes.
+  - INSTALLED FIT 12:45:56 EST (user "yes install it on the fit"): pm install -r Success, installed base.apk sha256 567bd788 == staged.
+  - 12:47 EST test state set (rootsh): working records backed up to Download/Bannerlator-backup/cs16-steamlite-20261123/
+    appmanifest_{70,10}.working-20261123-1247.acf; container appmanifest_70.acf = Steam's own broken one (StateFlags 1090,
+    installdir Half-Life, no InstalledDepots); empty common/Half-Life; fake partial downloading/70/steam_api.dll +
+    state_70_{1,2,3}.patch (owner 10193 + app label fixed, no root-owned files left). User launches CS via SteamLite next.
+    UNDO: copy the .working acf back, delete downloading/70 + state_70_*.patch + empty common/Half-Life.
   - Device test plan (FIT, after CI + install OK): back up appmanifest_70; (a) put back Steam's own broken record (backup
     StateFlags 1090, installdir Half-Life + empty common/Half-Life + small fake downloading/70 + state_70_1.patch) -> launch CS
     via SteamLite -> expect BL rewrites appmanifest_70 (logcat "shared-depot source app 70: recorded ... replaced"), partial

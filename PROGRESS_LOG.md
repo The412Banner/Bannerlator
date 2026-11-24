@@ -100,6 +100,8 @@
 - 20:56/20:58 EST user screenshots (FIT, DiRT, cores 2-7 picked): HUD C0/C1 greyed, C2-C7 normal = HUD grey DEVICE-PROVEN. Side menu
   shown = wrench tab (Task Manager header core tiles, LabTmCoreStrip / Classic TmCoreStrip): tiles not greyed (not part of this
   change). Game cores / Sync rows are on the Performance tab — not in the screenshots, not yet seen. Offered: grey those tiles too.
+- User: "yes add it to the wrench tab tiles too". Built 2fd4cf96: XServerDrawerState.gameCoreMask (set by updateHudGameCores, now
+  also without a HUD); LabTmCoreStrip + Classic TmCoreStrip tiles of other cores at alpha 0.35. CI 45309522279 running.
 - NOT tested yet: the switch on in a real game (WINE_CPU_TOPOLOGY in the wine process env, Windows CPU count), FIT/Elite screens
   (user has them), Fold. Elite A/B after that.
 - Next: CI green -> stage standard (Duo) + pubg (FIT) APKs, ask before install, check pickers on FIT/Elite/Duo, check

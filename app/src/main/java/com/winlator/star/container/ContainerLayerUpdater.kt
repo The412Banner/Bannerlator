@@ -29,13 +29,14 @@ import java.util.concurrent.ConcurrentHashMap
  * `<container>/.layer-update-backup/<epoch>/` so [revert] can put the container back on the old
  * layer (which stays installed — the updater never removes layers).
  *
- * Scope: same `type` + same profile `versionName` (hence same arch), strictly higher `verCode`.
- * DroidDeck-Proton layers are one line across their versions (11.0-9.1 -> 11.0-11.1): see
- * [isDroidDeck]; same arch, newer by version then `verCode`.
+ * Scope: same `type`, same line ([LayerLine.sameLine]: one Proton family — GE-Proton, DroidDeck-Proton,
+ * Proton-CachyOS or Valve Proton — of the same arch and Proton major, e.g. GE 11.0-9 -> 11.0-14), newer by
+ * version then `verCode`. Layers of no known family (Wine layers) need the same `versionName` and a
+ * strictly higher `verCode`. The family comes from [familyOf].
  * [findNewerInstalled] covers layers already on the device; [findNewerInCatalog] covers a newer
  * build that only exists in the online catalog (the caller downloads it through the normal
  * contents path first, then runs [update] against the INSTALLED entry). Moving between
- * lines (11.0-2 → 11.0-6, GE ↔ plain) is not offered as an "update" — registry defaults,
+ * families or majors (GE ↔ plain, 10.x ↔ 11.x) is not offered as an "update" — registry defaults,
  * DirectAudio support and game fixes differ — but [switchLine] does it, with the same snapshot,
  * when the user explicitly sets a layer as the default for existing containers.
  */
@@ -68,12 +69,13 @@ class ContainerLayerUpdater(private val context: Context) {
         val current = container.wineVersion
         if (WineInfo.isMainWineVersion(current)) return null
         val entry = parseEntry(current) ?: return null
-        val dd = isDroidDeckEntry(contentsManager, current)
+        val family = familyOf(contentsManager, current)
         val candidates = contentsManager.getProfiles(entry.type) ?: return null
         val best = candidates
-            .filter { sameLine(entry.versionName, dd, it.verName, isDroidDeck(it)) && isNewer(entry.versionName, entry.verCode, it.verName, it.verCode) }
             .filter { ContentsManager.getInstallDir(context, it).isDirectory }
-            .maxWithOrNull(compareBy<ContentProfile, List<Int>>(VERSION_ORDER) { versionOrder(it.verName) }.thenBy { it.verCode })
+            .filter { LayerLine.sameLine(entry.versionName, family, it.verName, familyOf(contentsManager, it)) }
+            .filter { LayerLine.isNewer(entry.versionName, entry.verCode, it.verName, it.verCode) }
+            .maxWithOrNull(compareBy<ContentProfile, List<Int>>(LayerLine.VERSION_ORDER) { LayerLine.versionOrder(it.verName) }.thenBy { it.verCode })
             ?: return null
         return ContentsManager.getEntryName(best)
     }
@@ -91,16 +93,16 @@ class ContainerLayerUpdater(private val context: Context) {
         val current = container.wineVersion
         if (WineInfo.isMainWineVersion(current)) return null
         val entry = parseEntry(current) ?: return null
-        val dd = isDroidDeckEntry(contentsManager, current)
+        val family = familyOf(contentsManager, current)
         // Baseline = the newest installed candidate, else the container's own layer.
         val floor = findNewerInstalled(contentsManager, container)?.let { parseEntry(it) } ?: entry
         val arch = archOf(entry.versionName)
         val best = (contentsManager.getProfiles(entry.type) ?: return null)
             .filter { !it.remoteUrl.isNullOrEmpty() && it.type == entry.type }
-            .filter { sameLine(entry.versionName, dd, it.versionName, isDroidDeck(it)) && archOf(it.versionName) == arch }
-            .filter { isNewer(floor.versionName, floor.verCode, it.versionName, it.verCode) }
+            .filter { LayerLine.sameLine(entry.versionName, family, it.versionName, familyOf(contentsManager, it)) && archOf(it.versionName) == arch }
+            .filter { LayerLine.isNewer(floor.versionName, floor.verCode, it.versionName, it.verCode) }
             .filter { !ContentsManager.getInstallDir(context, it).isDirectory }
-            .maxWithOrNull(compareBy<ContentProfile, List<Int>>(VERSION_ORDER) { versionOrder(it.versionName) }.thenBy { it.verCode })
+            .maxWithOrNull(compareBy<ContentProfile, List<Int>>(LayerLine.VERSION_ORDER) { LayerLine.versionOrder(it.versionName) }.thenBy { it.verCode })
             ?: return null
         // Entry the wcp will install as: its profile.json carries versionName + verCode, which is what
         // the catalog row mirrors (the profile is re-read after download — see the ViewModel).
@@ -144,10 +146,10 @@ class ContainerLayerUpdater(private val context: Context) {
         if (!File(targetDir, "lib/wine").isDirectory) return fail("Layer $targetEntry is incomplete (no lib/wine)")
         val targetParsed = parseEntry(targetEntry) ?: return fail("Unrecognised layer name $targetEntry")
         val oldParsed = parseEntry(oldEntry) ?: return fail("Container is not on a contents layer ($oldEntry)")
-        val sameDdLine = isDroidDeckEntry(contentsManager, oldEntry) && isDroidDeck(target)
-        if (oldParsed.type != targetParsed.type || !sameLine(oldParsed.versionName, sameDdLine, targetParsed.versionName, sameDdLine))
+        if (oldParsed.type != targetParsed.type ||
+            !LayerLine.sameLine(oldParsed.versionName, familyOf(contentsManager, oldEntry), targetParsed.versionName, familyOf(contentsManager, target)))
             return fail("Only updates within the same layer line are supported (${oldParsed.versionName})")
-        if (!isNewer(oldParsed.versionName, oldParsed.verCode, targetParsed.versionName, targetParsed.verCode))
+        if (!LayerLine.isNewer(oldParsed.versionName, oldParsed.verCode, targetParsed.versionName, targetParsed.verCode))
             return fail("$targetEntry is not newer than $oldEntry")
         val targetWine = WineInfo.fromIdentifier(context, contentsManager, targetEntry)
         if (contentsManager.getProfileByEntryName(oldEntry) != null) {
@@ -284,9 +286,34 @@ class ContainerLayerUpdater(private val context: Context) {
         }
     }
 
-    /** Whether the INSTALLED layer [entryName] is a DroidDeck-Proton build (unknown when not installed = false). */
-    private fun isDroidDeckEntry(contentsManager: ContentsManager, entryName: String): Boolean =
-        contentsManager.getProfileByEntryName(entryName)?.let { isDroidDeck(it) } == true
+    /**
+     * The Proton family of [profile]: a catalog row by its label, an installed layer by its description
+     * with the catalog rows of the same versionName + verCode as a fallback ([LayerLine.familyOfInstalled]).
+     * Null for Wine layers and when unknown.
+     */
+    private fun familyOf(contentsManager: ContentsManager, profile: ContentProfile): LayerLine.Family? {
+        if (profile.type != ContentProfile.ContentType.CONTENT_TYPE_PROTON) return null
+        if (!profile.remoteUrl.isNullOrEmpty()) return LayerLine.familyOfLabel(profile.verName)
+        return LayerLine.familyOfInstalled(profile.desc, catalogLabels(contentsManager, profile.type, profile.verName, profile.verCode))
+    }
+
+    /** [familyOf] the installed layer [entryName]; a layer that is no longer installed goes by the catalog rows alone. */
+    private fun familyOf(contentsManager: ContentsManager, entryName: String): LayerLine.Family? {
+        contentsManager.getProfileByEntryName(entryName)?.let { return familyOf(contentsManager, it) }
+        val entry = parseEntry(entryName) ?: return null
+        if (entry.type != ContentProfile.ContentType.CONTENT_TYPE_PROTON) return null
+        return LayerLine.familyOfLabels(catalogLabels(contentsManager, entry.type, entry.versionName, entry.verCode))
+    }
+
+    /**
+     * Labels of the catalog rows that install as `<versionName>-<verCode>`: the rows set on [contentsManager],
+     * else the process's last parsed catalog. Empty when no catalog is at hand.
+     */
+    private fun catalogLabels(contentsManager: ContentsManager, type: ContentProfile.ContentType, versionName: String?, verCode: Int): List<String?> {
+        val rows = contentsManager.getProfiles(type).orEmpty().filter { !it.remoteUrl.isNullOrEmpty() }
+            .ifEmpty { ContentsManager.getCachedRemoteProfiles().orEmpty().filter { it.type == type } }
+        return rows.filter { it.versionName != null && it.versionName == versionName && it.verCode == verCode }.map { it.verName }
+    }
 
     /** Mirrors ContentsManager.getProfileByEntryName's split; Wine/Proton entries only. */
     private fun parseEntry(entryName: String?): Entry? {
@@ -303,12 +330,10 @@ class ContainerLayerUpdater(private val context: Context) {
     companion object {
         private const val TAG = "ContainerLayerUpdater"
         const val BACKUP_DIR = ".layer-update-backup"
-        private val ARCH_SUFFIXES = listOf("-arm64ec", "-x86_64", "-x86")
         private val remoteSizes = ConcurrentHashMap<String, Long>()
 
         /** `arm64ec` / `x86_64` / `x86` from a line name's suffix, or "" when it carries none. */
-        fun archOf(versionName: String?): String =
-            ARCH_SUFFIXES.firstOrNull { versionName?.endsWith(it) == true }?.substring(1) ?: ""
+        fun archOf(versionName: String?): String = LayerLine.archOf(versionName)
 
         /**
          * Content-Length of [url] via one HEAD (redirects followed), cached per url for the process;
@@ -347,8 +372,8 @@ class ContainerLayerUpdater(private val context: Context) {
         fun codeLabel(entryName: String): String = "v" + entryName.substringAfterLast('-')
 
         /**
-         * [codeLabel] when [entryName] is the same line as [otherEntry]; otherwise the line is named
-         * too ("11.0-11.1 v15"), for DroidDeck-Proton moves between versions.
+         * [codeLabel] when [entryName] has the same version name as [otherEntry]; otherwise the version
+         * is named too ("11.0-14 v17"), for moves between versions of one family.
          */
         fun layerLabel(entryName: String, otherEntry: String?): String {
             val line = lineOf(entryName)
@@ -359,42 +384,5 @@ class ContainerLayerUpdater(private val context: Context) {
 
         private fun lineOf(entryName: String): String =
             entryName.substringAfter('-').substringBeforeLast('-')
-
-        private const val DROIDDECK_LABEL = "DroidDeck-Proton"
-
-        /**
-         * DroidDeck-Proton layers share version names with GE builds (`11.0-7.1` vs `11.0-9.1`), so
-         * they are told apart by their own label: an installed layer's profile description and a
-         * catalog row's display name both start with "DroidDeck-Proton".
-         */
-        fun isDroidDeck(profile: ContentProfile): Boolean =
-            profile.desc?.startsWith(DROIDDECK_LABEL) == true || profile.verName?.startsWith(DROIDDECK_LABEL) == true
-
-        /** Same line: identical version name, or two DroidDeck-Proton layers of the same arch. */
-        private fun sameLine(curName: String?, curDd: Boolean, candName: String?, candDd: Boolean): Boolean =
-            curName != null && (curName == candName || (curDd && candDd && archOf(curName) == archOf(candName)))
-
-        /** Newer by version (`11.0-11.1` > `11.0-9.1`), then by verCode; within one name, verCode only. */
-        private fun isNewer(curName: String?, curCode: Int, candName: String?, candCode: Int): Boolean {
-            if (curName == candName) return candCode > curCode
-            val c = VERSION_ORDER.compare(versionOrder(candName), versionOrder(curName))
-            return c > 0 || (c == 0 && candCode > curCode)
-        }
-
-        /** `11.0-11.1-arm64ec` -> [11, 0, 11, 1]; non-numeric parts end the list. */
-        private fun versionOrder(versionName: String?): List<Int> {
-            if (versionName == null) return emptyList()
-            val arch = archOf(versionName)
-            val base = if (arch.isEmpty()) versionName else versionName.removeSuffix("-$arch")
-            return base.split('.', '-').map { it.toIntOrNull() }.takeWhile { it != null }.map { it!! }
-        }
-
-        private val VERSION_ORDER = Comparator<List<Int>> { a, b ->
-            for (i in 0 until maxOf(a.size, b.size)) {
-                val d = (a.getOrElse(i) { 0 }).compareTo(b.getOrElse(i) { 0 })
-                if (d != 0) return@Comparator d
-            }
-            0
-        }
     }
 }

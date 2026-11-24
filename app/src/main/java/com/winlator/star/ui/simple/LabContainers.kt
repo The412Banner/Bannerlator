@@ -405,7 +405,7 @@ private fun layerUpdateBody(c: Container, target: String, remote: ContainerLayer
 private fun layerHelpBody(c: Container, target: String, remote: ContainerLayerUpdater.CatalogCandidate?, snapshot: ContainerLayerUpdater.Snapshot?): String {
     val newLabel = ContainerLayerUpdater.layerLabel(target, c.wineVersion)
     val size = remote?.sizeBytes?.let { " (~" + ContainerLayerUpdater.formatSize(it) + ")" } ?: ""
-    val what = if (newLabel == ContainerLayerUpdater.codeLabel(target)) L("a newer build of the same layer") else L("a newer DroidDeck-Proton version")
+    val what = if (newLabel == ContainerLayerUpdater.codeLabel(target)) L("a newer build of the same layer") else L("a newer version of the same layer")
     return listOfNotNull(
         L("A layer is the set of Wine/Proton files a container runs on. %1\$s runs on %2\$s; %3\$s, %4\$s, is ", c.name, c.wineVersion, what, target) +
             (if (remote != null) L("available in the catalog. The %1\$s layer will be downloaded%2\$s first.", newLabel, size) else L("installed.")),

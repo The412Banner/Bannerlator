@@ -35,7 +35,12 @@
 - STAGED 19:3x EST (signer a40da80a… == installed testkey): FIT + Elite `/sdcard/Download/Bannerlator-cpu-topology-5013a78b-pubg.apk`
   sha256 bfd4f489… (host == sdcard == device); Duo `/sdcard/Download/Bannerlator-cpu-topology-5013a78b-standard.apk` sha256 748cad86….
   Before: FIT pubg = community-catalog 5b176b5d (= main a884ad61 code, root-19), Elite pubg (11-22 19:06), Duo standard main a884ad61.
-  User: "yes install it on all three" + "delete old apk files on each when done also". Installing now.
+  User: "yes install it on all three" + "delete old apk files on each when done also". 
+- INSTALLED 19:34:32 FIT / 19:34:34 Elite / 19:34:38 Duo EST; base.apk == staged on all three (bfd4f489 pubg x2, 748cad86 standard).
+- Old APKs: deleted old Bannerlator test APKs only (FIT 6, Elite 6, Duo 1 = main-a884ad61), kept the installed cpu-topology one on
+  each; other projects' APKs + installers (Magisk, Termux, …) left alone (other sessions may need them). Elite free 6.9 -> 9.4 GB.
+- Next: Duo check (idle at home): Classic core picker + Lab device info/picker (Lab switch with the same prefs backup/restore).
+  FIT/Elite pickers: user to look, or me with the user's OK (user may be on them).
 - Next: CI green -> stage standard (Duo) + pubg (FIT) APKs, ask before install, check pickers on FIT/Elite/Duo, check
   WINE_CPU_TOPOLOGY in a game's wine process env + Windows CPU count, then an Elite A/B.
 - RESUME: worktree /root/src/Bannerlator-wt/cpu-topology; Duo is on main a884ad61 Classic (restored), Termux in front.

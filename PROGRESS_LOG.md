@@ -103,7 +103,7 @@
 - User: "yes add it to the wrench tab tiles too". Built 2fd4cf96: XServerDrawerState.gameCoreMask (set by updateHudGameCores, now
   also without a HUD); LabTmCoreStrip + Classic TmCoreStrip tiles of other cores at alpha 0.35. CI 45309522279 GREEN (headSha
   2fd4cf96) 4/4. STAGED 21:1x EST (signer a40da80a): FIT + Elite `/sdcard/Download/Bannerlator-cpu-topology-2fd4cf96-pubg.apk`
-  sha256 843b42af…, Duo `…-2fd4cf96-standard.apk` 686fd437… (host == device). Install awaits the user's yes.
+  sha256 843b42af…, Duo `…-2fd4cf96-standard.apk` 686fd437… (host == device). User: "yes install it on all three" -> installing (RESUME: verify base.apk sha per device, delete old a2602717 APKs, peers "done").
 - NOT tested yet: the switch on in a real game (WINE_CPU_TOPOLOGY in the wine process env, Windows CPU count), FIT/Elite screens
   (user has them), Fold. Elite A/B after that.
 - Next: CI green -> stage standard (Duo) + pubg (FIT) APKs, ask before install, check pickers on FIT/Elite/Duo, check

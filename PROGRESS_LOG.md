@@ -23,6 +23,11 @@
   /sdcard/Download/Bannerlator-wayland-cursor-b5bbed8e-pubg.apk sha256 425e4c55... (host == device). Asking the user to install.
 - INSTALLED 18:39 EST on the FIT (user "yes install it"; BL main process only, no game; peers told + acked): installed base.apk
   sha256 425e4c55... == staged. Cursor shortcuts still in container 1. User tests by hand next.
+- 18:45 EST user: "cursor just doesn't change" (fix b5bbed8e NOT working; one screenshot 18:40:16 without pointer). Server side
+  checked: set_cursor -> update_desktop_cursor_handle -> WM_WINE_SETCURSOR to desktop->cursor_win (window under the pointer),
+  so the program's driver SetCursor is called. Diagnosis run: "AIO Cursor Test - Wayland" shortcut got envVars
+  WINEDEBUG=+waylanddrv; I run it with `input mouse swipe` across the tiles and read wine_debug.log (pointer_handle_enter /
+  WAYLAND_SetCursor per process).
 - Resume point: FIT = b5bbed8e (main 447b4afd + this fix). If the user reports it works: merge only on the user's word; delete the
   4 "AIO Cursor Test - ..." shortcuts after; then AIO 2.3.0-pre1 publish (AIO branch feat/upscaler-test-scene, see its log).
 - Test plan: Cursor Test shortcuts on the FIT ("AIO Cursor Test - Wayland", "- Wayland OLD 2.2.0"): colour quadrants, shadow,

@@ -45,8 +45,15 @@
   Bannerlator-upscaler-refresh-44f338f1-pubg id 14956511115, 597130473 B, digest sha256:e31fbb5f...
 - Download: gh api zip broke at 72 MB (connection reset); curl on the signed URL ran at ~20 MB/min; STOPPED by the user at
   14:37 EST at 277 MB. Nothing verified, staged or installed. The .so string check (new code in the APK) is NOT done.
-- Resume point: branch feat/upscaler-refresh 44f338f1 pushed, CI green; nothing on the device; next = download (or user picks
-  another way) -> check digest + strings in libvulkan_renderer.so / libbannerwayland.so -> stage in /sdcard/Download -> ask.
+- 14:50 EST user: "can you rebuild this branch from main and it's new merged work, then redownload and install when done? use
+  multiple connections for download also please". Backup refs/backup/20261124/upscaler-refresh-before-rebase = bfa71c42 (local +
+  remote). Rebased onto main f05120aa (layer family updates + Wine/Proton lists merges); only PROGRESS_LOG conflicted (first
+  commit; main's log kept whole, this entry on top); cpp/shader tree identical to bfa71c42; force-with-lease pushed
+  -> head 099c21fd (shaders ec80abb3, renderers 03ea3d27). CI build-artifacts 45475192285 dispatched 14:54 EST, headSha 099c21fd
+  == pushed. aria2 1.37.0 installed in the container (apt) for multi-connection download.
+- Resume point: CI 45475192285 -> aria2 download pubg artifact -> digest + .so strings -> stage
+  /sdcard/Download/Bannerlator-upscaler-refresh-099c21fd-pubg.apk (sha host == device) -> install on the FIT (user asked in
+  the 14:50 message) -> verify installed base.apk sha. After install: A/B prop debug.bannerlator.upscale.shaders (old / new).
 
 ## 2026-11-24 14:20–14:55 EST — Layer family updates + Wine/Proton list cleanup: combined, installed, MERGED to main (main 32282c39; NOT device-tested)
 - Why: user "keep valve 11.0-2 to 11.0-3 update, make one combined app", "install it when it's done", then "merge to main".

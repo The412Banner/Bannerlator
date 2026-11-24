@@ -103,7 +103,11 @@
 - User: "yes add it to the wrench tab tiles too". Built 2fd4cf96: XServerDrawerState.gameCoreMask (set by updateHudGameCores, now
   also without a HUD); LabTmCoreStrip + Classic TmCoreStrip tiles of other cores at alpha 0.35. CI 45309522279 GREEN (headSha
   2fd4cf96) 4/4. STAGED 21:1x EST (signer a40da80a): FIT + Elite `/sdcard/Download/Bannerlator-cpu-topology-2fd4cf96-pubg.apk`
-  sha256 843b42af…, Duo `…-2fd4cf96-standard.apk` 686fd437… (host == device). User: "yes install it on all three" -> INSTALLED 21:43:28 Duo / 21:43:30 FIT / 21:43:36 Elite EST, base.apk == staged; old a2602717 APKs deleted. Tiles NOT device-tested yet (user to try).
+  sha256 843b42af…, Duo `…-2fd4cf96-standard.apk` 686fd437… (host == device). User: "yes install it on all three" -> INSTALLED 21:43:28 Duo / 21:43:30 FIT / 21:43:36 Elite EST, base.apk == staged; old a2602717 APKs deleted.
+- 21:46/21:47 EST user screenshots (FIT, DiRT, cores 2-7): wrench tab Task Manager tiles C0/C1 dimmed, C2-C7 normal; Lab Performance
+  page shows "6 of 8 cores (2-7) · Next launch · Saved for this game" + Change, and "Sync CPU topology" (on) · Next launch · Saved for
+  this game; HUD C0/C1 grey. => HUD grey, tile dimming and in-game rows DEVICE-PROVEN (visual). Not exercised yet: the in-game Change
+  picker saving a new pick, Classic in-game page. Branch feat/cpu-topology 2fd4cf96 ready for the user's merge decision.
 - NOT tested yet: the switch on in a real game (WINE_CPU_TOPOLOGY in the wine process env, Windows CPU count), FIT/Elite screens
   (user has them), Fold. Elite A/B after that.
 - Next: CI green -> stage standard (Duo) + pubg (FIT) APKs, ask before install, check pickers on FIT/Elite/Duo, check

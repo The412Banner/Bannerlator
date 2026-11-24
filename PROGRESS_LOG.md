@@ -1,5 +1,23 @@
 # Star-Compose — Progress Log
 
+## 2026-11-24 13:10 EST — Upscaler refresh: lighter math, cursor after the upscale, CAS from AMD's file (`feat/upscaler-refresh`, IN PROGRESS, NOT built)
+- Why: Discord question 11-24 (is NIS the limit). Research 11-24 (main 48b4bafb): no newer SPATIAL upscaler exists upstream (all new ones
+  since mid-2025 = temporal: SGSR 2, Adreno Neural Fusion, Arm ASR/NSS, FSR 4); our SGSR (both variants, upstream d926f074 2025-10-16),
+  FSR1, NIS 1.0.3 are current. Found: (1) all six upscaler shaders (sgsr, sgsr_quality, fsr_easu, fsr_rcas, nis, cas) are fp32 only,
+  while Qualcomm's SGSR reference is mediump and AMD/NVIDIA ship fp16 paths; compositor default driver = system Qualcomm.
+  (2) X11 renderer composites the cursor INTO the game-res image before the upscale (soft cursor below native) and every cursor move
+  reruns composite + upscale + effects even with no new game frame. (3) cas.frag is a port of the GL FSREffect shader, not ffx_cas.h.
+  User 11-24 ~13:05 EST: "honestly I'd like all 3 on a new branch off main to test".
+- Plan (branch off main 29171b7a, worktree /root/src/Bannerlator-wt/upscaler-refresh):
+  1. GPU timing of the upscale/effects passes in the log (timestamp queries), so before/after is measured, not guessed.
+  2. CAS re-ported from AMD FidelityFX-CAS v1.0.2 ffx_cas.h (MIT, notice kept), sharpen-only path.
+  3. Half-precision (mediump/RelaxedPrecision) variants of SGSR, SGSR HQ, EASU, RCAS, CAS, NIS for colour/weight math; coordinates
+     stay full precision. Both variants built in; a switch picks one so A/B needs no reinstall.
+  4. X11: cursor drawn after the upscale at screen size (same on-screen size as before, sharper); cursor-only moves reuse the last
+     upscaled picture instead of rerunning the chain.
+- Test plan: GPU ms per pass fp32 vs fp16 (Elite + FIT), screenshot diff fp32 vs fp16 on a paused scene, mouse-driven game for the
+  cursor, logcat FATAL check. Nothing merged/released without the user's go.
+
 ## 2026-11-24 14:20–14:55 EST — Layer family updates + Wine/Proton list cleanup: combined, installed, MERGED to main (main 32282c39; NOT device-tested)
 - Why: user "keep valve 11.0-2 to 11.0-3 update, make one combined app", "install it when it's done", then "merge to main".
 - Combined branch feat/layer-family-and-list 32282c39 = main dd64e653 + feat/layer-family-updates 767f41a7 (code cc08bb0a)

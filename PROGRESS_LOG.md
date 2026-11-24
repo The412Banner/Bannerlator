@@ -1,5 +1,20 @@
 # Star-Compose — Progress Log
 
+## 2026-11-24 15:50 EST — NIS rewrite: luma prepass + gathers (`feat/nis-rewrite`, IN PROGRESS, NOT built)
+- Why: upaio-1124 (FIT, X11 Vulkan, dx11 cube) measured NIS at ~5.0 ms GPU per composited frame (old and half shaders alike) and
+  AIO 2894 -> ~765 fps (-74 %). nis.frag is a single-pass fragment port of NVIDIA's LDS compute NVScaler: every output pixel
+  fetches its 6x6 luma support (36 textureLod + 1 colour tap, getY on each) and recomputes 4 edge maps; at 1920x1080 that is
+  ~77 M fetches per frame. User 15:45 EST: "merge to main then try rewriting nis on a new branch"; asked "do you know how to
+  rewrite it to be better or is there already a way" -> told: (A) NVIDIA's own compute NIS_Scaler.h (MIT, GLSL; gamescope ships
+  it as cs_nis.comp / cs_nis_fp16.comp) or (B) keep the fragment design with a luma prepass + textureGather. Starting with B.
+- Plan B (branch off main a6b1be08, worktree /root/src/Bannerlator-wt/nis-rewrite):
+  1. nis_luma.frag: game-res prepass, rgb = input, a = luma (NIS getY weights) into a new game-res target.
+  2. nis2.frag: same NVScaler maths as nis.frag, but the 6x6 luma support = 9 textureGather(.., 3) on that target (alpha),
+     colour tap from its rgb; half build only (new shader set). Old set keeps nis.frag (A/B via debug.bannerlator.upscale.shaders).
+  3. X11 VulkanRendererContext + Wayland effects chain: prepass + pass for mode 7 in the half set.
+  4. Check: offline CPU comparison of 8-bit-alpha luma vs float luma on a real frame; AIO A/B on the FIT like upaio-1124.
+- Main state: upscaler refresh merged (16595ed8), main CI 45483445549 running; FIT has 099c21fd (same code).
+
 ## 2026-11-24 13:10–15:45 EST — Upscaler refresh: lighter math, cursor after the upscale, CAS from AMD's file (`feat/upscaler-refresh`, MERGED main 16595ed8, AIO-tested FIT)
 - Why: Discord question 11-24 (is NIS the limit). Research 11-24 (main 48b4bafb): no newer SPATIAL upscaler exists upstream (all new ones
   since mid-2025 = temporal: SGSR 2, Adreno Neural Fusion, Arm ASR/NSS, FSR 4); our SGSR (both variants, upstream d926f074 2025-10-16),

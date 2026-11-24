@@ -14,6 +14,13 @@
 - Duo: main a884ad61 standard (CI 45290962010, 4/4 green) staged `/sdcard/Download/Bannerlator-main-a884ad61.apk` sha256 2b0b7e9f…
   (host == Duo), INSTALLED 19:06:10 EST (user: "update the duo to latest bannerlator"), base.apk 2b0b7e9f… == staged, vc108 3.2.1.
   Duo display 0 had a Retroid FOTA "NoticeActivity" on top (left alone). Next: open BL on the Duo -> device info screenshot.
+- Duo device info DONE 19:07–19:11 EST: Duo runs Classic (device info is Lab-only) -> backed up shared_prefs/winlator_theme.xml
+  (sha 22b57588…, copies /data/local/tmp/winlator_theme.xml.bak-20261123 + /sdcard/Download/Bannerlator-backup/duo-winlator_theme-
+  20261123.xml), set ui_style=deck + simple_home=true, opened Lab -> tapped "Retroid Pocket Duo" -> pop-up. Shows Name "Snapdragon 8
+  Elite family" (WRONG), Model CQ7790S, Maker Moorechip, platform/board sun, SoC id 732, Adreno 722; CPU 3 x cores 0-2 0.44–1.84 GHz,
+  4 x cores 3-6 0.48–2.40, 1 x core 7 0.48–2.80 (= sysfs). Restored the file (sha == backup), Classic verified by screenshot, Termux back
+  in front, crash buffer since 19:00 = only Magisk content-notify (ROM quirk), no BL crash. Screens: FIT /sdcard/Download/Bannerlator-Duo-
+  deviceinfo-{1,2}-20261123.png.
 - RESUME: worktree /root/src/Bannerlator-wt/cpu-topology; if the session dies during the Duo step: nothing running on the Duo besides
   BL; bring Termux back on the Duo (am start com.termux/.app.TermuxActivity) and send peers "done".
 

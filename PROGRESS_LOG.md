@@ -1,5 +1,19 @@
 # Star-Compose — Progress Log
 
+## 2026-11-24 00:00–04:25 EST — Overnight Wine v17 benchmarks on the round-3 APK (`feat/upstream-round-3` app; layers on The412Banner/proton-wine staging/*/v17; NOT released)
+- Why: user 11-23 23:36 EST: test the new Wine builds on the new APK overnight (AIO per API + DiRT Showdown benchmark), fix what looks wrong.
+- Device: Pocket FIT, AC power, fan max. App: round-3 APK a0037a2f installed 01:21 EST (user yes 23:36). Test containers xuser-11..15 =
+  copies of container 1; harness /sdcard/Download/perf-harness (bench.sh, runset.sh, swlayer.sh, instlayer.sh, report.py).
+- v16 -> v17 (AIO avg fps, 2 passes; DiRT av fps): P10 10.0-4 = noise (-2..+2 %, DiRT 109.8 = 109.8); GE 10.0-34 +2..+14 % (run order,
+  not claimed); DD 12.8 +4..+18 % on 7 APIs, DiRT 85.8 -> 111.3; 11.0-2 +10..+18 % on 7 APIs, DiRT 109.2 -> 113.1. 0 FATAL except the
+  pre-existing 11.0-2 assert virtual.c:1952 at DiRT force-stop (v16 too). Pictures valid (piccheck 19/19 per line).
+- DX7 regression on the Wine 11 lines only: DD 12.8 2586 -> 1471, 11.0-2 2785 -> 1459. Cause PROVEN = GameNative #119 Sleep(0) throttle
+  (WINE_SLEEP0_THROTTLE=0: 11.0-2 2775/2789, DD 2834). AIO DX7 yields once per frame at ~0.36 ms/frame < the 2 ms reset window -> run never
+  resets -> +0.25 ms nap per frame (~1460 fps). DiRT (9 ms frames) unaffected (111.3 on vs 108.3 off).
+- Found + fixed in DD 12.8 / 11.0-2 / GE 11-14 v17: userspace ntsync closes its alert index as an fd at thread exit (likely the SteamLite
+  sign-in fdsan hang; fix builds f435693d / 5bfaf644 / 570b71f5; hang itself not re-tested). P10/GE10 lack the ntsync patch.
+- 04:24 EST (user): run GE 11-14 test, tune the throttle reset, finish the morning items. Resume point: memory bannerlator-overnight-1124.
+
 ## 2026-11-23 23:30–24:00 EST — Upstream round 3: Steam launch entries, download-done notice, per-game in-game FG, SteamLite v10 (`feat/upstream-round-3`, CI GREEN, APK STAGED, NOT device-tested)
 - Why: user approved "step 3" (11-23 ~23:20 EST): build the new BL items overnight on ONE branch, stage a test APK for the morning.
   Branch off origin/main 48b4bafb, worktree /root/src/Bannerlator-wt/upstream-round-3.

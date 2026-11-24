@@ -1,5 +1,16 @@
 # Star-Compose — Progress Log
 
+## 2026-11-24 11:30–11:45 EST — Idle-thread throttle switches on the device + Lab help title fix (feat/idle-throttle-toggles, row DEVICE-VISIBLE, fix CI running)
+- Installed 5a91cfa4 pubg APK on the Pocket FIT 11:29 EST (user yes; installed base.apk sha256 6f0dc1d1 == staged). User: "it's there now";
+  screenshots 11:33: Lab game settings (DiRT Showdown) Advanced -> Idle-thread throttle pop-up with 8 switches (DirectX 7 off, rest on),
+  "?" and close shown. Launch line + Wine log with this app NOT yet checked.
+- User found the help title shown twice ("?" note: heading + the help text's own bold title line). Fix 45ee683a: LabNote drops a first
+  line equal to its heading (labNoteBody); applies to every Lab note built from a help string. CI build-artifacts 45439470788 running.
+- Wine side (The412Banner/proton-wine staging/*/v17): WINE_SLEEP0_THROTTLE_SKIP default dx7, graphics DLLs noted at image map time
+  (11.0-2 5cad2d70, DD 12.8 c3bd0d3f, GE 11-14 db1ea2c2, 11.0-3 ffdd0555): AIO DirectDraw at full speed on all four (2655-2900 fps,
+  v16 2785), Wine log "Sleep(0) throttle off in this process: DirectX 7", SKIP=none caps it again (2472) - DEVICE-PROVEN on the FIT.
+- Lesson: I ran `find / -maxdepth 6` under proot at ~09:40 EST (HARD rule: never a filesystem-wide find). Search known dirs only.
+
 ## 2026-11-24 09:36–11:32 EST — Per-API idle-thread throttle switches (`feat/idle-throttle-toggles`, CI GREEN, APK STAGED, NOT device-tested)
 - Why: user 11-24 ~09:20 EST: "can we also make it a menu popup with per API toggles in advanced tab of game shortcut settings and
   container settings? ... also include a ? button to explain what it is and does". Wine layers v17 (The412Banner/proton-wine) carry

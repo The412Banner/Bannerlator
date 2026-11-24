@@ -228,6 +228,12 @@ object XServerDrawerState {
     private val _frameGenEngine = MutableStateFlow("off")
     val frameGenEngine: StateFlow<String> = _frameGenEngine
 
+    // Engines the in-game menu can switch to while the game runs (frameGenEngine ids, core.FgEngineSwitch).
+    // Empty = the engine stays as launched this session.
+    private val _fgEngineChoices = MutableStateFlow<List<String>>(emptyList())
+    val fgEngineChoices: StateFlow<List<String>> = _fgEngineChoices
+    fun setFgEngineChoices(v: List<String>) { _fgEngineChoices.value = v }
+
     // ── Live Present Mode selector (Graphics tab, Vulkan renderer only) ──
     // presentMode = the EFFECTIVE/displayed mode ("fifo"/"mailbox"/"immediate"). While frame gen is
     // multiplying the activity forces "mailbox" (effectivePresentMode()) and sets presentModeLocked =
@@ -582,6 +588,8 @@ object XServerDrawerState {
     // Fired after any bionic-fg control changes; the handler reads the StateFlows above and
     // rewrites conf.toml (hot-reload) + persists. Runnable avoids Java void-lambda mismatch.
     @JvmField var onBionicFgConfigChange: Runnable? = null
+    // An engine picked from fgEngineChoices; the activity switches the running engine and saves it for the game.
+    @JvmField var onFgEngineSelected: java.util.function.Consumer<String>? = null
     // FPS limiter is a standalone host-side present pacer, independent of frame gen. Fired when the
     // in-game Limit FPS toggle/slider changes; the activity applies it to the host renderer live.
     @JvmField var onFpsLimitChange: Runnable? = null
@@ -827,6 +835,7 @@ object XServerDrawerState {
         _frameGenModel.value = 0
         _frameGenPerfPreset.value = 1
         _frameGenEngine.value = "off"
+        _fgEngineChoices.value = emptyList()
         _presentMode.value = "fifo"
         _presentModeLocked.value = false
         _nativeFgLocks.value = false
@@ -881,7 +890,7 @@ object XServerDrawerState {
         onLinuxSteamGuide = null; onLinuxSteamQam = null; onLinuxOption = null; onLinuxTurnipSysmem = null; onLinuxTouch = null
         onLinuxComponentsRefresh = null; onLinuxComponentSwap = null
         onWaylandHdrOutputToggle = null
-        onBionicFgConfigChange = null; onFpsLimitChange = null
+        onBionicFgConfigChange = null; onFgEngineSelected = null; onFpsLimitChange = null
         onPresentModeChange = null
         onMatchRefreshChange = null
         onManualRefreshChange = null

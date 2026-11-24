@@ -39,15 +39,25 @@ float AMax3F1(float a, float b, float c) { return max(a, max(b, c)); }
 #define FSR_RCAS_LIMIT (0.25 - (1.0 / 16.0))
 // ---------------------------------------------------------------------------
 
-layout(binding = 0) uniform sampler2D InputTexture; // EASU output, output res
+// BL_HALF is set for the *_half_frag.h build (gen_shaders.sh): colour and
+// weight maths in mediump (RelaxedPrecision, 16-bit on Adreno) as in AMD's
+// FSR_EASU_H / FSR_RCAS_H paths; positions and texture coordinates stay highp.
+#ifdef BL_HALF
+precision mediump float;
+#define BL_MP mediump
+#else
+#define BL_MP
+#endif
+
+layout(binding = 0) uniform BL_MP sampler2D InputTexture; // EASU output, output res
 
 layout(push_constant) uniform PC {
-    vec4  ndc;        // quad NDC rect, consumed by window.vert (offset 0)
+    highp vec4  ndc;        // quad NDC rect, consumed by window.vert (offset 0)
     uvec4 con;        // con.x = bit-packed sharpness (FsrRcasCon)
-    vec2  outputSize; // pass output size in pixels
+    highp vec2  outputSize; // pass output size in pixels
 } pc;
 
-layout(location = 0) in  vec2 fragTexCoord;
+layout(location = 0) in  highp vec2 fragTexCoord;
 layout(location = 0) out vec4 outColor;
 
 AF4 FsrRcasLoadF(ASU2 p) {

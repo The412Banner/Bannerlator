@@ -31,7 +31,11 @@
   taskAffinityMask after Prefer big cores, user env wins, log "Sync CPU topology: …"), Lab CoresControl (chip, All/Big cores, titled
   groups, tap title = group), row summary "all 8 cores"/"6 of 8 cores (2-7)", Classic CPUListView (groups, CRLF kept), Task Manager
   tiles (Core N + short name/clock), device info CPU rows by tier with names, config export keys.
-- CI: build-artifacts 45296505200 (headSha 5013a78b asserted), running.
+- CI GREEN: build-artifacts 45296505200 (headSha 5013a78b asserted) 4/4 success; non-success steps = skipped cache/main-only only.
+- STAGED 19:3x EST (signer a40da80a… == installed testkey): FIT + Elite `/sdcard/Download/Bannerlator-cpu-topology-5013a78b-pubg.apk`
+  sha256 bfd4f489… (host == sdcard == device); Duo `/sdcard/Download/Bannerlator-cpu-topology-5013a78b-standard.apk` sha256 748cad86….
+  Before: FIT pubg = community-catalog 5b176b5d (= main a884ad61 code, root-19), Elite pubg (11-22 19:06), Duo standard main a884ad61.
+  User: "yes install it on all three" + "delete old apk files on each when done also". Installing now.
 - Next: CI green -> stage standard (Duo) + pubg (FIT) APKs, ask before install, check pickers on FIT/Elite/Duo, check
   WINE_CPU_TOPOLOGY in a game's wine process env + Windows CPU count, then an Elite A/B.
 - RESUME: worktree /root/src/Bannerlator-wt/cpu-topology; Duo is on main a884ad61 Classic (restored), Termux in front.

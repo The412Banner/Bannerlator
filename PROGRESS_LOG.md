@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-24 13:29–13:58 EST — Wine / Proton lists split into Proton | Wine tabs, grouped, one row per layer (feat/layer-list-cleanup, CI RUNNING, NOT device-tested)
+## 2026-11-24 13:29–14:36 EST — Wine / Proton lists split into Proton | Wine tabs, grouped, one row per layer (feat/layer-list-cleanup, CI GREEN, APK STAGED, NOT device-tested)
 - Why: user 11-24 ~14:30-14:50 EST (relayed): "clean up the wine/proton list so they are split wine and proton, and organized better
   and listed simple"; "do all of them, recommend DroidDeck 12.8, but give me a html preview first"; on the preview: "good, portrait is
   more touch screen, landscape controller nav like the rest of the app and menus". Spec = the approved preview
@@ -39,8 +39,16 @@
 - Tests: LayerListTest 11 + LayerLineTest 13 (kotlinc 2.2.20 -language-version 2.0 + JUnit 4.13.2, local): OK (24). Catalog rows in
   the test = live contents.json Wine/Proton rows (winlator-contents 5a77857d); installed = the FIT's 12 profile.json descriptions.
   Mutation check: installed match without the family check -> the same-verCode clash test fails; Wine newest 5 -> Wine test fails.
-- CI: build-artifacts 45464964779 dispatched 13:56 EST, headSha 3d46138f == pushed. RESUME: `gh run view 45464964779 -R
-  The412Banner/Bannerlator --json conclusion,jobs`; then stage pubg as /sdcard/Download/Bannerlator-layer-list-<sha8>-pubg.apk.
+- CI: build-artifacts 45464964779 (dispatched 13:56 EST, headSha 3d46138f == pushed): standard / ludashi / antutu / pubg all
+  success (pubg BUILD SUCCESSFUL 7m40s); no compiler warnings from the new or changed lines (only old Icons.Filled.Help ones).
+- Staged (NOT installed): /sdcard/Download/Bannerlator-layer-list-3d46138f-pubg.apk, sha256 c3e8ff91...b942c11fd host == /sdcard
+  (also read via root), signer SHA-256 A4:0D:A8:0A... == Bannerlator-idle-throttle-45ee683a-pubg.apk, com.tencent.ig vc108 3.2.1;
+  dex has LayerList / LabLayerPickerKt / LayerListRowsKt / "Get Wine / Proton".
+- Device test recipe: portrait (touch): Lab Containers > a container (or New container) > Wine / Proton version row -> grouped
+  picker, Current tag, tabs, "?", ✕, long press = Info/Remove; "+ Download from source" -> Get Wine / Proton: Proton tab groups,
+  x86_64 switch, Older builds · 10, Wine tab (17 rows: 4 + Older builds · 13). Landscape (controller): same; focus on first row
+  (picker: current layer), L1/R1 tabs, Y switch, A get/pick, B close, hints tappable. Classic: container editor Wine Version field
+  + its gear. Check logcat for FATAL after each.
 - Open: device test (portrait touch + landscape controller), user to add "recommended": true to the DroidDeck-Proton 11.0-12.8 v17
   rows after merge; installed Wine profile versionName format not seen on a device (Installed tag on Wine rows unproven).
 

@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-24 15:50 EST — NIS rewrite: luma prepass + gathers (`feat/nis-rewrite`, IN PROGRESS, NOT built)
+## 2026-11-24 15:50–15:56 EST — NIS rewrite: luma prepass + gathers (`feat/nis-rewrite`, BUILT 8530c88e, CI running, NOT device-tested in BL)
 - Why: upaio-1124 (FIT, X11 Vulkan, dx11 cube) measured NIS at ~5.0 ms GPU per composited frame (old and half shaders alike) and
   AIO 2894 -> ~765 fps (-74 %). nis.frag is a single-pass fragment port of NVIDIA's LDS compute NVScaler: every output pixel
   fetches its 6x6 luma support (36 textureLod + 1 colour tap, getY on each) and recomputes 4 edge maps; at 1920x1080 that is
@@ -13,7 +13,22 @@
      colour tap from its rgb; half build only (new shader set). Old set keeps nis.frag (A/B via debug.bannerlator.upscale.shaders).
   3. X11 VulkanRendererContext + Wayland effects chain: prepass + pass for mode 7 in the half set.
   4. Check: offline CPU comparison of 8-bit-alpha luma vs float luma on a real frame; AIO A/B on the FIT like upaio-1124.
-- Main state: upscaler refresh merged (16595ed8), main CI 45483445549 running; FIT has 099c21fd (same code).
+- Main state: upscaler refresh merged (16595ed8), main CI 45483445549 GREEN 4/4 (15:55 EST); FIT has 099c21fd (same code).
+- Built 8530c88e (one commit, buildable): nis_luma.frag + nis2.frag (half only; gen_shaders.sh HALF/HALF_ONLY), nis_half_frag.h
+  dropped (unused now); X11: nisLumaPipeline (offscreenRenderPass) + nisSrc target (ensureNisSrc, game res, destroyed in
+  teardown), prepass before nis2 in recordUpscalePasses, log "upscale shaders: NIS = luma prepass + gather pass"; Wayland:
+  P_NIS_LUMA + g_nissrc (scene size) + prepass. Old set unchanged. Syntax-only compile 0 errors / 0 warnings.
+- Shader check ON THE DEVICE DRIVER (Adreno 750): own harness (scratchpad nischeck/nis_check.cpp; Android build linked to
+  /system/lib64 libvulkan/libc, run as root from /data/local/tmp/nischeck; binaries + inputs in
+  /sdcard/Download/perf-harness/nischeck): 1280x720 -> 1920x1080, sharpness 0.75, vs nis.frag fp32:
+  real frame (AIO screenshot) nis2 half PSNR 59.8 dB, mean 0.029, >8 levels 0.007 %; synthetic edge chart 41.5 dB, mean 0.30,
+  >8 levels 0.68 %. Split: mediump-only nis.frag 63.9 / 40.5 dB; gathers + 8-bit luma fp32 60.2 / 41.5 dB -> outliers = NIS
+  edge-direction flips on 1-px edges (diff image: only along the lines), not a gather-order error.
+  (lavapipe on the host failed first: LLVM 21 targets the X4/A720/A520 as SVE2 cores, the kernel has SVE off -> SIGILL; a fake
+  cpuinfo/midr shim fixed clang's detection but not llvmpipe's; dropped in favour of the device test.)
+- CI build-artifacts 45485822464 dispatched 15:55 EST, headSha 8530c88e == pushed.
+- Resume point: CI -> aria2 download pubg -> verify (digest, .so strings) -> stage /sdcard/Download/Bannerlator-nis-rewrite-
+  8530c88e-pubg.apk -> ASK the user before install -> AIO A/B NIS old/new with upscale-ab.sh (stream capture from the start).
 
 ## 2026-11-24 13:10–15:45 EST — Upscaler refresh: lighter math, cursor after the upscale, CAS from AMD's file (`feat/upscaler-refresh`, MERGED main 16595ed8, AIO-tested FIT)
 - Why: Discord question 11-24 (is NIS the limit). Research 11-24 (main 48b4bafb): no newer SPATIAL upscaler exists upstream (all new ones

@@ -328,11 +328,8 @@ object SteamDepotDownloader {
         debugLog: Boolean = false,
         installRoot: String? = null,
         verify: Boolean = false,
-    ): DownloadControl {
-        // The user is installing this game on purpose again: library import may pick it up once it is done.
-        SteamLibraryImport.clearIgnore(ctx, appId)
-        return buildControl(appId, ctx, speedTier, debugLog, isResume = false, installRoot = installRoot, verify = verify)
-    }
+    ): DownloadControl =
+        buildControl(appId, ctx, speedTier, debugLog, isResume = false, installRoot = installRoot, verify = verify)
 
     /**
      * Resume a previously paused install. Keeps the existing DB row (bytes intact).

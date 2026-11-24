@@ -392,6 +392,25 @@ object SteamPrefs {
         prefs.edit().putBoolean(K_OFFLINE_PRESENCE, v).apply()
     }
 
+    // ── Show games removed from Bannerlator again in Downloads (default OFF) ──
+    // Off: a game the user removed (SteamLibraryImport's ignore list) stays hidden from the found scan. On: the
+    // ignore is not honoured there, so such a game still installed by another Steam client shows as found again.
+    // The ignore list itself is kept either way. A preference, not a credential — clear() leaves it.
+
+    private const val K_SHOW_UNINSTALLED_FOUND = "steam_show_uninstalled_found"
+
+    /** True if games the user removed from Bannerlator show in Downloads as found again. DEFAULT FALSE. */
+    fun isShowUninstalledFoundEnabled(ctx: Context): Boolean {
+        init(ctx)
+        return prefs.getBoolean(K_SHOW_UNINSTALLED_FOUND, false)
+    }
+
+    /** Enable/disable showing removed games in Downloads as found again. */
+    fun setShowUninstalledFoundEnabled(ctx: Context, v: Boolean) {
+        init(ctx)
+        prefs.edit().putBoolean(K_SHOW_UNINSTALLED_FOUND, v).apply()
+    }
+
     // ── Steam Cloud support cache (per-app UFS verdict) ───────────────────────
     // SteamCloudSaveManager.hasCloudSupport() hits PICS to learn whether an app has a UFS cloud store.
     // That verdict is stable per app, so cache the DEFINITIVE true/false here (survives process death)

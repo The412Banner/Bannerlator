@@ -18,6 +18,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  * no existing file is modified (the only file written is the app's own build stamp, and only when the
  * folder has none, so the update check has something to compare). Cheap by construction: the app id comes
  * from the manifest's file name, so only manifests that can matter are opened. Runs off the main thread.
+ *
+ * The games it marks installed reach Downloads through [SteamLibraryFound]'s records, not from this object.
  */
 object SteamLibraryImport {
     private const val TAG = "SteamLibraryImport"
@@ -40,13 +42,18 @@ object SteamLibraryImport {
     @JvmStatic
     fun ignore(ctx: Context, appId: Int) = editIgnored(ctx) { it.add(appId.toString()) }
 
-    /** Lets the import see [appId] again (a fresh install of it was started). Never throws. */
+    /**
+     * Clears the ignore on [appId], so the import and the found scan may record it again. The ignore otherwise stops the found
+     * scan from re-recording the game. Cleared only by a deliberate user install (the install button in the game page, or
+     * adopting a folder in [SteamFolderAdopt]), never by an update or verify. Never throws.
+     */
     @JvmStatic
     fun clearIgnore(ctx: Context, appId: Int) = editIgnored(ctx) { it.remove(appId.toString()) }
 
     /**
-     * True when [appId] was marked installed by this import — its files are another Steam client's, not a
-     * download made here — so uninstalling it must leave the folder and the appmanifest alone. Never throws.
+     * True when [appId]'s files came from elsewhere — this import marked it installed, or the user brought the folder
+     * ([SteamFolderAdopt]) — so this app never downloaded them. Uninstall uses it (through [SteamLibraryFound.keepsClientFiles])
+     * to tell a library game from one this app downloaded; a library game's folder and manifest are kept. Never throws.
      */
     @JvmStatic
     fun isImported(ctx: Context, appId: Int): Boolean = idSet(ctx, IMPORTED_KEY).contains(appId.toString())
@@ -60,13 +67,24 @@ object SteamLibraryImport {
 
     /**
      * Uninstall bookkeeping for an imported game: forgets that it was imported and keeps the import from
-     * marking it installed again (the folder stays on disk). The caller still marks it uninstalled. Never throws.
+     * marking it installed again, so a folder an uninstall left on disk does not come back as an installed
+     * game. The caller still marks it uninstalled. Never throws.
      */
     @JvmStatic
     fun releaseImported(ctx: Context, appId: Int) {
         editSet(ctx, IMPORTED_KEY) { it.remove(appId.toString()) }
         ignore(ctx, appId)
     }
+
+    /**
+     * True when the user removed this game from Bannerlator: uninstall keeps another client's files, so its folder and manifest
+     * stay on disk. The found scan and seeding skip an ignored app; only a fresh install
+     * ([SteamDepotDownloader.installApp] -> [clearIgnore]) clears it. With the "show removed games again" setting on
+     * ([SteamPrefs.isShowUninstalledFoundEnabled]) this is false for every app, so the found scan and seeding show them;
+     * the ignore list itself is kept, and the import ([importInstalled]) still reads it directly. Never throws.
+     */
+    fun isIgnored(ctx: Context, appId: Int): Boolean =
+        !SteamPrefs.isShowUninstalledFoundEnabled(ctx) && ignoredIds(ctx).contains(appId.toString())
 
     private fun ignoredIds(ctx: Context): Set<String> = idSet(ctx, IGNORE_KEY)
 
@@ -156,6 +174,9 @@ object SteamLibraryImport {
         }
         if (imported > 0) {
             try { SteamRepository.getInstance().invalidateGameCache() } catch (_: Throwable) {}
+            // The DB's installed set has changed: refresh Downloads from it now, rather than at the next process start. The imported
+            // games themselves stay out of Downloads — a game found in a library folder is [SteamLibraryFound]'s card.
+            SteamLibrarySync.seedInstalled(app)
             Log.i(TAG, "marked $imported game(s) found in the libraries as installed")
         }
         return imported

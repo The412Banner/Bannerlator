@@ -34,6 +34,7 @@ import com.winlator.star.perf.PerformanceSettings
 import com.winlator.star.perf.RootManager
 import com.winlator.star.sound.UiSoundPacks
 import com.winlator.star.store.SteamFriendsStore
+import com.winlator.star.store.SteamLibraryFound
 import com.winlator.star.store.SteamPrefs
 import com.winlator.star.ui.components.GlobalControllerPrefs
 import com.winlator.star.ui.deck.settings.SettingLevel.ADVANCED
@@ -296,6 +297,19 @@ internal object AppSettingsRegistry {
                     if (name.isEmpty() || name == MidiManager.DEFAULT_SF2_FILE || File(MidiManager.getSoundFontDir(c), name).isFile) name else ""
                 },
                 set = { c, v -> prefs(c).edit().putString(MidiManager.PREF_DEFAULT_SOUND_FONT, v).apply() },
+            ),
+        ),
+        app(
+            "app.library.showUninstalledFound", "app.library", T("Found games"), T("Show games uninstalled from Bannerlator again"), ADVANCED,
+            hint = T("When on, a game you removed from Bannerlator but that is still installed by another Steam client appears in Downloads again. Off by default."),
+            tech = "steam_show_uninstalled_found",
+            control = { Control.Toggle },
+            binding = AppBinding(
+                get = { c -> onOff(SteamPrefs.isShowUninstalledFoundEnabled(c)) },
+                set = { c, v ->
+                    SteamPrefs.setShowUninstalledFoundEnabled(c, v == "1")
+                    SteamLibraryFound.scanAsync(c)
+                },
             ),
         ),
 

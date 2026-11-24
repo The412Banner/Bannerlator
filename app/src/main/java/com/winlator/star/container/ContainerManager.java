@@ -16,9 +16,13 @@ import com.winlator.star.core.Callback;
 import com.winlator.star.core.FileUtils;
 import com.winlator.star.core.MSLink;
 import com.winlator.star.core.OnExtractFileListener;
+import com.winlator.star.core.StringUtils;
 import com.winlator.star.core.TarCompressorUtils;
 import com.winlator.star.core.WineInfo;
+import com.winlator.star.core.WinePath;
 import com.winlator.star.core.WineRegistryEditor;
+import com.winlator.star.store.SteamInstallPaths;
+import com.winlator.star.store.SteamLibraryFound;
 import com.winlator.star.xenvironment.ImageFs;
 
 import java.util.Arrays;
@@ -397,6 +401,9 @@ public class ContainerManager {
                         // shortcuts via winemenubuilder; those are not games — never auto-import them.
                         String base = fileName.substring(0, fileName.length() - 4);
                         if (VENDOR_CLIENT_LNK.contains(base)) continue;
+                        // A game installed by the Windows Steam client: it is listed in Downloads from the library records, and
+                        // its desktop shortcut would add a second, custom entry to the Home.
+                        if (isWindowsSteamGameEntry(container, file)) continue;
                         String filePath = file.getPath();
                         File desktopFile = new File(filePath.substring(0, filePath.lastIndexOf(".")) + ".desktop");
                         if (!desktopFile.exists()) {
@@ -411,6 +418,7 @@ public class ContainerManager {
                         // installs, and it rewrites them on every client start. Those are launchers,
                         // not games — keep them out of the Games grid.
                         if (isVendorClientDesktopEntry(file)) continue;
+                        if (isWindowsSteamGameEntry(container, file)) continue;
                         Shortcut shortcut = loadShortcutOrNull(container, file);
                         if (shortcut != null) shortcuts.add(shortcut);
                     }
@@ -474,6 +482,59 @@ public class ContainerManager {
             "ealauncher.exe", "eadesktop.exe", "eaapp.exe", "eabackgroundservice.exe", "eaapprecovery.exe",
             "eaerrorreporter.exe", "link2ea.exe", "origin.exe", "originwebhelperservice.exe",
             "upc.exe", "uplay.exe", "ubisoftconnect.exe", "ubisoftconnectinstaller.exe"));
+
+    /**
+     * True for a Windows Steam client's desktop shortcut to a game that Downloads already lists as a found install:
+     * the game would otherwise appear twice on the Home, once from this entry and once as the Downloads "found" card.
+     * The entry is hidden only when a current SteamLibraryFound record names its game folder: an untagged Add-EXE
+     * shortcut made before storeSource tagging, and a game in a library that is not configured, therefore stay —
+     * unless that folder is listed too. Anything whose target cannot be resolved stays. Steam's own client shortcut
+     * does not run from `steamapps/common` and is never hidden.
+     */
+    private boolean isWindowsSteamGameEntry(Container container, File desktopOrLnk) {
+        String name = desktopOrLnk.getName();
+        if (name.endsWith(".lnk")) {
+            try {
+                String target = MSLink.parseFilePath(desktopOrLnk);
+                if (target == null || target.isEmpty()) return false;
+                String lower = target.toLowerCase(java.util.Locale.ROOT);
+                if (!lower.contains("steamapps\\common\\") && !lower.contains("steamapps/common/")) return false;
+                File host = target.startsWith("/") ? new File(target) : WinePath.INSTANCE.resolveAndroidPath(container, target);
+                if (host == null) return false;
+                String installDir = SteamInstallPaths.installDirOf(host.getAbsolutePath());
+                if (installDir == null) return false;
+                return SteamLibraryFound.isFoundInstallDir(context, new File(installDir));
+            } catch (Exception e) {
+                return false;
+            }
+        }
+        try {
+            String text = FileUtils.readString(desktopOrLnk);
+            if (text == null) return false;
+            // The app's own shortcuts carry their store, which isVendorClientDesktopEntry also tests: they are never
+            // the client's copy.
+            if (text.contains("storeSource=") || text.contains("steamAppId=")) return false;
+            for (String line : text.split("\n")) {
+                String l = line.trim();
+                if (!l.startsWith("Exec=")) continue;
+                String exec = l.substring("Exec=".length());
+                // winemenubuilder prefixes the Windows path with its Wine command; keep only the path (and its args).
+                int wine = exec.lastIndexOf("wine ");
+                if (wine >= 0) exec = exec.substring(wine + "wine ".length());
+                // .desktop Exec lines escape each backslash: collapse them before looking at the path.
+                exec = StringUtils.unescape(exec).trim();
+                if (!exec.toLowerCase(java.util.Locale.ROOT).replace('\\', '/').contains("steamapps/common/")) continue;
+                File host = exec.startsWith("/") ? new File(exec) : WinePath.INSTANCE.resolveAndroidPath(container, exec);
+                if (host == null) continue;
+                String installDir = SteamInstallPaths.installDirOf(host.getAbsolutePath());
+                if (installDir == null) continue;
+                if (SteamLibraryFound.isFoundInstallDir(context, new File(installDir))) return true;
+            }
+        } catch (Exception e) {
+            return false;
+        }
+        return false;
+    }
 
     /**
      * True for a Desktop .desktop entry that a store client (EA Desktop / Origin / Ubisoft Connect) dropped

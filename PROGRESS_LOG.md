@@ -96,7 +96,10 @@
   CI 45306585039 GREEN (headSha a2602717) 4/4, no failed steps. STAGED 20:5x EST (signer a40da80a): FIT + Elite
   `/sdcard/Download/Bannerlator-cpu-topology-a2602717-pubg.apk` sha256 3dfd0156…, Duo `…-a2602717-standard.apk` 65a41528…
   (host == device). User: "yes install it on all three" -> INSTALLED 20:53:19 FIT / 20:53:20 Elite / 20:53:23 Duo EST, base.apk == staged;
-  old 54fc124d APKs deleted. NOT device-tested yet (HUD grey cores, in-game Game cores / Sync rows) — user to try.
+  old 54fc124d APKs deleted.
+- 20:56/20:58 EST user screenshots (FIT, DiRT, cores 2-7 picked): HUD C0/C1 greyed, C2-C7 normal = HUD grey DEVICE-PROVEN. Side menu
+  shown = wrench tab (Task Manager header core tiles, LabTmCoreStrip / Classic TmCoreStrip): tiles not greyed (not part of this
+  change). Game cores / Sync rows are on the Performance tab — not in the screenshots, not yet seen. Offered: grey those tiles too.
 - NOT tested yet: the switch on in a real game (WINE_CPU_TOPOLOGY in the wine process env, Windows CPU count), FIT/Elite screens
   (user has them), Fold. Elite A/B after that.
 - Next: CI green -> stage standard (Duo) + pubg (FIT) APKs, ask before install, check pickers on FIT/Elite/Duo, check

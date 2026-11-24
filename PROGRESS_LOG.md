@@ -40,7 +40,13 @@
 - CI: build-artifacts 45468124950 dispatched 14:14 EST, headSha 44f338f1 == pushed (ls-remote == local).
 - A/B on device (root): `rootsh 'setprop debug.bannerlator.upscale.shaders old'` (fp32) / `... new` (half), then restart the
   game; read `logcat -s Winlator_Renderer | grep -E "upscale (shaders|timing)"`.
-- Resume point: branch feat/upscaler-refresh 44f338f1 pushed; nothing installed; next = CI result -> stage APK -> ask user.
+- CI GREEN: build-artifacts 45468124950 (done 14:18 EST), headSha 44f338f1, 4/4 jobs success (antutu, standard, pubg, ludashi);
+  pubg job log: CMake/ninja native build ran (BUILD SUCCESSFUL in 1m 15s, Java/Kotlin from Gradle cache). Artifact
+  Bannerlator-upscaler-refresh-44f338f1-pubg id 14956511115, 597130473 B, digest sha256:e31fbb5f...
+- Download: gh api zip broke at 72 MB (connection reset); curl on the signed URL ran at ~20 MB/min; STOPPED by the user at
+  14:37 EST at 277 MB. Nothing verified, staged or installed. The .so string check (new code in the APK) is NOT done.
+- Resume point: branch feat/upscaler-refresh 44f338f1 pushed, CI green; nothing on the device; next = download (or user picks
+  another way) -> check digest + strings in libvulkan_renderer.so / libbannerwayland.so -> stage in /sdcard/Download -> ask.
 
 ## 2026-11-24 14:20–14:55 EST — Layer family updates + Wine/Proton list cleanup: combined, installed, MERGED to main (main 32282c39; NOT device-tested)
 - Why: user "keep valve 11.0-2 to 11.0-3 update, make one combined app", "install it when it's done", then "merge to main".

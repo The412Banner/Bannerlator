@@ -47,6 +47,10 @@
   Classic Edit Container > Advanced: grouped tiles with the same titles + Sync CPU topology switch. Nothing changed, editors left
   without saving, Termux back in front, crash buffer since 19:34 empty. Screens: FIT /sdcard/Download/Bannerlator-cpu-topology-
   Duo-{chip,cpu,picker,classic-picker}-20261123.png.
+- 19:42 EST user screenshot (FIT landscape): picker dialog taller than the screen, Done squeezed (4 clusters stacked, dialog only
+  ~300 dp wide because LabSheetDialog is content-sized 320–600 dp, screen ~480 dp tall). Fix 54fc124d: landscape = one line per
+  cluster (title left, pills right, weight 1:1, dialog fills 600 dp), chip name on the All/Big cores line, compact pills (Pill
+  compact=true: 13.5 sp, 12x6 dp padding), picker scrolls inside 72 % of screen height. Portrait unchanged. CI 45299712752 running.
 - NOT tested yet: the switch on in a real game (WINE_CPU_TOPOLOGY in the wine process env, Windows CPU count), FIT/Elite screens
   (user has them), Fold. Elite A/B after that.
 - Next: CI green -> stage standard (Duo) + pubg (FIT) APKs, ask before install, check pickers on FIT/Elite/Duo, check

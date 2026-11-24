@@ -1,5 +1,21 @@
 # Star-Compose — Progress Log
 
+## 2026-11-24 14:20–14:55 EST — Layer family updates + Wine/Proton list cleanup: combined, installed, MERGED to main (main 32282c39; NOT device-tested)
+- Why: user "keep valve 11.0-2 to 11.0-3 update, make one combined app", "install it when it's done", then "merge to main".
+- Combined branch feat/layer-family-and-list 32282c39 = main dd64e653 + feat/layer-family-updates 767f41a7 (code cc08bb0a)
+  + feat/layer-list-cleanup 0ac7c84d (code 3d46138f). LayerLine.kt + LayerLineTest.kt identical on both branches; only this log
+  conflicted (entries kept). Both branches' code fully present (per-file diff 0/0).
+- CI build-artifacts 45470728402 (headSha 32282c39) GREEN x4. APK /sdcard/Download/Bannerlator-layer-family-and-list-32282c39-pubg.apk
+  sha256 3cd975e4 (zip == GitHub artifact digest 4fac7a7b; host == device), signer a40da80a (same as installed), vc 108 / 3.2.1.
+  INSTALLED on the Pocket FIT 14:47 EST (pm Success, installed base.apk sha == staged, 0 FATAL). Not opened or tested on a device.
+- MERGED: main fast-forwarded dd64e653 -> 32282c39 (tree == installed build) on the user's word; backup
+  refs/backup/20261124/main-before-layer-family-and-list = dd64e653; no release workflow running; main CI 45474681626 started.
+- Proof level: compiled + CI green + installed; NOT device-tested (picker, download list, controller/touch, update offer).
+- Open: device test (recipe in the two entries below); catalog "recommended": true on the DroidDeck-Proton 11.0-12.8 v17 rows
+  (needs user go); Valve 11.0-3 rows get versionName only after a release with the family updater; feature branches kept.
+- Lessons: zsh `$C:refs/...` = modifier (:r) again - always `${C}:refs/...`; a pkill -f pattern matched my own shell again -
+  select by PID and command name.
+
 ## 2026-11-24 13:29–13:58 EST — Wine / Proton lists split into Proton | Wine tabs, grouped, one row per layer (feat/layer-list-cleanup, CI RUNNING, NOT device-tested)
 - Why: user 11-24 ~14:30-14:50 EST (relayed): "clean up the wine/proton list so they are split wine and proton, and organized better
   and listed simple"; "do all of them, recommend DroidDeck 12.8, but give me a html preview first"; on the preview: "good, portrait is

@@ -1,5 +1,34 @@
 # Star-Compose — Progress Log
 
+## 2026-11-23 23:30–24:00 EST — Upstream round 3: Steam launch entries, download-done notice, per-game in-game FG, SteamLite v10 (`feat/upstream-round-3`, BUILT, CI pending, NOT device-tested)
+- Why: user approved "step 3" (11-23 ~23:20 EST): build the new BL items overnight on ONE branch, stage a test APK for the morning.
+  Branch off origin/main 48b4bafb, worktree /root/src/Bannerlator-wt/upstream-round-3.
+- 1a3dbdd1 Steam launch entries (GameNative #2408 78f61ffe + #2427 40be44dc, Utkarsh Dalal, GPL-3.0): new store/SteamLaunchEntries.kt
+  reads app-info config/launch (prefs steam_launch_entries; read at shortcut add, at launch when none kept or >7 days old and Steam is
+  signed in (max 5 s), refreshed by the library sync for kept apps via processAppKv). getWineStartCommand (steamLaunchEntryArgs) puts
+  the entry's arguments right after the exe, before the user's args, for Goldberg / raw / Headless Steam launches only: Windows
+  entries (oslist windows/empty), installed branch (BetaKey; build stamp, else selected branch, else public), entry exe == shortcut
+  exe (slashes/case ignored; Cold Client loader -> the ini's game exe), skipped when the user's args already carry them. Exe never
+  changed. SteamLite/RealSteam (launchMode RealSteam or a plan), Windows Steam client, Xbox, other stores untouched. Steam detail page +
+  Downloads list Steam's launch exe first in the exe picker. Counter-Strike (app 10) = hl.exe -game cstrike.
+  SteamLaunchEntriesTest 17 tests: run locally with the cached Kotlin 2.3.21 compiler + stubs: OK (CI runs no unit tests).
+- 14398ae0 Download-finished notification (Ludashi 1462cca9, StevenMXZ, GPL-3.0): DownloadRegistry DOWNLOADING -> INSTALLED (any store,
+  Steam too) -> DownloadForegroundService.postFinished: own notification (game name / "Download complete", tap = Download Manager),
+  id per game, auto-cancel, skipped when notifications are off. Seeds, folder imports, cancelled paused updates don't post.
+- 57e1d48c Per-game in-game frame gen (Ludashi 49f53a2e, StevenMXZ, GPL-3.0): onBionicFgConfigChange saves through saveFgValue to the
+  shortcut (container session: container): frameGenMultiplier/FlowScale/Model/PerfPreset, lsfgPerformanceMode, fgCaptureResolution;
+  only values that changed vs the session start/last save. Launch reads use the game's value else the container's
+  (resolvedFrameGenMultiplier/FlowScale, resolvedLsfgPerformanceMode, resolvedFgCaptureResolution; model/preset already per game).
+- SteamLite v10 (helper agent, not published): v9 asset re-packed byte-identical first (proves the recipe), then v10 = v9 + agent p8
+  from BL 48b4bafb (Build SteamLite agent run 45327465984, == 10b5f944 tree). Staged /sdcard/Download/step3/steamlite-v10-48b4bafb.tzst
+  19224024 B MD5 A16AE460D1B28C4D74223CD84FE083C0 sha256 042d304b… (host == sdcard), unpacked files + md5 list, recipe
+  STEAMLITE-V10-TEST.txt + sl10-install.sh / sl10-undo.sh (backup first). Drafts in /root/src/dl/step3-1124/ (steamlite.json.v10-draft,
+  agent-src-v10.patch.draft). No BL code change needed (catalog version > .steamlite_version marker; MIN_AGENT_VERSION stays 4).
+- GE-proton-11.0-14 (v17) check: no BL change needed. BL keeps no layer-name tables: ContainerLayerUpdater lines are by exact
+  versionName (GE 11.0-9 -> 11.0-14 is a line move, not an "update", by design; DroidDeck-Proton lines grouped by label only);
+  DirectAudio picks by "11.0-" + winepulse imports; no defaults/recommendations by name. 11.0-9 installs keep working.
+- CI: build-artifacts run 45329743141 dispatched 23:55 EST, headSha 57e1d48c asserted. RESUME: judge jobs, stage pubg APK, signer check.
+
 ## 2026-11-23 19:00–22:00 EST — Sync CPU topology + named core picker (`feat/cpu-topology`, DEVICE-PROVEN, MERGED main 0912536a)
 - Why: user wants Ludashi's "Sync CPU topology" (WINE_CPU_TOPOLOGY from the core pick) and a core picker that reads the device and
   lists each core by its real name and top speed (Samsung's faster clocks too), reusing the device-info pop-up's data. Also: update the

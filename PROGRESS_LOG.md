@@ -76,6 +76,16 @@
   RESUME if cut: on the Elite `cat /sdcard/Download/aio-bench/dirt-topo-1123/run.log`; if not ALLDONE: force-stop com.tencent.ig,
   `cat /sdcard/Download/aio-bench/dirt-topo-1123/dirt.desktop.orig > "<Desktop>/DiRT Showdown.desktop"` (as root, keeps owner),
   `sh /sdcard/Download/aio-bench/fan-restore.sh`, Termux front, peers "done".
+- RESULT DiRT topology A/B 20:08–20:19 EST (Elite, results Elite /sdcard/Download/aio-bench/dirt-topo-1123/, 0 crash, shortcut
+  restored, fan back to AYANEO, GPU fixed 1050 MHz never slowed except 2 samples in race 7, CPU sliders 3072/4320, unplugged 73->63 %):
+  avg / min fps — warm(on) 177.1/100.8 (cold, dropped) · off 185.0/118.3 · on 188.0/121.6 · on 178.5/121.8 · off 179.7/106.6 ·
+  off 181.3/126.7 · on 192.9/120.6. Means: OFF 182.0 / 117.2, ON 186.5 / 121.3 (+2.5 % avg, +3.6 % min). Run-to-run spread
+  (ON avg 178.5–192.9) is larger than the gap -> small gain, not proven beyond noise; ON minimums steadier (120.6–121.8 vs 106.6–126.7).
+  DiRT's own result XML: off = workerMap8Core.xml, on = workerMap6Core.xml (the game plans its threads for the cores it sees).
+  HUD frames: C0/C1 ~25 % busy in BOTH modes (= non-game work; game threads pinned to 2-7 with sync on). Copies:
+  FIT /sdcard/Download/Bannerlator-cpu-topology-Elite-DiRT-HUD-{off,on}.png. Harness game-thread probe caught a 1-thread helper
+  (not the game) -> ignore that field.
+- User asked for HUD + side-menu ideas to show which cores are used (core pick / topology) — ideas given, awaiting pick.
 - NOT tested yet: the switch on in a real game (WINE_CPU_TOPOLOGY in the wine process env, Windows CPU count), FIT/Elite screens
   (user has them), Fold. Elite A/B after that.
 - Next: CI green -> stage standard (Duo) + pubg (FIT) APKs, ask before install, check pickers on FIT/Elite/Duo, check

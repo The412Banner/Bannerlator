@@ -36,15 +36,25 @@
 //  then ViewportInfo (xy = 1/inputSize texel size, zw = inputSize px) + sharpness.
 // =============================================================================
 
-layout(binding = 0) uniform sampler2D InputTexture;
+// BL_HALF is set for the *_half_frag.h build (gen_shaders.sh): colour and
+// weight maths in mediump (RelaxedPrecision, 16-bit on Adreno) as NVIDIA's
+// NIS_USE_HALF_PRECISION path (pixels, weights, coefficient tables); positions and texture coordinates stay highp.
+#ifdef BL_HALF
+precision mediump float;
+#define BL_MP mediump
+#else
+#define BL_MP
+#endif
+
+layout(binding = 0) uniform BL_MP sampler2D InputTexture;
 
 layout(push_constant) uniform PC {
-    vec4  ndc;          // quad NDC rect, consumed by upscale.vert (offset 0)
-    vec4  ViewportInfo; // xy = 1/inputSize (texel size), zw = inputSize in pixels
+    highp vec4  ndc;          // quad NDC rect, consumed by upscale.vert (offset 0)
+    highp vec4  ViewportInfo; // xy = 1/inputSize (texel size), zw = inputSize in pixels
     float sharpness;    // "Sharpness" slider mapped to [0..1] (NIS sharpness)
 } pc;
 
-layout(location = 0) in  vec2 fragTexCoord;
+layout(location = 0) in  highp vec2 fragTexCoord;
 layout(location = 0) out vec4 outColor;
 
 // ---- SDR (HDR mode None) constants, from NVScalerUpdateConfig -----------------
@@ -407,16 +417,16 @@ void main() {
     float sharpLimitMax = 0.5 + sharpen_slider * LimitScale * 0.6;
     gSharpLimitScale    = sharpLimitMax - gSharpLimitMin;
 
-    vec2 inSize = pc.ViewportInfo.zw;
-    vec2 invIn  = pc.ViewportInfo.xy;
+    highp vec2 inSize = pc.ViewportInfo.zw;
+    highp vec2 invIn  = pc.ViewportInfo.xy;
 
     // Source sample position in input-pixel space (output viewport cancels out).
-    float srcX = fragTexCoord.x * inSize.x - 0.5;
-    float srcY = fragTexCoord.y * inSize.y - 0.5;
-    float fsx = floor(srcX);
-    float fsy = floor(srcY);
-    float fx = srcX - fsx;
-    float fy = srcY - fsy;
+    highp float srcX = fragTexCoord.x * inSize.x - 0.5;
+    highp float srcY = fragTexCoord.y * inSize.y - 0.5;
+    highp float fsx = floor(srcX);
+    highp float fsy = floor(srcY);
+    highp float fx = srcX - fsx;
+    highp float fy = srcY - fsy;
     int fx_int = int(fx * float(kPhaseCount));
     int fy_int = int(fy * float(kPhaseCount));
 
@@ -424,7 +434,7 @@ void main() {
     float p[6][6];
     for (int i = 0; i < 6; ++i) {
         for (int j = 0; j < 6; ++j) {
-            vec2 tc = (vec2(fsx + float(j) - 2.0, fsy + float(i) - 2.0) + 0.5) * invIn;
+            highp vec2 tc = (vec2(fsx + float(j) - 2.0, fsy + float(i) - 2.0) + 0.5) * invIn;
             p[i][j] = getY(textureLod(InputTexture, tc, 0.0).rgb);
         }
     }

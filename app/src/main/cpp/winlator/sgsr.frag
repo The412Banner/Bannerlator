@@ -17,15 +17,25 @@
 //     destination rect = normalised output position = normalised source position)
 // =============================================================================
 
-layout(binding = 0) uniform sampler2D ps0;
+// BL_HALF is set for the *_half_frag.h build (gen_shaders.sh): colour and
+// weight maths in mediump (RelaxedPrecision, 16-bit on Adreno) as in Qualcomm's
+// reference; positions and texture coordinates stay highp.
+#ifdef BL_HALF
+precision mediump float;
+#define BL_MP mediump
+#else
+#define BL_MP
+#endif
+
+layout(binding = 0) uniform BL_MP sampler2D ps0;
 
 layout(push_constant) uniform PC {
-    vec4  ndc;          // quad NDC rect, consumed by window.vert (offset 0)
-    vec4  ViewportInfo; // xy = 1/inputSize (texel size), zw = inputSize in pixels
+    highp vec4  ndc;          // quad NDC rect, consumed by window.vert (offset 0)
+    highp vec4  ViewportInfo; // xy = 1/inputSize (texel size), zw = inputSize in pixels
     float EdgeSharpness; // driven by the "Sharpness" slider (default 2.0)
 } pc;
 
-layout(location = 0) in  vec2 fragTexCoord;
+layout(location = 0) in  highp vec2 fragTexCoord;
 layout(location = 0) out vec4 out_Target0;
 
 const float EdgeThreshold = 8.0 / 255.0;
@@ -44,15 +54,15 @@ vec2 weightY(float dx, float dy, float c, float std) {
 }
 
 void main() {
-    vec4 ViewportInfo = pc.ViewportInfo;
-    vec2 uv = fragTexCoord;
+    highp vec4 ViewportInfo = pc.ViewportInfo;
+    highp vec2 uv = fragTexCoord;
 
     vec4 color;
     color.xyz = textureLod(ps0, uv, 0.0).xyz;
 
-    vec2 imgCoord = ((uv * ViewportInfo.zw) + vec2(-0.5, 0.5));
-    vec2 imgCoordPixel = floor(imgCoord);
-    vec2 coord = (imgCoordPixel * ViewportInfo.xy);
+    highp vec2 imgCoord = ((uv * ViewportInfo.zw) + vec2(-0.5, 0.5));
+    highp vec2 imgCoordPixel = floor(imgCoord);
+    highp vec2 coord = (imgCoordPixel * ViewportInfo.xy);
     vec2 pl = (imgCoord + (-imgCoordPixel));
     vec4 left = textureGather(ps0, coord, 1);
 

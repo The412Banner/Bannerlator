@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-24 15:50–16:45 EST — NIS rewrite: prepass + gathers + coefficients in a uniform buffer (`feat/nis-rewrite`, 09f3d8b0 staged, installing)
+## 2026-11-24 15:50–16:50 EST — NIS rewrite: prepass + gathers + coefficients in a uniform buffer (`feat/nis-rewrite`, 09f3d8b0 INSTALLED FIT, DEVICE-TESTED: NIS -80 %, not merged)
 - Why: upaio-1124 (FIT, X11 Vulkan, dx11 cube) measured NIS at ~5.0 ms GPU per composited frame (old and half shaders alike) and
   AIO 2894 -> ~765 fps (-74 %). nis.frag is a single-pass fragment port of NVIDIA's LDS compute NVScaler: every output pixel
   fetches its 6x6 luma support (36 textureLod + 1 colour tap, getY on each) and recomputes 4 edge maps; at 1920x1080 that is
@@ -50,6 +50,13 @@
   "coefficients in a uniform buffer" (X11), nis3_half (Wayland), fallback strings present; signer a40da80a.... STAGED 16:42 EST
   /sdcard/Download/Bannerlator-nis-rewrite-09f3d8b0-pubg.apk sha256 89e50062e2415629... (host == /sdcard == device). Installing + city
   test next (user approved "rebuild and rerun the Cityscape test" in the 16:25 "yes go ahead").
+- INSTALLED 16:40 EST on the FIT (BL closed, Termux in front, peers told + acked): installed base.apk sha256 89e50062... == staged.
+- RESULTS nis3aio-1124 (16:40-16:48 EST, X11 Vulkan, AIO dx11 --scene city 20 s, 640x480 desktop -> 1440x1080, fan 255,
+  0 FATAL/ANR, startup line "NIS = luma prepass + gather pass, coefficients in a uniform buffer", no fallback line):
+  baseline AIO 262.7 | NIS old 3.402 / 3.420 ms per frame, AIO 186.0 / 185.6 | NIS new 0.673 / 0.675 ms, AIO 245.7 / 246.0
+  (1 % low 120.1 / 126.4 vs 103.2 / 100.2) | SGSR HQ 0.154 ms, AIO 261.1.
+  -> NIS -80 % GPU time, game +32 % fps; NIS now costs this game ~6.5 % fps (was ~29 %). Screenshots old vs new: same picture.
+  Cleanup done (prop "", temp shortcut removed, stream stopped, fan pwm 51, Termux front, peers "done").
 - 16:30 EST user: "feel free to build scenes for each upscaler like now or one for all to test then being toggled in the aio
   graphics test program" -> helper agent started on The412Banner/AIO-Graphics-Test branch feat/upscaler-test-scene
   (worktree /root/src/AIO-wt/upscaler-test-scene): D3D11 scene `--scene upscale` (static test chart: line fan, zone plate,

@@ -1,5 +1,57 @@
 # Star-Compose — Progress Log
 
+## 2026-11-24 12:57–14:05 EST — Layer updates across versions for GE / Valve / CachyOS, not only DroidDeck (feat/layer-family-updates, CI GREEN, APK STAGED, NOT device-tested)
+- Why: user 11-24 (relayed by the coordinator as ~13:40 EST; the device clock read 12:57 EST when this work started): "just like we do with droiddeck layer updates, can we make it so whoever is on old ge 11-9 will be able to
+  update to 11-14?". Before: an update needed the same profile versionName (only DroidDeck-Proton layers crossed versions), so GE 11.0-9
+  v16 containers saw nothing once the v17 catalog (winlator-contents 5a77857d) replaced the GE 11-9 rows with GE 11-14.
+- Found: GE 11.0-3 (v5-v14) and Valve Proton 11.0-3 (v17) share versionName `11.0-3-arm64ec`; GE builds up to v14 (11.0-3/5/6/7 incl.
+  x86_64) describe themselves "Proton 11.0-N <arch> (bionic) — Valve + ... + GE-Proton11-N game-fixes (...)" (proton-wine
+  build-ge-proton-11.0-*.yml history), Valve ones "Proton 11.0-2 ... stock Valve" / "Proton 11.0-3 ... Valve Proton 11.0-3 base" /
+  "Proton 10.0-4 ... - Windows compatibility layer" (never GE's game-fixes; v17 Valve descs cite "DroidDeck-Proton #34", so a plain
+  "contains GE-Proton" test would be unsafe). DroidDeck / GE v15+ / CachyOS descs start with their own name. Catalog history (85
+  commits of contents.json): the only versionName ever shared by two families is 11.0-3-arm64ec.
+- Built cc08bb0a (base main 29171b7a, worktree /root/src/Bannerlator-wt/layer-family):
+  - container/LayerLine.kt (no Android types): Family GE / DROIDDECK / CACHYOS / VALVE. Catalog row family = label prefix
+    (DroidDeck-Proton, GE-Proton, Proton-CachyOS, Proton-). Installed family = description prefix (DroidDeck-Proton, GE-Proton,
+    Proton-CachyOS), else the catalog rows with the same versionName + verCode (when they agree), else "Proton ..." = Valve or GE
+    when it lists "GE-Proton<N>-<N> game-fixes". sameLine: both known -> same family + arch + Proton major; both unknown -> same
+    versionName (old rule, Wine layers); one known + one unknown -> never. isNewer/versionOrder moved here unchanged.
+  - ContainerLayerUpdater: findNewerInstalled / findNewerInCatalog / update use LayerLine; familyOf (Proton type only) reads the
+    catalog rows on the ContentsManager, else ContentsManager.getCachedRemoteProfiles(). Only catalog rows with versionName still
+    take part; switchLine, snapshots, arch guard, UI flows unchanged. isDroidDeck() removed (no other callers).
+  - Help text (Classic + Lab "About layer updates"): "a newer DroidDeck-Proton version" -> "a newer version of the same layer"
+    (no strings_lab.xml entry existed for it).
+  - Now an update: GE 11.0-3/5/6/7/7.1/9 -> GE 11.0-14 (same arch), Valve 11.0-1/11.0-2 -> newest Valve 11.x, CachyOS 20260703 ->
+    20261005, DroidDeck as before. Never: GE <-> Valve (also under one versionName), 10.x <-> 11.x, arm64ec <-> x86_64.
+  - Valve 11.0-2 -> 11.0-3 counts as an update (same family/major, same kind of Wine base bump as GE 11-9 -> 11-14 and DroidDeck
+    11.0-9.1 -> 11.0-12.8; the swap refreshes builtins, wine.inf updates the prefix at next launch, app tweaks re-run). The live
+    catalog lists Valve 11.0-3 WITHOUT versionName, so only an INSTALLED 11.0-3 layer is offered (FIT has 11.0-3-arm64ec-17).
+- Tests: LayerLineTest 13 tests (kotlinc 2.2.20 -language-version 2.0 + JUnit 4.13.2, local): OK; mutation check (drop the GE
+  game-fixes rule / allow one-unknown name match) -> 3 failures, as expected. Host harness (not committed): real
+  ContainerLayerUpdater.kt + LayerLine.kt against stub Android classes, the FIT's 12 installed profile.json files + the live catalog
+  rows: 19/19 (installed tier, catalog tier, future catalog with Valve 11.0-3 versionName, update() refuses GE 11-3 v14 -> Valve
+  11.0-3 v17, accepts GE 11-9 -> 11-14).
+- CI: build-artifacts 45459938098 (dispatched 13:28 EST, done 13:38 EST), headSha cc08bb0a == pushed, 4/4 jobs success (standard,
+  antutu, ludashi, pubg). pubg: compilePubgReleaseKotlin + JavaWithJavac ran, BUILD SUCCESSFUL in 7m 42s; non-success steps =
+  skipped only (main-only cache saves + cached natives); only warning in touched files = old HelpOutline deprecation at
+  ContainersScreen.kt:825 (untouched line).
+- Staged 14:04 EST: `/sdcard/Download/Bannerlator-layer-family-cc08bb0a-pubg.apk` 602853487 B, sha256
+  a0c8f63b08f182996efd8dd06558af6d62ae6ba0b840354be75ab09aa3806fa0 (host == /sdcard == device via rootsh), com.tencent.ig vc108
+  3.2.1, apksigner verifies, signer SHA-256 a40da80a... == Bannerlator-idle-throttle-45ee683a-pubg.apk. New code in classes5.dex
+  (Lcom/winlator/star/container/LayerLine, the game-fixes regex), Lab help text in classes7.dex; old "a newer DroidDeck-Proton
+  version" string gone. `gh run download` worked on the first try (~23 min). NOT installed.
+- Device test: NOT device-tested.
+- Heads-up for the FIT: "Container-2" is on Proton-11.0-2-arm64ec-17 and Valve 11.0-3-arm64ec-17 is installed, so this build shows it
+  "Update layer -> 11.0-3 v17" (installed tier). DD containers 1/11 (11.0-12.8 v17) get nothing.
+- Open/Next: user installs (ask first). Test: make a container on Proton-11.0-9-arm64ec-16 (GE 11-9, installed on the FIT) ->
+  Containers list shows "Update layer -> 11.0-14 v17" (installed 11.0-14-arm64ec-17) -> update -> container on
+  Proton-11.0-14-arm64ec-17, game starts, Revert layer goes back. Catalog tier: on a device without GE 11-14 (Elite/Duo), a GE 11-9
+  v16 container shows "Download & update -> 11.0-14 v17". Clash check: a container on GE-Proton-11.0-3-arm64ec (v14) with Valve
+  11.0-3 v17 installed must NOT be offered 11.0-3 v17 (only GE 11.0-14). logcat: tag ContainerLayerUpdater + FATAL check.
+  Not merged, no release.
+- Not covered: a container whose current layer is uninstalled AND whose exact build is not in the catalog any more gets no offer
+  now (before: same-name newer build); Set as default still moves it. Old app builds will still offer GE 11-3 v14 containers the
+  Valve 11.0-3 rows if the catalog ever gives those rows a versionName.
 ## 2026-11-24 12:00–14:25 EST — Merge to main, Wine v17 released, SteamLite v10 / Goldberg v3 / FEX gn-8 published (main 29171b7a, released content; app NOT released)
 - Why: user, after the morning device tests: "merge it, include 11.0-3, replace 11-9, release as latest"; "publish v10 now, keep v9
   backup"; "update the Goldberg release"; "replace the fex cs2 version with new gn ... add it to the contents json"; "yes merge it".

@@ -436,7 +436,7 @@ fun ContainersScreen(
                                 "A layer is the set of Wine/Proton files a container runs on. " +
                                     "\"${action.container.name}\" runs on ${action.container.wineVersion}; " +
                                     (if (newLabel == ContainerLayerUpdater.codeLabel(action.target)) "a newer build of the same layer, "
-                                    else "a newer DroidDeck-Proton version, ") + "${action.target}, is " +
+                                    else "a newer version of the same layer, ") + "${action.target}, is " +
                                     (if (action.remote != null) "available in the catalog. The $newLabel layer will be " +
                                         "downloaded" + layerSizeHint(action.remote) + " first."
                                     else "installed.") + "\n\n" +

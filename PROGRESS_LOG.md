@@ -56,6 +56,15 @@
   layer) `wine: Sleep(0) throttle off in this process: ...` / `... on in this process: ...` once per game when it first engages.
   AIO DirectDraw with DX7 off ~2780 fps (FIT), DX7 on ~1460. Not merged, no release.
 
+## 2026-11-24 04:45–05:45 EST — Sleep(0) throttle v1/v2 measured, v3 built; PAUSED (user offline) (proton-wine staging/*/v17, CI GREEN, v3 NOT device-tested)
+- v1 (reset on > X us own CPU): AIO dx7 back (w20 2663 / w50 2535 / w100 2237 vs GN 1486, off ~2780) but idle Sleep(0) spinners no
+  longer held (43-77 % CPU vs GN 2-4 %). v2 (take 1000 yields off): spinners 13-33 %, dx7 1953-2463. Not kept.
+- v3: new run after > 500 us own work or two > 20 us work gaps < 2 ms apart. 11.0-2 67b031f2 (CI 45375539162), DD 12.8 d9e61d24
+  (45375568986), GE 11-14 da314fc3 (45375604128): GREEN, patch + marker verified in all 6 logs. Not staged, not device-tested.
+- In-game FG engine switch: feat/fg-engine-switch 76f0994b, CI 45368790769 GREEN x4, APK staged. USER 05:4x EST: "yes install the fg
+  switch apk after benchmarks". USER: new branch + Proton build for Valve proton-11.0-3 (released 11-24 01:22 EST, wine 957ac7cf).
+- Resume: memory bannerlator-overnight-1124 (RESUME ORDER: stage v3, v3 tests, report, FG APK install, 11.0-3 branch).
+
 ## 2026-11-24 04:33–05:00 EST — In-game frame-gen engine switch (`feat/fg-engine-switch`, CI GREEN, APK STAGED, NOT device-tested)
 - Why: user 11-23: "add the ability to switch frame generation types while in game on a separate branch ... between win-fg, wfg and lsfg
   native". Before: the engine was fixed per session (only level/flow/model live); a game started with FG Off could not turn it on.
@@ -91,6 +100,14 @@
   `<engine> engine ready` (Wayland); the renderer's `native-fg: engine <old> -> <new>` prints only with verbose logging. Known edge:
   a container with the LSFG Vulkan 1.1 compat switch that launched with another engine gets the compat device only at the next
   launch. Not merged, no release.
+## 2026-11-24 04:24–04:45 EST — GE 11-14 v17 bench + Sleep(0) throttle work reset (proton-wine staging/*/v17, CI GREEN, staged, tests running)
+- Why: user 04:2x EST: "go ahead with GE 11-14 test, tune the reset, finish what needs done".
+- GE 11-14 alert_fd build 570b71f5 installed (instlayer), container 13 -> Proton-11.0-14-arm64ec-17, full set ran (results ge1114-v17).
+- Throttle fix: android/patches/dlls_ntdll_unix_sync.c_sleep0_work_reset.patch (applied last + MARKERS row): a throttle run restarts when
+  the thread used > 50 us of its own CPU time between two non-switching yields; WINE_SLEEP0_THROTTLE=<iters>,<usec>,<work_us>.
+  11.0-2 8a6cd6b9 (CI 45365734539), DD 12.8 2e03bc99 (45365762450), GE 11-14 39b5de76 (45365810846): GREEN 2/2 legs each, patch applied +
+  marker ok in all 6 logs; staged /sdcard/Download/v17-layers (sha in FILES.tsv). Test exe sleeptest.exe (idle spinner, spinner + 7 busy
+  threads, frame loop with Sleep(0) wait) for the A/B. NOT device-tested yet. Resume: memory bannerlator-overnight-1124.
 
 ## 2026-11-24 00:00–04:25 EST — Overnight Wine v17 benchmarks on the round-3 APK (`feat/upstream-round-3` app; layers on The412Banner/proton-wine staging/*/v17; NOT released)
 - Why: user 11-23 23:36 EST: test the new Wine builds on the new APK overnight (AIO per API + DiRT Showdown benchmark), fix what looks wrong.

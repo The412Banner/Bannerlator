@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-24 04:45–05:45 EST — Sleep(0) throttle v1/v2 measured, v3 built; PAUSED (user offline) (proton-wine staging/*/v17, CI GREEN, v3 NOT device-tested)
+- v1 (reset on > X us own CPU): AIO dx7 back (w20 2663 / w50 2535 / w100 2237 vs GN 1486, off ~2780) but idle Sleep(0) spinners no
+  longer held (43-77 % CPU vs GN 2-4 %). v2 (take 1000 yields off): spinners 13-33 %, dx7 1953-2463. Not kept.
+- v3: new run after > 500 us own work or two > 20 us work gaps < 2 ms apart. 11.0-2 67b031f2 (CI 45375539162), DD 12.8 d9e61d24
+  (45375568986), GE 11-14 da314fc3 (45375604128): GREEN, patch + marker verified in all 6 logs. Not staged, not device-tested.
+- In-game FG engine switch: feat/fg-engine-switch 76f0994b, CI 45368790769 GREEN x4, APK staged. USER 05:4x EST: "yes install the fg
+  switch apk after benchmarks". USER: new branch + Proton build for Valve proton-11.0-3 (released 11-24 01:22 EST, wine 957ac7cf).
+- Resume: memory bannerlator-overnight-1124 (RESUME ORDER: stage v3, v3 tests, report, FG APK install, 11.0-3 branch).
+
 ## 2026-11-24 04:24–04:45 EST — GE 11-14 v17 bench + Sleep(0) throttle work reset (proton-wine staging/*/v17, CI GREEN, staged, tests running)
 - Why: user 04:2x EST: "go ahead with GE 11-14 test, tune the reset, finish what needs done".
 - GE 11-14 alert_fd build 570b71f5 installed (instlayer), container 13 -> Proton-11.0-14-arm64ec-17, full set ran (results ge1114-v17).

@@ -31,8 +31,15 @@
   libvulkan_renderer "upscale shaders: NIS = luma prepass + gather pass", libbannerwayland nis2_half / nis_luma_half / "NIS luma";
   signer a40da80a.... STAGED 16:00 EST: /sdcard/Download/Bannerlator-nis-rewrite-8530c88e-pubg.apk 602987140 B, sha256
   53c56150... (host == /sdcard == device). NOT installed (asking the user). upscale-ab.sh now captures stream.log itself.
-- Resume point: FIT still has 099c21fd (main code). On "yes": install, verify base.apk sha, then
-  `API=dx11 BENCH=20 sh upscale-ab.sh nisaio-1124 7:0:old 7:0:new 7:0:new 7:0:old` (+ fan-max/fan-restore, save before launch).
+- 16:10 EST user: "yes install and run the test"; then "I believe our all-in-one Graphics test has scenes you can use to test
+  these". AIO 2.2.0 source (The412Banner/AIO-Graphics-Test main): D3D11 scenes via `--cube dx11 --scene <name>` (city, showcase,
+  desert, nebula2, planet, ...); every D3D11 scene window is a fixed 640x480 WS_OVERLAPPEDWINDOW (aio_run_d3d11_cube), no
+  fullscreen flag -> the cube runs used only a third of the screen. Test now: SCENE=city, SCREEN=640x480 (scene fills the
+  desktop, BL upscales 640x480 -> 1440x1080 fit), upscale-ab.sh gained SCENE/SCREEN. Peers root-bf / root-e0 told + acked.
+- Resume point: install 8530c88e on the FIT, verify sha; run tag nisaio-1124:
+  `API=dx11 BENCH=20 SCENE=city SCREEN=640x480 sh upscale-ab.sh nisaio-1124 1:0:new 7:0:old 7:0:new 7:0:new 7:0:old 8:0:new`
+  (fan-max via setsid first; fan-restore + Termux + "done" to peers after). If interrupted: read results/nisaio-1124/run.log,
+  cleanup = prop "", rm temp shortcut, kill stream pid (results/nisaio-1124/.stream.pid), fan-restore.
 
 ## 2026-11-24 13:10–15:45 EST — Upscaler refresh: lighter math, cursor after the upscale, CAS from AMD's file (`feat/upscaler-refresh`, MERGED main 16595ed8, AIO-tested FIT)
 - Why: Discord question 11-24 (is NIS the limit). Research 11-24 (main 48b4bafb): no newer SPATIAL upscaler exists upstream (all new ones

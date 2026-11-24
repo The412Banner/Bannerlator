@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-24 18:15–18:35 EST — Wayland desktop mode: program cursors (`fix/wayland-desktop-cursor`, b5bbed8e CI GREEN, staged, NOT device-tested)
+## 2026-11-24 18:15–18:40 EST — Wayland desktop mode: program cursors (`fix/wayland-desktop-cursor`, b5bbed8e INSTALLED FIT, user testing)
 - Why: AIO Cursor Test (new 2.3.0-pre1 build AND the 2.2.0 CursorTest.exe) on the FIT: Wayland shows the same plain arrow on all
   6 tiles (incl. the hidden one), X11 correct (user 18:3x EST: "it's the same on wayland old, works correctly on x11. we need to
   make it work on Wayland please").
@@ -21,6 +21,10 @@
 - CI GREEN 18:32 EST: build-artifacts 45510246840, headSha b5bbed8e, 4/4. pubg artifact digest OK; libbannerwayland.so b5e29326...
   vs installed 09f3d8b0 build 1a32cde7... (only this change differs); signer a40da80a.... STAGED 18:34 EST
   /sdcard/Download/Bannerlator-wayland-cursor-b5bbed8e-pubg.apk sha256 425e4c55... (host == device). Asking the user to install.
+- INSTALLED 18:39 EST on the FIT (user "yes install it"; BL main process only, no game; peers told + acked): installed base.apk
+  sha256 425e4c55... == staged. Cursor shortcuts still in container 1. User tests by hand next.
+- Resume point: FIT = b5bbed8e (main 447b4afd + this fix). If the user reports it works: merge only on the user's word; delete the
+  4 "AIO Cursor Test - ..." shortcuts after; then AIO 2.3.0-pre1 publish (AIO branch feat/upscaler-test-scene, see its log).
 - Test plan: Cursor Test shortcuts on the FIT ("AIO Cursor Test - Wayland", "- Wayland OLD 2.2.0"): colour quadrants, shadow,
   rainbow, animated, arrow, hidden; plus clicks/menus/drag still work, a mouse game hides the pointer when it should.
 

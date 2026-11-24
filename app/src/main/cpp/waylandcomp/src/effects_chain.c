@@ -27,7 +27,9 @@
 /* Half-precision upscaler/CAS set (winlator/gen_shaders.sh -DBL_HALF=1). */
 #include "sgsr_half_frag.h"
 #include "sgsr_quality_half_frag.h"
-#include "nis_half_frag.h"
+#include "nis_luma_half_frag.h"
+#include "nis3_half_frag.h"
+#include "nis_coef.h"
 #include "fsr_easu_half_frag.h"
 #include "fsr_rcas_half_frag.h"
 #include "cas_ffx_half_frag.h"
@@ -207,9 +209,21 @@ static VkDescriptorSetLayout g_dsl;
 static VkPipelineLayout g_pl;
 static VkDescriptorPool g_dpool;
 static VkSampler g_sampler;  /* linear, clamp-to-edge: what the X11 chain samples its targets with */
-enum { P_SGSR, P_SGSR_HQ, P_NIS, P_EASU, P_RCAS, P_CAS, P_COLOR, P_FXAA, P_TOON, P_HDR, P_NTSC, P_CRT, P_DEBAND, P_COUNT };
+enum { P_SGSR, P_SGSR_HQ, P_NIS, P_EASU, P_RCAS, P_CAS, P_COLOR, P_FXAA, P_TOON, P_HDR, P_NTSC, P_CRT, P_DEBAND, P_NIS_LUMA, P_COUNT };
 static VkPipeline g_pipe[P_COUNT];
 static struct fx_target g_t[2], g_mid; /* ping-pong pair + the EASU output (FSR only) */
+/* Half set: NIS = nis_luma prepass (scene rgb + luma in alpha, scene size) into g_nissrc, then
+ * nis3 gathers its luma from that alpha, its coefficient banks (nis_coef.h) in a uniform buffer
+ * at descriptor set 1 (g_pl_nis = {g_dsl, g_coef_dsl}, same push-constant range as g_pl).
+ * Old set (or no buffer): nis.frag on the scene, P_NIS_LUMA unused. */
+static struct fx_target g_nissrc;
+static int g_nis_fast;
+static VkDescriptorSetLayout g_coef_dsl;
+static VkPipelineLayout g_pl_nis;
+static VkDescriptorPool g_coef_pool;
+static VkDescriptorSet g_coef_ds;
+static VkBuffer g_coef_buf;
+static VkDeviceMemory g_coef_mem;
 /* The scene image belongs to vk_present; only its view + descriptor live here. */
 static struct { VkImage img; VkImageView view; VkDescriptorSet ds; int w, h; } g_scene;
 static uint32_t g_ntsc_frame;
@@ -318,7 +332,8 @@ static VkShaderModule shader(const uint32_t *code, size_t size) {
 
 /* One full-quad post pipeline: upscale.vert + the effect's fragment shader, opaque, dynamic
  * viewport/scissor — the X11 renderer's createPostPipeline. */
-static VkPipeline post_pipeline(VkShaderModule vert, const uint32_t *frag_code, size_t frag_size, const char *name) {
+static VkPipeline post_pipeline(VkShaderModule vert, const uint32_t *frag_code, size_t frag_size, const char *name,
+                                VkPipelineLayout layout) {
     VkShaderModule frag = shader(frag_code, frag_size);
     if (!frag) { banner_log("error", "effects: %s: vkCreateShaderModule failed", name); return VK_NULL_HANDLE; }
     VkPipelineShaderStageCreateInfo st[2] = {
@@ -343,7 +358,7 @@ static VkPipeline post_pipeline(VkShaderModule vert, const uint32_t *frag_code, 
     VkGraphicsPipelineCreateInfo pi = {.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, .stageCount = 2,
                                        .pStages = st, .pVertexInputState = &vi, .pInputAssemblyState = &ia,
                                        .pViewportState = &vp, .pRasterizationState = &rs, .pMultisampleState = &ms,
-                                       .pColorBlendState = &cb, .pDynamicState = &ds, .layout = g_pl,
+                                       .pColorBlendState = &cb, .pDynamicState = &ds, .layout = layout,
                                        .renderPass = g_rp, .subpass = 0};
     VkPipeline p = VK_NULL_HANDLE;
     VkResult r = g_vk.CreateGraphicsPipelines(g_dev, VK_NULL_HANDLE, 1, &pi, NULL, &p);
@@ -352,13 +367,66 @@ static VkPipeline post_pipeline(VkShaderModule vert, const uint32_t *frag_code, 
     return p;
 }
 
+static void coef_destroy(void) {
+    if (g_coef_pool) g_vk.DestroyDescriptorPool(g_dev, g_coef_pool, NULL);   /* frees g_coef_ds */
+    if (g_coef_buf) g_vk.DestroyBuffer(g_dev, g_coef_buf, NULL);
+    if (g_coef_mem) g_vk.FreeMemory(g_dev, g_coef_mem, NULL);
+    if (g_pl_nis) g_vk.DestroyPipelineLayout(g_dev, g_pl_nis, NULL);
+    if (g_coef_dsl) g_vk.DestroyDescriptorSetLayout(g_dev, g_coef_dsl, NULL);
+    g_coef_pool = VK_NULL_HANDLE; g_coef_ds = VK_NULL_HANDLE; g_coef_buf = VK_NULL_HANDLE;
+    g_coef_mem = VK_NULL_HANDLE; g_pl_nis = VK_NULL_HANDLE; g_coef_dsl = VK_NULL_HANDLE;
+}
+
+/* nis3's coefficient banks: a 4 KB host-visible uniform buffer (scale then usm), filled once. 0 = ok. */
+static int coef_create(void) {
+    VkDescriptorSetLayoutBinding b = {.binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                      .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT};
+    VkDescriptorSetLayoutCreateInfo dli = {.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO, .bindingCount = 1, .pBindings = &b};
+    if (g_vk.CreateDescriptorSetLayout(g_dev, &dli, NULL, &g_coef_dsl) != VK_SUCCESS) goto fail;
+    VkDescriptorSetLayout sets[2] = {g_dsl, g_coef_dsl};
+    VkPushConstantRange pcr = {.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, .offset = 0, .size = PC_MAX_SIZE};
+    VkPipelineLayoutCreateInfo pli = {.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO, .setLayoutCount = 2, .pSetLayouts = sets,
+                                      .pushConstantRangeCount = 1, .pPushConstantRanges = &pcr};
+    if (g_vk.CreatePipelineLayout(g_dev, &pli, NULL, &g_pl_nis) != VK_SUCCESS) goto fail;
+    VkBufferCreateInfo bci = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, .size = 4096,
+                              .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, .sharingMode = VK_SHARING_MODE_EXCLUSIVE};
+    if (g_vk.CreateBuffer(g_dev, &bci, NULL, &g_coef_buf) != VK_SUCCESS) goto fail;
+    VkMemoryRequirements req;
+    g_vk.GetBufferMemoryRequirements(g_dev, g_coef_buf, &req);
+    int idx = memtype(req.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (idx < 0) goto fail;
+    VkMemoryAllocateInfo mai = {.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, .allocationSize = req.size, .memoryTypeIndex = (uint32_t)idx};
+    if (g_vk.AllocateMemory(g_dev, &mai, NULL, &g_coef_mem) != VK_SUCCESS) goto fail;
+    if (g_vk.BindBufferMemory(g_dev, g_coef_buf, g_coef_mem, 0) != VK_SUCCESS) goto fail;
+    void *p = NULL;
+    if (g_vk.MapMemory(g_dev, g_coef_mem, 0, 4096, 0, &p) != VK_SUCCESS || !p) goto fail;
+    memcpy(p, kNisCoefScale, sizeof(kNisCoefScale));
+    memcpy((char *)p + sizeof(kNisCoefScale), kNisCoefUsm, sizeof(kNisCoefUsm));
+    g_vk.UnmapMemory(g_dev, g_coef_mem);
+    VkDescriptorPoolSize ps = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1};
+    VkDescriptorPoolCreateInfo dpi = {.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, .maxSets = 1, .poolSizeCount = 1, .pPoolSizes = &ps};
+    if (g_vk.CreateDescriptorPool(g_dev, &dpi, NULL, &g_coef_pool) != VK_SUCCESS) goto fail;
+    VkDescriptorSetAllocateInfo ai = {.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO, .descriptorPool = g_coef_pool,
+                                      .descriptorSetCount = 1, .pSetLayouts = &g_coef_dsl};
+    if (g_vk.AllocateDescriptorSets(g_dev, &ai, &g_coef_ds) != VK_SUCCESS) goto fail;
+    VkDescriptorBufferInfo bi = {.buffer = g_coef_buf, .offset = 0, .range = 4096};
+    VkWriteDescriptorSet wr = {.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, .dstSet = g_coef_ds, .dstBinding = 0,
+                               .descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .pBufferInfo = &bi};
+    g_vk.UpdateDescriptorSets(g_dev, 1, &wr, 0, NULL);
+    return 0;
+fail:
+    coef_destroy();
+    return -1;
+}
+
 static void objects_destroy(void) {
     if (!g_dev) return;
     scene_release();
-    target_destroy(&g_t[0]); target_destroy(&g_t[1]); target_destroy(&g_mid);
+    target_destroy(&g_t[0]); target_destroy(&g_t[1]); target_destroy(&g_mid); target_destroy(&g_nissrc);
     for (int i = 0; i < P_COUNT; i++) { if (g_pipe[i]) g_vk.DestroyPipeline(g_dev, g_pipe[i], NULL); g_pipe[i] = VK_NULL_HANDLE; }
     if (g_dpool) g_vk.DestroyDescriptorPool(g_dev, g_dpool, NULL);
     if (g_pl) g_vk.DestroyPipelineLayout(g_dev, g_pl, NULL);
+    coef_destroy();
     if (g_dsl) g_vk.DestroyDescriptorSetLayout(g_dev, g_dsl, NULL);
     if (g_sampler) g_vk.DestroySampler(g_dev, g_sampler, NULL);
     if (g_rp) g_vk.DestroyRenderPass(g_dev, g_rp, NULL);
@@ -439,15 +507,23 @@ static int objects_ensure(void) {
 
     VkShaderModule vert = shader(upscale_vert_code, sizeof(upscale_vert_code));
     if (!vert) goto fail;
-#define MK(slot, code, name) do { g_pipe[slot] = post_pipeline(vert, code, sizeof(code), name); if (!g_pipe[slot]) { g_vk.DestroyShaderModule(g_dev, vert, NULL); goto fail; } } while (0)
+#define MKL(slot, code, name, layout) do { g_pipe[slot] = post_pipeline(vert, code, sizeof(code), name, layout); if (!g_pipe[slot]) { g_vk.DestroyShaderModule(g_dev, vert, NULL); goto fail; } } while (0)
+#define MK(slot, code, name) MKL(slot, code, name, g_pl)
     /* Upscalers + CAS: the half-precision set unless debug.bannerlator.upscale.shaders is
      * "old" (the fp32 shaders, for A/B); same choice as the X11 renderer. */
     char shp[PROP_VALUE_MAX] = {0};
     const int half = !(__system_property_get("debug.bannerlator.upscale.shaders", shp) > 0 && strcmp(shp, "old") == 0);
+    g_nis_fast = half && coef_create() == 0;
+    if (half && !g_nis_fast) banner_log("effects", "NIS coefficient buffer unavailable; NIS uses nis.frag");
     if (half) {
         MK(P_SGSR, sgsr_half_code, "sgsr_half");
         MK(P_SGSR_HQ, sgsr_quality_half_code, "sgsr_quality_half");
-        MK(P_NIS, nis_half_code, "nis_half");
+        if (g_nis_fast) {
+            MKL(P_NIS, nis3_half_code, "nis3_half", g_pl_nis);
+            MK(P_NIS_LUMA, nis_luma_half_code, "nis_luma_half");
+        } else {
+            MK(P_NIS, nis_code, "nis");
+        }
         MK(P_EASU, fsr_easu_half_code, "fsr_easu_half");
         MK(P_RCAS, fsr_rcas_half_code, "fsr_rcas_half");
         MK(P_CAS, cas_ffx_half_code, "cas_ffx_half");
@@ -467,6 +543,7 @@ static int objects_ensure(void) {
     MK(P_CRT, crt_code, "crt");
     MK(P_DEBAND, deband_code, "deband");
 #undef MK
+#undef MKL
     g_vk.DestroyShaderModule(g_dev, vert, NULL);
     g_ready = 1;
     banner_log("effects", "chain ready: 13 passes (SGSR, SGSR HQ, NIS, FSR EASU+RCAS, CAS, colour, FXAA, Toon, HDR, NTSC, CRT, deband), %s shaders, on %s",
@@ -503,6 +580,8 @@ static void pass(VkCommandBuffer cmd, VkPipeline p, struct fx_target *dst, VkDes
     g_vk.CmdSetScissor(cmd, 0, 1, &sc);
     g_vk.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, p);
     g_vk.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pl, 0, 1, &src, 0, NULL);
+    if (p == g_pipe[P_NIS] && g_coef_ds) /* nis3: coefficient banks at set 1 */
+        g_vk.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pl_nis, 1, 1, &g_coef_ds, 0, NULL);
     g_vk.CmdPushConstants(cmd, g_pl, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, pcsz, pc);
     g_vk.CmdDraw(cmd, 4, 1, 0, 0);
     g_vk.CmdEndRenderPass(cmd);
@@ -539,7 +618,8 @@ VkImage vkp_effects_run(VkCommandBuffer cmd, VkImage scene, int scene_w, int sce
 
     if ((spatial || nfx) && objects_ensure() == 0 && scene_ensure(scene, scene_w, scene_h) == 0 &&
         target_ensure(&g_t[0], cw, ch, "chain") == 0 && (npasses < 2 || target_ensure(&g_t[1], cw, ch, "chain") == 0) &&
-        (!(spatial == 4 || spatial == 5) || target_ensure(&g_mid, cw, ch, "EASU") == 0)) {
+        (!(spatial == 4 || spatial == 5) || target_ensure(&g_mid, cw, ch, "EASU") == 0) &&
+        (!(spatial == 7 && g_nis_fast) || target_ensure(&g_nissrc, scene_w, scene_h, "NIS luma") == 0)) {
         /* `cur` = the image the next pass samples; `cur_ds` its descriptor. Every pass writes the
          * target that is not being read (the pair alternates; the scene is read only first). */
         VkDescriptorSet cur_ds;
@@ -560,7 +640,15 @@ VkImage vkp_effects_run(VkCommandBuffer cmd, VkImage scene, int scene_w, int sce
                 pc.vp[2] = (float)scene_w;        pc.vp[3] = (float)scene_h;
                 /* SGSR EdgeSharpness 0.5 (slider 0) .. 4.5 (slider 100); NIS takes the slider as is. */
                 pc.edge = spatial == 7 ? sharp01 : 0.5f + sharp01 * 4.0f;
-                pass(cmd, g_pipe[spatial == 3 ? P_SGSR : spatial == 8 ? P_SGSR_HQ : P_NIS], dst, g_scene.ds, &pc, sizeof(pc));
+                VkDescriptorSet src = g_scene.ds;
+                if (spatial == 7 && g_nis_fast) {
+                    /* NIS prepass: scene -> g_nissrc 1:1 (rgb + luma in alpha); only ndc is read. */
+                    struct pc_res pl = {0};
+                    SET_NDC(pl);
+                    pass(cmd, g_pipe[P_NIS_LUMA], &g_nissrc, g_scene.ds, &pl, sizeof(pl.ndc));
+                    src = g_nissrc.ds;
+                }
+                pass(cmd, g_pipe[spatial == 3 ? P_SGSR : spatial == 8 ? P_SGSR_HQ : P_NIS], dst, src, &pc, sizeof(pc));
             } else if (spatial == 6) {
                 /* Sharpen: RCAS fetches the scene 1:1 (outputSize = scene size) while the quad
                  * covers the chain target = nearest scale + sharpen, as the X11 renderer does. */

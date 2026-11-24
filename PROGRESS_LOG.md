@@ -1,5 +1,90 @@
 # Star-Compose — Progress Log
 
+## 2026-11-24 15:50–16:50 EST — NIS rewrite: prepass + gathers + coefficients in a uniform buffer (`feat/nis-rewrite`, 09f3d8b0 INSTALLED FIT, DEVICE-TESTED: NIS -80 %, not merged)
+- Why: upaio-1124 (FIT, X11 Vulkan, dx11 cube) measured NIS at ~5.0 ms GPU per composited frame (old and half shaders alike) and
+  AIO 2894 -> ~765 fps (-74 %). nis.frag is a single-pass fragment port of NVIDIA's LDS compute NVScaler: every output pixel
+  fetches its 6x6 luma support (36 textureLod + 1 colour tap, getY on each) and recomputes 4 edge maps; at 1920x1080 that is
+  ~77 M fetches per frame. User 15:45 EST: "merge to main then try rewriting nis on a new branch"; asked "do you know how to
+  rewrite it to be better or is there already a way" -> told: (A) NVIDIA's own compute NIS_Scaler.h (MIT, GLSL; gamescope ships
+  it as cs_nis.comp / cs_nis_fp16.comp) or (B) keep the fragment design with a luma prepass + textureGather. Starting with B.
+- Plan B (branch off main a6b1be08, worktree /root/src/Bannerlator-wt/nis-rewrite):
+  1. nis_luma.frag: game-res prepass, rgb = input, a = luma (NIS getY weights) into a new game-res target.
+  2. nis2.frag: same NVScaler maths as nis.frag, but the 6x6 luma support = 9 textureGather(.., 3) on that target (alpha),
+     colour tap from its rgb; half build only (new shader set). Old set keeps nis.frag (A/B via debug.bannerlator.upscale.shaders).
+  3. X11 VulkanRendererContext + Wayland effects chain: prepass + pass for mode 7 in the half set.
+  4. Check: offline CPU comparison of 8-bit-alpha luma vs float luma on a real frame; AIO A/B on the FIT like upaio-1124.
+- Main state: upscaler refresh merged (16595ed8), main CI 45483445549 GREEN 4/4 (15:55 EST); FIT has 099c21fd (same code).
+- Built 8530c88e (one commit, buildable): nis_luma.frag + nis2.frag (half only; gen_shaders.sh HALF/HALF_ONLY), nis_half_frag.h
+  dropped (unused now); X11: nisLumaPipeline (offscreenRenderPass) + nisSrc target (ensureNisSrc, game res, destroyed in
+  teardown), prepass before nis2 in recordUpscalePasses, log "upscale shaders: NIS = luma prepass + gather pass"; Wayland:
+  P_NIS_LUMA + g_nissrc (scene size) + prepass. Old set unchanged. Syntax-only compile 0 errors / 0 warnings.
+- Shader check ON THE DEVICE DRIVER (Adreno 750): own harness (scratchpad nischeck/nis_check.cpp; Android build linked to
+  /system/lib64 libvulkan/libc, run as root from /data/local/tmp/nischeck; binaries + inputs in
+  /sdcard/Download/perf-harness/nischeck): 1280x720 -> 1920x1080, sharpness 0.75, vs nis.frag fp32:
+  real frame (AIO screenshot) nis2 half PSNR 59.8 dB, mean 0.029, >8 levels 0.007 %; synthetic edge chart 41.5 dB, mean 0.30,
+  >8 levels 0.68 %. Split: mediump-only nis.frag 63.9 / 40.5 dB; gathers + 8-bit luma fp32 60.2 / 41.5 dB -> outliers = NIS
+  edge-direction flips on 1-px edges (diff image: only along the lines), not a gather-order error.
+  (lavapipe on the host failed first: LLVM 21 targets the X4/A720/A520 as SVE2 cores, the kernel has SVE off -> SIGILL; a fake
+  cpuinfo/midr shim fixed clang's detection but not llvmpipe's; dropped in favour of the device test.)
+- CI build-artifacts 45485822464 dispatched 15:55 EST, headSha 8530c88e == pushed.
+- CI GREEN 15:59 EST: 45485822464, headSha 8530c88e, 4/4 success. aria2 download: digest c8343c2b... == GitHub; APK .so strings:
+  libvulkan_renderer "upscale shaders: NIS = luma prepass + gather pass", libbannerwayland nis2_half / nis_luma_half / "NIS luma";
+  signer a40da80a.... STAGED 16:00 EST: /sdcard/Download/Bannerlator-nis-rewrite-8530c88e-pubg.apk 602987140 B, sha256
+  53c56150... (host == /sdcard == device). NOT installed (asking the user). upscale-ab.sh now captures stream.log itself.
+- 16:10 EST user: "yes install and run the test"; then "I believe our all-in-one Graphics test has scenes you can use to test
+  these". AIO 2.2.0 source (The412Banner/AIO-Graphics-Test main): D3D11 scenes via `--cube dx11 --scene <name>` (city, showcase,
+  desert, nebula2, planet, ...); every D3D11 scene window is a fixed 640x480 WS_OVERLAPPEDWINDOW (aio_run_d3d11_cube), no
+  fullscreen flag -> the cube runs used only a third of the screen. Test now: SCENE=city, SCREEN=640x480 (scene fills the
+  desktop, BL upscales 640x480 -> 1440x1080 fit), upscale-ab.sh gained SCENE/SCREEN. Peers root-bf / root-e0 told + acked.
+- 16:25 EST user "yes go ahead" (prove the cause, move the tables, rebuild, rerun the Cityscape test).
+  Device timing harness (scratchpad nischeck/nis_time.cpp, Android build vs /system/lib64 libvulkan, 30 runs, timestamps,
+  binaries in /sdcard/Download/perf-harness/nischeck): Adreno 750, median ms
+  1280x720->1920x1080: old 2.821 | prepass 0.028 | nis2 2.255 | nis3 half (UBO tables) 0.406 | nis3 fp32 0.684 | SGSR HQ 0.076
+  640x480->1440x1080:  old 2.162 | prepass 0.014 | nis2 1.744 | nis3 half 0.376 | nis3 fp32 0.581 | SGSR HQ 0.061
+  -> CONFIRMED: the per-pixel coefficient-table copies were the cost. nis3 output vs old: 59.8 dB (== nis2).
+- Built 09f3d8b0: nis3.frag (replaces nis2), nis_coef.h (tables from nis.frag, NVIDIA MIT notice), X11 createNisCoef /
+  nisPipeLayout / set 1 in postPass, Wayland coef_create / g_pl_nis / set 1 in pass() (vk_loader + 4 buffer functions),
+  fallback to nis.frag if the buffer fails. Syntax-only compile clean. CI build-artifacts 45492009810 (16:31 EST, headSha
+  09f3d8b0 == pushed).
+- CI GREEN 16:36 EST: 45492009810, headSha 09f3d8b0, 4/4. aria2 download digest cfbee4fb... == GitHub; APK .so strings:
+  "coefficients in a uniform buffer" (X11), nis3_half (Wayland), fallback strings present; signer a40da80a.... STAGED 16:42 EST
+  /sdcard/Download/Bannerlator-nis-rewrite-09f3d8b0-pubg.apk sha256 89e50062e2415629... (host == /sdcard == device). Installing + city
+  test next (user approved "rebuild and rerun the Cityscape test" in the 16:25 "yes go ahead").
+- INSTALLED 16:40 EST on the FIT (BL closed, Termux in front, peers told + acked): installed base.apk sha256 89e50062... == staged.
+- RESULTS nis3aio-1124 (16:40-16:48 EST, X11 Vulkan, AIO dx11 --scene city 20 s, 640x480 desktop -> 1440x1080, fan 255,
+  0 FATAL/ANR, startup line "NIS = luma prepass + gather pass, coefficients in a uniform buffer", no fallback line):
+  baseline AIO 262.7 | NIS old 3.402 / 3.420 ms per frame, AIO 186.0 / 185.6 | NIS new 0.673 / 0.675 ms, AIO 245.7 / 246.0
+  (1 % low 120.1 / 126.4 vs 103.2 / 100.2) | SGSR HQ 0.154 ms, AIO 261.1.
+  -> NIS -80 % GPU time, game +32 % fps; NIS now costs this game ~6.5 % fps (was ~29 %). Screenshots old vs new: same picture.
+  Cleanup done (prop "", temp shortcut removed, stream stopped, fan pwm 51, Termux front, peers "done").
+- 16:30 EST user: "feel free to build scenes for each upscaler like now or one for all to test then being toggled in the aio
+  graphics test program" -> helper agent started on The412Banner/AIO-Graphics-Test branch feat/upscaler-test-scene
+  (worktree /root/src/AIO-wt/upscaler-test-scene): D3D11 scene `--scene upscale` (static test chart: line fan, zone plate,
+  Siemens star, checkerboards, text, gradients, colour edges; --motion) + --width/--height/--fullscreen for D3D11 scenes;
+  CI build only, exe to /sdcard/Download/AIO-upscaletest/, no release.
+- AIO facts (main, verified 16:40 EST): default UI = Dear ImGui shell, `--classic` = legacy Win32 sidebar (menu.c). ImGui shell
+  already has "Scaling Tests" (Combo Card, Zone Plate, Resolution Wedge, Lines & Diagonals, Checkerboard, Hard Edges, Banding
+  Test) and "Display Tests" -> HDR (hdr_scene.cpp); none of these in the classic menu, no CLI flags. Cursor test = separate
+  CursorTest.exe (tools/cursor-test, build-cursor-test.yml), in no menu. User 16:40 EST: "I'd like them all options and have
+  launch commands like the cube tests to launch easily for you, rolled into one set of 32/64 exe files and a new release to
+  use" -> helper re-scoped: CLI flags for scaling tests + HDR + cursor test, cursor test inside the main exe, same tests in
+  both UIs, no duplicate chart unless Combo Card lacks regions; release after device test, publish form = user's call.
+- INSTALLED 16:13 EST on the FIT (user yes 16:10; peers told): installed base.apk sha256 53c56150... == staged.
+- RESULTS nisaio-1124 (16:13-16:21 EST, X11 Vulkan, AIO --cube dx11 --scene city 20 s in a 640x480 desktop -> 1440x1080 fit,
+  fan 255, 0 FATAL, scene fills the desktop, GPU 99 % busy): baseline (Linear) AIO 263.3 | NIS old 3.412 / 3.419 ms per frame,
+  AIO 185.8 / 185.6 | NIS new (prepass + gathers) 3.018 / 3.008 ms, AIO 192.5 / 192.6 | SGSR HQ new 0.156 ms, AIO 261.2.
+  -> NIS new = -12 % GPU time, +3.6 % game fps (both pairs agree); NIS still costs this game ~27 % fps (SGSR HQ < 1 %).
+  The fetches were not the main cost. Suspect found in the SPIR-V: glslang copies each 384-float const table
+  (coefScale/coefUsm) into a Function variable (OpStore %indexable <table>) before every dynamic index -> per-pixel table
+  copies unless the driver folds them. Next (not done): time variants on the device with the nischeck harness (+ timestamps)
+  to confirm, then move the tables to a UBO/texture (NVIDIA keeps them in textures/LDS) or port NVIDIA's compute NIS (A).
+  Cleanup done: prop "", temp shortcut removed, stream capture stopped, fan back to AYANEO (pwm 51), Termux in front, peers
+  told "done". FIT keeps 8530c88e (main a6b1be08 + NIS rewrite).
+- Resume point: install 8530c88e on the FIT, verify sha; run tag nisaio-1124:
+  `API=dx11 BENCH=20 SCENE=city SCREEN=640x480 sh upscale-ab.sh nisaio-1124 1:0:new 7:0:old 7:0:new 7:0:new 7:0:old 8:0:new`
+  (fan-max via setsid first; fan-restore + Termux + "done" to peers after). If interrupted: read results/nisaio-1124/run.log,
+  cleanup = prop "", rm temp shortcut, kill stream pid (results/nisaio-1124/.stream.pid), fan-restore.
+
 ## 2026-11-24 13:10–15:45 EST — Upscaler refresh: lighter math, cursor after the upscale, CAS from AMD's file (`feat/upscaler-refresh`, MERGED main 16595ed8, AIO-tested FIT)
 - Why: Discord question 11-24 (is NIS the limit). Research 11-24 (main 48b4bafb): no newer SPATIAL upscaler exists upstream (all new ones
   since mid-2025 = temporal: SGSR 2, Adreno Neural Fusion, Arm ASR/NSS, FSR 4); our SGSR (both variants, upstream d926f074 2025-10-16),

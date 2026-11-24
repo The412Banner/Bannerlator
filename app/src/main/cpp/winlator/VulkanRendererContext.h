@@ -727,6 +727,20 @@ private:
     VkPipelineLayout  postPipeLayout    = VK_NULL_HANDLE;
     VkPipeline        sgsrPipeline      = VK_NULL_HANDLE;
     VkPipeline        nisPipeline       = VK_NULL_HANDLE; // NVIDIA Image Scaling (mode 7)
+    // Half set only: NIS prepass (nis_luma.frag, game rgb + luma in alpha) into nisSrc,
+    // which nisPipeline (nis3.frag) then gathers from. Null in the old set (nis.frag).
+    VkPipeline        nisLumaPipeline   = VK_NULL_HANDLE;
+    // nis3.frag's coefficient banks (nis_coef.h) in a uniform buffer at descriptor set 1;
+    // nisPipeLayout = {dsLayout, nisCoefDsl} with postPipeLayout's push-constant range, so
+    // set 0 and the push constants bound through postPipeLayout stay valid for it.
+    VkDescriptorSetLayout nisCoefDsl    = VK_NULL_HANDLE;
+    VkPipelineLayout      nisPipeLayout = VK_NULL_HANDLE;
+    VkDescriptorPool      nisCoefPool   = VK_NULL_HANDLE;
+    VkDescriptorSet       nisCoefDS     = VK_NULL_HANDLE;
+    VkBuffer              nisCoefBuf    = VK_NULL_HANDLE;
+    VkDeviceMemory        nisCoefMem    = VK_NULL_HANDLE;
+    bool createNisCoef();
+    void destroyNisCoef();
     VkPipeline        sgsrQualityPipeline = VK_NULL_HANDLE; // SGSR 1 edge-direction (mode 8)
     VkPipeline        easuPipeline      = VK_NULL_HANDLE;
     VkPipeline        rcasPipeline      = VK_NULL_HANDLE;
@@ -767,6 +781,14 @@ private:
     VkFramebuffer     midFB   = VK_NULL_HANDLE;
     VkDescriptorSet   midDS   = VK_NULL_HANDLE;
     int               midW = 0, midH = 0;
+
+    // NIS prepass output @ game resolution (half set): rgb = the composite, a = luma.
+    VkImage           nisSrcImg  = VK_NULL_HANDLE;
+    VkDeviceMemory    nisSrcMem  = VK_NULL_HANDLE;
+    VkImageView       nisSrcView = VK_NULL_HANDLE;
+    VkFramebuffer     nisSrcFB   = VK_NULL_HANDLE;
+    VkDescriptorSet   nisSrcDS   = VK_NULL_HANDLE;
+    int               nisSrcW = 0, nisSrcH = 0;
 
     // Effect-chain intermediates @ swapchain resolution. fx1 holds the scaled (or
     // composited) image fed into CAS/HDR; fx2 ping-pongs when both effects run.
@@ -851,13 +873,15 @@ private:
     void createUpscaleSampler();
     void createOffscreenRenderPass();
     void createPostPipelines();
-    VkPipeline createPostPipeline(const uint32_t* fragCode, size_t fragSz, VkRenderPass rp);
+    VkPipeline createPostPipeline(const uint32_t* fragCode, size_t fragSz, VkRenderPass rp,
+                                  VkPipelineLayout layout = VK_NULL_HANDLE);
     bool createColorTarget(int w, int h, VkImage& img, VkDeviceMemory& mem,
                            VkImageView& view, VkFramebuffer& fb, VkDescriptorSet& ds);
     void destroyColorTarget(VkImage& img, VkDeviceMemory& mem, VkImageView& view,
                             VkFramebuffer& fb, VkDescriptorSet& ds);
     bool ensureOffscreen(int w, int h);
     bool ensureMid(int w, int h);
+    bool ensureNisSrc(int w, int h);
     bool ensureFx1(int w, int h);
     bool ensureFx2(int w, int h);
     void recordUpscalePasses(VkCommandBuffer cb, uint32_t imgIdx,

@@ -5505,6 +5505,14 @@ internal fun ProcessorAffinityDialog(
     onDismiss: () -> Unit,
 ) {
     val coreCount = remember { Runtime.getRuntime().availableProcessors().coerceIn(1, 32) }
+    // Each core's short name and top clock under its tile ("X4 3.30"), read from the device.
+    val coreNotes = remember {
+        val cores = com.winlator.star.deviceinfo.CpuCores.read()
+        cores.associate { c ->
+            c.index to listOfNotNull(c.name?.removePrefix("Cortex-"),
+                if (c.maxKhz > 0) String.format(java.util.Locale.US, "%.2f", c.maxKhz / 1e6) else null).joinToString(" ")
+        }
+    }
     val allMask = remember(coreCount) { if (coreCount >= 32) -1 else (1 shl coreCount) - 1 }
     // Open pre-ticked to the cores the user actually chose. Prefer the live override cache (what the
     // user last applied) over the guest's GetProcessAffinityMask readback, which is unreliable under
@@ -5576,7 +5584,10 @@ internal fun ProcessorAffinityDialog(
                                 modifier = Modifier.size(28.dp),
                             )
                             Spacer(Modifier.height(2.dp))
-                            Text("CPU$i", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                            Text("Core $i", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                            coreNotes[i]?.takeIf { it.isNotEmpty() }?.let {
+                                Text(it, fontSize = 9.5.sp, maxLines = 1, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }
@@ -5752,12 +5763,16 @@ internal fun TmCoreStrip(h: XServerDialogState.TmHeaderStats?) {
     if (cores.isEmpty()) return
     val accent = MaterialTheme.colorScheme.primary
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    // Cores the game is not running on (core pick / Prefer big cores) are dimmed, as on the HUD.
+    val gameMask by XServerDrawerState.gameCoreMask.collectAsState()
     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         CorePanel(count = cores.size) { i ->
             val mhz = cores[i]
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 4.dp),
+                modifier = Modifier.fillMaxWidth()
+                    .alpha(if (gameMask != 0 && (gameMask shr i) and 1 == 0) 0.35f else 1f)
+                    .padding(vertical = 8.dp, horizontal = 4.dp),
             ) {
                 Text("C$i", color = muted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                 Text(

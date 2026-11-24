@@ -379,6 +379,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private float globalCursorSpeed = 1.0f;
     private short taskAffinityMask = 0;
     private short taskAffinityMaskWoW64 = 0;
+    /** WINE_CPU_TOPOLOGY for this session ("<count>:<cores>"), empty when Sync CPU topology is off. */
+    private String wineCpuTopology = "";
     // Prefer-big-cores live re-pin: guest pid -> its affinity mask BEFORE we changed it, so toggle OFF
     // restores each process exactly (revert philosophy). Populated on toggle ON, cleared on OFF.
     private final java.util.HashMap<Integer, Integer> bigCoreAffinitySnapshot = new java.util.HashMap<>();
@@ -2668,6 +2670,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
             applyPerfKeyLive(key, on);
             persistPerfToggle(key, on);
         };
+        // In-game Performance page: this game's core pick + Sync CPU topology, saved to its shortcut (next launch).
+        state.onGameCoresChange = v -> {
+            if (shortcut == null || v == null || v.isEmpty()) return;
+            shortcut.putExtra("cpuList", v);
+            shortcut.saveData();
+        };
+        state.onGameSyncTopologyChange = on -> {
+            if (shortcut == null) return;
+            shortcut.putExtra("syncCpuTopology", on ? "1" : "0");
+            shortcut.saveData();
+        };
         state.onResetPerfKey = key -> resetPerfKey(key);
         state.onResetAllPerf = this::resetAllPerfOverrides;
         state.onFreeMemory = () -> com.winlator.star.perf.PerfRootApplier.INSTANCE.freeMemoryNow();
@@ -3135,6 +3148,21 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 taskAffinityMaskWoW64 = taskAffinityMask;
                 Log.d("XServerDisplayActivity", "Prefer big cores: affinity -> " + bigList);
             }
+        }
+
+        // Sync CPU topology (the game's "1"/"0" overrides the container): Windows is shown only the cores the session
+        // runs on, as WINE_CPU_TOPOLOGY=<count>:<cores> (Proton's ntdll fill_cpu_override). Same switch as Winlator
+        // Ludashi's "Sync CPU Topology" (StevenMXZ). Uses the final affinity, after Prefer big cores.
+        boolean syncTopology = container.isSyncCpuTopology();
+        if (shortcut != null) {
+            String topo = shortcut.getExtra("syncCpuTopology");
+            if ("1".equals(topo) || "0".equals(topo)) syncTopology = "1".equals(topo);
+        }
+        wineCpuTopology = syncTopology ? cpuTopologyValue(taskAffinityMask) : "";
+        updateHudGameCores();
+        if (shortcut != null) {
+            XServerDrawerState.INSTANCE.setGameCpuList(shortcut.getExtra("cpuList", container.getCPUList(true)));
+            XServerDrawerState.INSTANCE.setGameSyncTopology(syncTopology);
         }
 
         // Determine the class name for the startup workarounds
@@ -9484,6 +9512,28 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return dirs;
     }
 
+    /** The HUD and the Task Manager core tiles grey out the cores the game is not using; nothing is greyed when it
+     *  uses them all. */
+    private void updateHudGameCores() {
+        int all = (1 << Math.min(16, com.winlator.star.deviceinfo.CpuCores.INSTANCE.count())) - 1;
+        int mask = taskAffinityMask & 0xFFFF;
+        int shown = mask == 0 || (mask & all) == all ? 0 : mask;
+        XServerDrawerState.INSTANCE.setGameCoreMask(shown);
+        if (fusionHud != null) fusionHud.setGameCores(shown);
+    }
+
+    /** "<count>:<core>,<core>,..." for WINE_CPU_TOPOLOGY from an affinity mask (bit n = core n); empty for no cores. */
+    static String cpuTopologyValue(int mask) {
+        StringBuilder cores = new StringBuilder();
+        int count = 0;
+        for (int i = 0; i < 16; i++) {
+            if ((mask & (1 << i)) == 0) continue;
+            if (count++ > 0) cores.append(',');
+            cores.append(i);
+        }
+        return count == 0 ? "" : count + ":" + cores;
+    }
+
     /** {@code key=value} into the launch env unless the user's own env vars set {@code key} (theirs wins);
      *  either way one "key=value" note for the log. */
     private static void putUnlessUsers(EnvVars envVars, String key, String value, java.util.List<String> said) {
@@ -12492,6 +12542,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // by changeWineAudioDriver(); route changes are handled inside the driver.
             DirectAudioSupport.installDriver(this, container.getWineVersion());   // newest driver build on the layer before the guest loads it
             applyDirectAudioConfig(envVars);
+        }
+
+        // Sync CPU topology, after every env source is merged: a WINE_CPU_TOPOLOGY in the user's own env vars wins.
+        if (!wineCpuTopology.isEmpty()) {
+            java.util.List<String> said = new java.util.ArrayList<>();
+            putUnlessUsers(envVars, "WINE_CPU_TOPOLOGY", wineCpuTopology, said);
+            Log.d("XServerDisplayActivity", "Sync CPU topology: " + said.get(0));
         }
 
         // Turnip TU_DEBUG composition (per-container + per-game). Runs AFTER every env source is
@@ -16799,6 +16856,7 @@ return true;
                 }
                 // ...AND re-pin the ALREADY-RUNNING guest tree so the current game moves now.
                 reapplyBigCoresToRunningGuest(on);
+                updateHudGameCores();
                 // Keep the game pinned against later-spawned threads while Prefer Big Cores is ON: point the
                 // drift checker at the game exe + big mask so it resolves the real Linux pid and re-pins
                 // host-side on thread growth. OFF -> clear the target so the checker stops maintaining it.
@@ -18454,6 +18512,7 @@ return true;
         // session and on one whose spoof never got out, so the GPU row is what it always was.
         fusionHud.setGpuSpoofName(deliveredGpuSpoofName);
         fusionHud.setDisplayServer(hudDisplayServerLabel());
+        updateHudGameCores();
         fusionHud.setHdrState(hudHdrCode());
         // Mega stack-layer versions: Proton/Wine, the graphics-driver wrapper package, and DX wrapper.
         if (wineInfo != null) fusionHud.setWineVersion(wineInfo.toString());

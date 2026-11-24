@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -148,6 +149,7 @@ import com.winlator.star.ui.deck.rememberXmbSlice
 import androidx.compose.runtime.CompositionLocalProvider
 import com.winlator.star.ui.deck.xmbInner
 import com.winlator.star.ui.deck.xmbLandingIndex
+import com.winlator.star.ui.simple.L
 import com.winlator.star.ui.deck.xmbPageFrost
 import com.winlator.star.ui.deck.xmbRailGroup
 import com.winlator.star.ui.deck.xmbRailItem
@@ -1603,6 +1605,14 @@ internal fun optionsOf(control: Control): List<Opt> = when (control) {
     else -> emptyList()
 }
 
+/** "all 8 cores", or "6 of 8 cores (2-7)". */
+internal fun coresLabel(v: String, total: Int = com.winlator.star.deviceinfo.CpuCores.count()): String {
+    val picked = v.split(',').mapNotNull { it.trim().toIntOrNull() }.filter { it in 0 until total }.distinct().sorted()
+    if (picked.isEmpty() || picked.size == total) return "all $total cores"
+    val list = if (picked.last() - picked.first() == picked.size - 1) "${picked.first()}-${picked.last()}" else picked.joinToString(",")
+    return "${picked.size} of $total cores ($list)"
+}
+
 /** A stored value as the row shows it: the option's label, On/Off, or the slider's display text. */
 internal fun labelFor(control: Control, v: String): String = when (control) {
     Control.Toggle -> if (v == "1") "On" else "Off"
@@ -1611,7 +1621,7 @@ internal fun labelFor(control: Control, v: String): String = when (control) {
     is Control.Select -> control.options.firstOrNull { it.value == v }?.label ?: SettingsRegistry.prettyResolution(v)
     is Control.Slider -> v.toFloatOrNull()?.let(control.display) ?: v
     is Control.TextField -> v.ifEmpty { "empty" }
-    Control.Cores -> if (v.isEmpty()) "all cores" else "cores $v"
+    Control.Cores -> coresLabel(v)
     is Control.Checklist -> v.split(',').count { it.isNotEmpty() }.let { if (it == 0) "all on" else "$it off" }
 }
 
@@ -1763,7 +1773,7 @@ private fun ChipPills(options: List<Opt>, value: String, enabled: Boolean, align
 
 /** A rounded choice. [first]: in an XMB row, the one A on the row lands on (see [xmbLandingIndex]). */
 @Composable
-private fun Pill(label: String, selected: Boolean, enabled: Boolean, first: Boolean = false, onClick: () -> Unit) {
+private fun Pill(label: String, selected: Boolean, enabled: Boolean, first: Boolean = false, compact: Boolean = false, onClick: () -> Unit) {
     val shape = deckShape(22.dp)
     DeckInk { item, cs ->
         Text(
@@ -1774,7 +1784,7 @@ private fun Pill(label: String, selected: Boolean, enabled: Boolean, first: Bool
                 else -> cs.onSurface.copy(alpha = 0.4f)
             },
             fontWeight = FontWeight.Bold,
-            fontSize = 14.5.sp,
+            fontSize = if (compact) 13.5.sp else 14.5.sp,
             maxLines = 1,
             modifier = Modifier
                 .deckFocusRingInk(shape, item, scaleTo = 1f)
@@ -1783,7 +1793,7 @@ private fun Pill(label: String, selected: Boolean, enabled: Boolean, first: Bool
                 .background(if (selected) cs.primary.copy(alpha = 0.14f) else deckInset(0.45f))
                 .border(1.5.dp, if (selected) cs.primary else deckLineAt(0.6f), shape)
                 .clickable(enabled = enabled, onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 9.dp),
+                .padding(horizontal = if (compact) 12.dp else 16.dp, vertical = if (compact) 6.dp else 9.dp),
         )
     }
 }
@@ -2081,16 +2091,83 @@ private fun ChecklistLine(label: String, checked: Boolean, modifier: Modifier = 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CoresControl(value: String, enabled: Boolean, onPick: (String) -> Unit) {
-    val cores = remember { Runtime.getRuntime().availableProcessors() }
-    val on = value.split(',').mapNotNull { it.trim().toIntOrNull() }.toSet()
-    // The last core left can't be turned off: a game needs at least one.
-    val landing = xmbLandingIndex((0 until cores).map { it in on }, (0 until cores).map { enabled && !(it in on && on.size == 1) })
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        for (i in 0 until cores) {
-            val sel = i in on
-            Pill("Core $i", selected = sel, enabled = enabled && !(sel && on.size == 1), first = i == landing) {
-                val next = if (sel) on - i else on + i
-                onPick(next.sorted().joinToString(","))
+    // The device's own cores, grouped fastest first: "Prime · Cortex-X4 · 3.30 GHz" over its "Core 7" pill.
+    val cores = remember { com.winlator.star.deviceinfo.CpuCores.read() }
+    val clusters = remember(cores) { com.winlator.star.deviceinfo.CpuCores.clusters(cores) }
+    val chip = remember { com.winlator.star.deviceinfo.CpuCores.chipLabel() }
+    val big = remember(cores) {
+        com.winlator.star.perf.CpuTopology.bigCoreIndices(IntArray(cores.size) { (cores[it].maxKhz / 1000).toInt() }).toSet()
+    }
+    val all = remember(cores) { cores.indices.toSet() }
+    val on = value.split(',').mapNotNull { it.trim().toIntOrNull() }.filter { it in all }.toSet()
+    fun pick(set: Set<Int>) { if (set.isNotEmpty()) onPick(set.sorted().joinToString(",")) }
+    // Pill order on screen: the quick picks, then every core cluster by cluster. The last core left can't be turned off.
+    val order = clusters.flatMap { it.cores }
+    val showBig = big.isNotEmpty() && big != all
+    val quick = listOf(on == all) + (if (showBig) listOf(on == big) else emptyList())
+    val landing = xmbLandingIndex(
+        quick + order.map { it in on },
+        quick.map { enabled } + order.map { enabled && !(it in on && on.size == 1) },
+    )
+    // Landscape (a wide, short screen): each cluster on one line, title left and its cores right, with smaller pills, so
+    // four clusters fit a handheld's height. Portrait keeps the title over its pills. Scrolls rather than squeeze Done.
+    val config = LocalConfiguration.current
+    val wide = config.screenWidthDp >= 600 && config.screenWidthDp > config.screenHeightDp
+    val gap = if (wide) 6.dp else 10.dp
+    Column(
+        verticalArrangement = Arrangement.spacedBy(gap),
+        modifier = Modifier
+            .heightIn(max = (config.screenHeightDp * 0.72f).dp)
+            .verticalScroll(androidx.compose.foundation.rememberScrollState()),
+    ) {
+        val quickPicks: @Composable () -> Unit = {
+            Pill(L("All cores"), selected = on == all, enabled = enabled, first = landing == 0, compact = wide) { pick(all) }
+            if (showBig) Pill(L("Big cores"), selected = on == big, enabled = enabled, first = landing == 1, compact = wide) { pick(big) }
+        }
+        if (wide) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(chip, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { quickPicks() }
+            }
+        } else {
+            if (chip.isNotEmpty()) Text(chip, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { quickPicks() }
+        }
+        var index = quick.size
+        for (c in clusters) {
+            val groupOn = c.cores.all { it in on }
+            // Tapping the title switches the whole cluster (one core always stays on).
+            val title: @Composable (Modifier) -> Unit = { m ->
+                Text(
+                    com.winlator.star.deviceinfo.CpuCores.clusterTitle(c, L(c.tier.label)),
+                    color = if (groupOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = if (wide) 13.sp else 13.5.sp,
+                    modifier = m.clickable(enabled = enabled) { pick(if (groupOn) on - c.cores.toSet() else on + c.cores) },
+                )
+            }
+            val first = index
+            index += c.cores.size
+            val pills: @Composable () -> Unit = {
+                c.cores.forEachIndexed { k, i ->
+                    val sel = i in on
+                    Pill(L("Core %1\$d", i), selected = sel, enabled = enabled && !(sel && on.size == 1), first = first + k == landing, compact = wide) {
+                        pick(if (sel) on - i else on + i)
+                    }
+                }
+            }
+            if (wide) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    title(Modifier.weight(1f).padding(end = 10.dp))
+                    FlowRow(
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) { pills() }
+                }
+            } else {
+                title(Modifier.padding(top = 4.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { pills() }
             }
         }
     }

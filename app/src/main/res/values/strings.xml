@@ -1614,6 +1614,13 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="force_ssbs_container_default">Container default (%1$s)</string>
     <string name="force_ssbs_on">On</string>
     <string name="force_ssbs_off">Off</string>
+    <string name="sync_cpu_topology">Sync CPU topology</string>
+    <string name="help_sync_cpu_topology"><![CDATA[
+        <b>Sync CPU topology</b><br /><br />
+        Windows games ask how many CPU cores the device has and start that many worker threads. If you picked fewer cores under Processor Affinity, the game still sees all of them and crowds its threads onto the cores it is allowed to use.<br /><br />
+        Turning this on tells Wine to show the game only the cores you picked (WINE_CPU_TOPOLOGY), and Wine keeps each game thread on those cores.<br /><br />
+        It works with the Bannerlator Proton builds. Whether it helps depends on the game; it is off by default. A WINE_CPU_TOPOLOGY you set yourself in the environment variables wins. \'Container default\' uses the container\'s setting.
+    ]]></string>
     <string name="help_force_ssbs"><![CDATA[
         <b>Force SSBS (CPU speed fix)</b><br /><br />
         Wine has a bug on ARM devices: every time it handles certain internal events, it switches off a CPU speed feature called SSBS for the game\'s threads. With it off, the CPU uses a slower, extra-safe way of handling memory reads and writes.<br /><br />

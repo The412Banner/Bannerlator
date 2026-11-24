@@ -192,6 +192,9 @@ public class Container {
     // Force SSBS (arm64ec only, on by default): WINE_FORCE_SSBS=1 for rebuilt layers plus libssbs.so preloaded
     // for the rest, so game threads keep the CPU's speculative-store fast path after signal returns.
     private boolean forceSsbs = true;
+    // Sync CPU topology (off by default): WINE_CPU_TOPOLOGY=<count>:<cores> from the game's core pick, so Windows sees
+    // only the picked cores (games size their thread pools to the CPU count). Same switch as Winlator Ludashi (StevenMXZ).
+    private boolean syncCpuTopology = false;
     private String renderer = "vulkan";
     private boolean exclusiveXInput = true;
     // "Direct XInput (BANNERIN)": XInput games read the pad straight from the BANNERIN slot files
@@ -476,6 +479,14 @@ public class Container {
 
     public boolean isForceSsbs() {
         return this.forceSsbs;
+    }
+
+    public void setSyncCpuTopology(boolean syncCpuTopology) {
+        this.syncCpuTopology = syncCpuTopology;
+    }
+
+    public boolean isSyncCpuTopology() {
+        return this.syncCpuTopology;
     }
 
     public File getRootDir() {
@@ -1473,6 +1484,7 @@ public class Container {
             if (!box64ecVersion.isEmpty()) data.put("box64ecVersion", box64ecVersion);
             // Always written: the default is on, so an "off" must be stored to survive a reload.
             data.put("forceSsbs", forceSsbs);
+            if (syncCpuTopology) data.put("syncCpuTopology", true);
             data.put("fexcorePreset", fexcorePreset);
             data.put("fexcoreVersion", fexcoreVersion);
             data.put("box64Preset", box64Preset);
@@ -1599,6 +1611,9 @@ public class Container {
                     break;
                 case "forceSsbs":
                     setForceSsbs(data.getBoolean(key));
+                    break;
+                case "syncCpuTopology":
+                    setSyncCpuTopology(data.getBoolean(key));
                     break;
                 case "fexcoreVersion":
                     setFEXCoreVersion(data.getString(key));

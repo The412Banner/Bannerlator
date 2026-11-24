@@ -1094,6 +1094,13 @@ internal object SettingsRegistry {
             showInGame = false,
             visible = { env, _ -> env.arm64ec },
         ),
+        SettingDef(
+            id = "performance.syncCpuTopology", category = "performance", group = T("CPU cores"), level = ADVANCED,
+            label = T("Sync CPU topology"), hint = T("Windows sees only the picked cores."), tech = T("WINE_CPU_TOPOLOGY"),
+            control = { _, _ -> Control.Toggle },
+            vm = vmBool({ it.syncCpuTopology }, { vm, v -> vm.syncCpuTopology = v }),
+            game = key10("syncCpuTopology"),
+        ),
         perfToggle("performance.power.sustained", "sustainedPerfMode", T("Sustained performance mode"), T("Keeps clocks steady for long sessions instead of short bursts.")),
         perfToggle("performance.power.priorityBoost", "perfPriorityBoost", T("Boost game thread priority"), null),
         perfToggle("performance.power.bigCores", "preferBigCores", T("Prefer big CPU cores"), null),

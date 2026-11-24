@@ -40,6 +40,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.draw.alpha
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -332,6 +333,8 @@ internal fun LabTmCoreStrip(h: XServerDialogState.TmHeaderStats?) {
     val cores = h?.perCoreMhz ?: return
     if (cores.isEmpty()) return
     val accent = MaterialTheme.colorScheme.primary
+    // Cores the game is not running on (core pick / Prefer big cores) are dimmed, as on the HUD.
+    val gameMask by com.winlator.star.ui.XServerDrawerState.gameCoreMask.collectAsState()
     IgCard {
         Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             cores.indices.chunked(4).forEach { row ->
@@ -340,7 +343,9 @@ internal fun LabTmCoreStrip(h: XServerDialogState.TmHeaderStats?) {
                         val mhz = cores[i]
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.weight(1f).background(accent.copy(alpha = 0.10f), SimpleShape).border(1.dp, accent.copy(alpha = 0.3f), SimpleShape).padding(vertical = 6.dp),
+                            modifier = Modifier.weight(1f)
+                                .alpha(if (gameMask != 0 && (gameMask shr i) and 1 == 0) 0.35f else 1f)
+                                .background(accent.copy(alpha = 0.10f), SimpleShape).border(1.dp, accent.copy(alpha = 0.3f), SimpleShape).padding(vertical = 6.dp),
                         ) {
                             Text("C$i", color = SimpleMuted, fontFamily = NunitoSansFamily, fontWeight = FontWeight.Bold, fontSize = 10.sp)
                             Text(

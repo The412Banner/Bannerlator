@@ -105,19 +105,22 @@ object DeviceInfo {
     })
 
     private fun cpu() = Section("CPU", buildList<Pair<String, String>> {
-        add("Cores", Runtime.getRuntime().availableProcessors().toString())
-        val policies = File("/sys/devices/system/cpu/cpufreq").listFiles { f -> f.name.matches(Regex("policy\\d+")) }
-            ?.sortedBy { it.name.removePrefix("policy").toInt() }.orEmpty()
-        for (p in policies) {
-            val cpus = (read("${p.path}/related_cpus") ?: read("${p.path}/affected_cpus"))?.split(Regex("\\s+"))?.filter { it.isNotEmpty() }.orEmpty()
-            val min = read("${p.path}/cpuinfo_min_freq")?.toLongOrNull()
-            val max = read("${p.path}/cpuinfo_max_freq")?.toLongOrNull() ?: continue
-            val cores = if (cpus.size > 1) "cores ${cpus.first()}-${cpus.last()}" else "core ${cpus.firstOrNull() ?: p.name.removePrefix("policy")}"
-            add("Cluster ${p.name.removePrefix("policy")}", "${cpus.size.coerceAtLeast(1)} × $cores · " +
-                (if (min != null) ghz(min) + "–" else "") + ghz(max))
+        val cores = CpuCores.read()
+        add("Cores", cores.size.toString())
+        // One row per cluster, fastest first: "Prime" → "1 × Cortex-X4 · core 7 · 0.48 GHz–3.30 GHz".
+        for (c in CpuCores.clusters(cores)) {
+            val which = if (c.cores.size > 1) "cores ${coreRange(c.cores)}" else "core ${c.cores.first()}"
+            val clock = if (c.maxKhz > 0) (if (c.minKhz > 0) ghz(c.minKhz) + "–" else "") + ghz(c.maxKhz) else null
+            // Named: "1 × Cortex-X4 · core 7 · …"; unnamed: "2 × cores 6-7 · …" as before.
+            val head = if (c.name != null) listOf("${c.cores.size} × ${c.name}", which) else listOf("${c.cores.size} × $which")
+            add(c.tier.label, (head + listOfNotNull(clock)).joinToString(" · "))
         }
         add("ABI", Build.SUPPORTED_ABIS.joinToString(", "))
     })
+
+    /** "2-4" for a run of cores, "2,4,6" otherwise. */
+    private fun coreRange(cores: List<Int>): String =
+        if (cores.last() - cores.first() == cores.size - 1) "${cores.first()}-${cores.last()}" else cores.joinToString(",")
 
     private fun ghz(khz: Long) = String.format(Locale.US, "%.2f GHz", khz / 1e6)
 

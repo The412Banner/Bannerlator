@@ -1,5 +1,119 @@
 # Star-Compose — Progress Log
 
+## 2026-11-23 19:00–19:10 EST — Sync CPU topology + named core picker (`feat/cpu-topology`, IN PROGRESS, nothing built)
+- Why: user wants Ludashi's "Sync CPU topology" (WINE_CPU_TOPOLOGY from the core pick) and a core picker that reads the device and
+  lists each core by its real name and top speed (Samsung's faster clocks too), reusing the device-info pop-up's data. Also: update the
+  Retroid Duo to the latest main and add the Duo (and the user's Fold) to the chip-name list.
+- Verified: core pickers = Lab CoresControl (DeckSettingsEditor.kt:2083), Classic CPUListView (ContainerDetailScreen/ShortcutsScreen),
+  Task Manager affinity (XServerDrawer.kt ~5543); device info = deviceinfo/DeviceInfo.kt cpu() + SocNames.kt; installed Wine layers
+  11.0-12.3/12.8/11.0-2 v16 ntdll.so contain WINE_CPU_TOPOLOGY (proton-wine system.c:859, formats N:list / pN / N).
+- Device data (cpuinfo CPU part + cpuinfo_max_freq): FIT SG8350P A520x2 2.27 / A720x3 3.15 / A720x2 2.96 / X4 3.30; Elite SM8750P
+  Oryon 0x51/0x001 x6 3.53 + x2 4.32; Duo CQ7790S (Dragonwing Q-7790) A520x3 1.84 / A720x4 2.40 / A720 2.80; user's Fold SM-F976U
+  (screenshots) SM8850 canoe 6 x 3.63 + 2 x 4.74 GHz (standard 8 Elite Gen 5 prime is lower = Samsung clock).
+- Bug: SocNames maps platform "sun" -> Snapdragon 8 Elite, so the Duo shows "Snapdragon 8 Elite family (CQ7790S)".
+- Duo: main a884ad61 standard (CI 45290962010, 4/4 green) staged `/sdcard/Download/Bannerlator-main-a884ad61.apk` sha256 2b0b7e9f…
+  (host == Duo), INSTALLED 19:06:10 EST (user: "update the duo to latest bannerlator"), base.apk 2b0b7e9f… == staged, vc108 3.2.1.
+  Duo display 0 had a Retroid FOTA "NoticeActivity" on top (left alone). Next: open BL on the Duo -> device info screenshot.
+- Duo device info DONE 19:07–19:11 EST: Duo runs Classic (device info is Lab-only) -> backed up shared_prefs/winlator_theme.xml
+  (sha 22b57588…, copies /data/local/tmp/winlator_theme.xml.bak-20261123 + /sdcard/Download/Bannerlator-backup/duo-winlator_theme-
+  20261123.xml), set ui_style=deck + simple_home=true, opened Lab -> tapped "Retroid Pocket Duo" -> pop-up. Shows Name "Snapdragon 8
+  Elite family" (WRONG), Model CQ7790S, Maker Moorechip, platform/board sun, SoC id 732, Adreno 722; CPU 3 x cores 0-2 0.44–1.84 GHz,
+  4 x cores 3-6 0.48–2.40, 1 x core 7 0.48–2.80 (= sysfs). Restored the file (sha == backup), Classic verified by screenshot, Termux back
+  in front, crash buffer since 19:00 = only Magisk content-notify (ROM quirk), no BL crash. Screens: FIT /sdcard/Download/Bannerlator-Duo-
+  deviceinfo-{1,2}-20261123.png.
+- Built (19:15–19:20 EST): 59c49bfa deviceinfo/CpuCores.kt (core names from /proc/cpuinfo CPU part or midr_el1, part numbers from
+  Linux cputype.h cd2a6b71; clusters Prime/Performance/Efficiency by clock or capacity) + SocNames (SG8350P G3 Gen 3, SM8750P,
+  CQ7790S Dragonwing Q-7790, SM8635/SM8735/SM7675, canoe; -XX suffix; platform family only for empty/SM models; Samsung clock above
+  the reference = "for Galaxy") + CpuCoresTest (8 tests, run locally with the cached Kotlin 2.3.21 compiler: OK; live FIT read =
+  Prime X4 3.30 / A720 3.15 / A720 2.96 / A520 2.27, "Snapdragon G3 Gen 3").
+  5013a78b: Sync CPU topology (Container field + .container key, Lab def performance.syncCpuTopology + Classic rows + glossary help,
+  Classic container switch, Classic game dropdown Container default/On/Off, launch: WINE_CPU_TOPOLOGY=<n>:<list> from the final
+  taskAffinityMask after Prefer big cores, user env wins, log "Sync CPU topology: …"), Lab CoresControl (chip, All/Big cores, titled
+  groups, tap title = group), row summary "all 8 cores"/"6 of 8 cores (2-7)", Classic CPUListView (groups, CRLF kept), Task Manager
+  tiles (Core N + short name/clock), device info CPU rows by tier with names, config export keys.
+- CI GREEN: build-artifacts 45296505200 (headSha 5013a78b asserted) 4/4 success; non-success steps = skipped cache/main-only only.
+- STAGED 19:3x EST (signer a40da80a… == installed testkey): FIT + Elite `/sdcard/Download/Bannerlator-cpu-topology-5013a78b-pubg.apk`
+  sha256 bfd4f489… (host == sdcard == device); Duo `/sdcard/Download/Bannerlator-cpu-topology-5013a78b-standard.apk` sha256 748cad86….
+  Before: FIT pubg = community-catalog 5b176b5d (= main a884ad61 code, root-19), Elite pubg (11-22 19:06), Duo standard main a884ad61.
+  User: "yes install it on all three" + "delete old apk files on each when done also". 
+- INSTALLED 19:34:32 FIT / 19:34:34 Elite / 19:34:38 Duo EST; base.apk == staged on all three (bfd4f489 pubg x2, 748cad86 standard).
+- Old APKs: deleted old Bannerlator test APKs only (FIT 6, Elite 6, Duo 1 = main-a884ad61), kept the installed cpu-topology one on
+  each; other projects' APKs + installers (Magisk, Termux, …) left alone (other sessions may need them). Elite free 6.9 -> 9.4 GB.
+- DUO DEVICE CHECK 19:35–19:40 EST (Lab via the same prefs backup/restore, sha 22b57588 restored + verified): device info Name
+  "Dragonwing Q-7790" (was "Snapdragon 8 Elite family"); CPU rows "Prime 1 x Cortex-A720 · core 7 · 0.48–2.80 GHz", "Performance
+  4 x Cortex-A720 · cores 3-6 · 0.48–2.40", "Efficiency 3 x Cortex-A520 · cores 0-2 · 0.44–1.84"; Lab container Advanced rows
+  "all 8 cores" + "Sync CPU topology" (off); Lab picker: chip "Dragonwing Q-7790 (CQ7790S)", All cores / Big cores, Prime ·
+  Cortex-A720 · 2.80 GHz [Core 7], Performance · Cortex-A720 · 2.40 GHz [3-6], Efficiency · Cortex-A520 · 1.84 GHz [0-2];
+  Classic Edit Container > Advanced: grouped tiles with the same titles + Sync CPU topology switch. Nothing changed, editors left
+  without saving, Termux back in front, crash buffer since 19:34 empty. Screens: FIT /sdcard/Download/Bannerlator-cpu-topology-
+  Duo-{chip,cpu,picker,classic-picker}-20261123.png.
+- 19:42 EST user screenshot (FIT landscape): picker dialog taller than the screen, Done squeezed (4 clusters stacked, dialog only
+  ~300 dp wide because LabSheetDialog is content-sized 320–600 dp, screen ~480 dp tall). Fix 54fc124d: landscape = one line per
+  cluster (title left, pills right, weight 1:1, dialog fills 600 dp), chip name on the All/Big cores line, compact pills (Pill
+  compact=true: 13.5 sp, 12x6 dp padding), picker scrolls inside 72 % of screen height. Portrait unchanged. CI 45299712752 GREEN (headSha 54fc124d) 4/4, no failed steps.
+- STAGED 19:5x EST: FIT + Elite `/sdcard/Download/Bannerlator-cpu-topology-54fc124d-pubg.apk` sha256 5aa643d9… (host == sdcard ==
+  device), Duo `…-54fc124d-standard.apk` 184ae2dd…; signer a40da80a. User: "yes install it on all three" + "test sync cpu topology on
+  the elite after new build is installed". Plan: Elite temp shortcut running C:\cputopo.bat (wmic cpu get NumberOfLogicalProcessors +
+  %NUMBER_OF_PROCESSORS% -> C:\cputopo-<run>.txt), cpuList 0-5: run A syncCpuTopology=0, run B =1; check logcat "Sync CPU topology:".
+  RESUME if cut: remove the temp .desktop/.bat/.txt from the Elite container, force-stop com.tencent.ig, Termux front, peers "done".
+- INSTALLED 19:58:52 FIT / 19:58:55 Elite / 19:58:58 Duo EST, base.apk == staged (5aa643d9 pubg x2, 184ae2dd standard); old
+  cpu-topology 5013a78b APKs deleted on all three.
+- ELITE SYNC CPU TOPOLOGY TEST 20:00–20:03 EST — DEVICE-PROVEN. Temp shortcut (cpuList 0-5) running C:\cputopo.bat, launched by
+  am start XServerDisplayActivity (container_id 1); Elite = Proton-11.0-12.3-arm64ec-16 (ntdll has WINE_CPU_TOPOLOGY).
+  A  sync=0: no topology line, Windows NUMBER_OF_PROCESSORS=8.
+  B  sync=1: logcat "Sync CPU topology: WINE_CPU_TOPOLOGY=6:0,1,2,3,4,5"; explorer/winhandler/cmd.exe environ carry it and
+     Cpus_allowed_list 0-5; Windows NUMBER_OF_PROCESSORS=6 (written each session by wineboot from Peb->NumberOfProcessors,
+     wineboot.c:790 create_hardware_registry_keys).
+  A2 sync=0: no topology, NUMBER_OF_PROCESSORS=8 again (not a leftover).
+  wmic queries returned nothing (WMI not answering in this prefix) — not used. Side finding: with sync off the wine processes were
+  allowed 0-7 during the first seconds despite cpuList 0-5 (BL applies its affinity to the game later); with sync on wineserver
+  pins from the first thread. Cleanup verified (no temp files, no root-owned files, crash buffer empty since 19:58, Termux front).
+- 20:1x EST user: "run the dirt showdown benchmark on the elite first". Harness Elite /sdcard/Download/aio-bench/dirt-topo.sh
+  (sha 939dfa60; from dirt-ab3.sh): per race shortcut gets execArgs -benchmark example_benchmark.xml, fpsLimiterEnabled=0 (container
+  has the limiter on), cpuList=2,3,4,5,6,7, syncCpuTopology=0|1; fan-max before / fan-restore after, no cooldowns (user rule);
+  samples GPU busy/clk/temp, battery, thermal, fan; game threads + Cpus_allowed + env at 70 s. Order: warm, off, on, on, off, off, on.
+  Elite: Prefer big cores never set (off), battery 73 % discharging, 24 °C. Tag dirt-topo-1123.
+  RESUME if cut: on the Elite `cat /sdcard/Download/aio-bench/dirt-topo-1123/run.log`; if not ALLDONE: force-stop com.tencent.ig,
+  `cat /sdcard/Download/aio-bench/dirt-topo-1123/dirt.desktop.orig > "<Desktop>/DiRT Showdown.desktop"` (as root, keeps owner),
+  `sh /sdcard/Download/aio-bench/fan-restore.sh`, Termux front, peers "done".
+- RESULT DiRT topology A/B 20:08–20:19 EST (Elite, results Elite /sdcard/Download/aio-bench/dirt-topo-1123/, 0 crash, shortcut
+  restored, fan back to AYANEO, GPU fixed 1050 MHz never slowed except 2 samples in race 7, CPU sliders 3072/4320, unplugged 73->63 %):
+  avg / min fps — warm(on) 177.1/100.8 (cold, dropped) · off 185.0/118.3 · on 188.0/121.6 · on 178.5/121.8 · off 179.7/106.6 ·
+  off 181.3/126.7 · on 192.9/120.6. Means: OFF 182.0 / 117.2, ON 186.5 / 121.3 (+2.5 % avg, +3.6 % min). Run-to-run spread
+  (ON avg 178.5–192.9) is larger than the gap -> small gain, not proven beyond noise; ON minimums steadier (120.6–121.8 vs 106.6–126.7).
+  DiRT's own result XML: off = workerMap8Core.xml, on = workerMap6Core.xml (the game plans its threads for the cores it sees).
+  HUD frames: C0/C1 ~25 % busy in BOTH modes (= non-game work; game threads pinned to 2-7 with sync on). Copies:
+  FIT /sdcard/Download/Bannerlator-cpu-topology-Elite-DiRT-HUD-{off,on}.png. Harness game-thread probe caught a 1-thread helper
+  (not the game) -> ignore that field.
+- User asked for HUD + side-menu ideas; picked 2 + 4 ("not sure I like 1 and 3, bloating the hud"). Built a2602717:
+  (2) FusionHudView.setGameCores(mask): per-core rows of cores outside the session affinity drawn in colOff grey, same rows;
+  XServerDisplayActivity.updateHudGameCores() at launch (after the topology decision), in buildFusionHud and on the live
+  Prefer big cores change; nothing greyed when the game has every core.
+  (4) In-game Performance page, Lab (LabInGameDashboard) + Classic (PerformanceDashboardDialog), under Prefer Big Cores, only for
+  a shortcut launch: "Game cores" (coresLabel summary + Change -> CoresControl picker) and "Sync CPU topology" toggle, both
+  "Next launch", saved to the shortcut (cpuList / syncCpuTopology) via XServerDrawerState.onGameCoresChange /
+  onGameSyncTopologyChange; starting values set after the launch core decision (shortcut exists there; reset() runs earlier).
+  CI 45306585039 GREEN (headSha a2602717) 4/4, no failed steps. STAGED 20:5x EST (signer a40da80a): FIT + Elite
+  `/sdcard/Download/Bannerlator-cpu-topology-a2602717-pubg.apk` sha256 3dfd0156…, Duo `…-a2602717-standard.apk` 65a41528…
+  (host == device). User: "yes install it on all three" -> INSTALLED 20:53:19 FIT / 20:53:20 Elite / 20:53:23 Duo EST, base.apk == staged;
+  old 54fc124d APKs deleted.
+- 20:56/20:58 EST user screenshots (FIT, DiRT, cores 2-7 picked): HUD C0/C1 greyed, C2-C7 normal = HUD grey DEVICE-PROVEN. Side menu
+  shown = wrench tab (Task Manager header core tiles, LabTmCoreStrip / Classic TmCoreStrip): tiles not greyed (not part of this
+  change). Game cores / Sync rows are on the Performance tab — not in the screenshots, not yet seen. Offered: grey those tiles too.
+- User: "yes add it to the wrench tab tiles too". Built 2fd4cf96: XServerDrawerState.gameCoreMask (set by updateHudGameCores, now
+  also without a HUD); LabTmCoreStrip + Classic TmCoreStrip tiles of other cores at alpha 0.35. CI 45309522279 GREEN (headSha
+  2fd4cf96) 4/4. STAGED 21:1x EST (signer a40da80a): FIT + Elite `/sdcard/Download/Bannerlator-cpu-topology-2fd4cf96-pubg.apk`
+  sha256 843b42af…, Duo `…-2fd4cf96-standard.apk` 686fd437… (host == device). User: "yes install it on all three" -> INSTALLED 21:43:28 Duo / 21:43:30 FIT / 21:43:36 Elite EST, base.apk == staged; old a2602717 APKs deleted.
+- 21:46/21:47 EST user screenshots (FIT, DiRT, cores 2-7): wrench tab Task Manager tiles C0/C1 dimmed, C2-C7 normal; Lab Performance
+  page shows "6 of 8 cores (2-7) · Next launch · Saved for this game" + Change, and "Sync CPU topology" (on) · Next launch · Saved for
+  this game; HUD C0/C1 grey. => HUD grey, tile dimming and in-game rows DEVICE-PROVEN (visual). Not exercised yet: the in-game Change
+  picker saving a new pick, Classic in-game page. Branch feat/cpu-topology 2fd4cf96 ready for the user's merge decision.
+- NOT tested yet: the switch on in a real game (WINE_CPU_TOPOLOGY in the wine process env, Windows CPU count), FIT/Elite screens
+  (user has them), Fold. Elite A/B after that.
+- Next: CI green -> stage standard (Duo) + pubg (FIT) APKs, ask before install, check pickers on FIT/Elite/Duo, check
+  WINE_CPU_TOPOLOGY in a game's wine process env + Windows CPU count, then an Elite A/B.
+- RESUME: worktree /root/src/Bannerlator-wt/cpu-topology; Duo is on main a884ad61 Classic (restored), Termux in front.
+
 ## 2026-11-23 17:58–18:45 EST — Community profiles: Original + Discord shared catalog (`feat/community-catalog`, DEVICE-PROVEN on the FIT, MERGED main a884ad61)
 - Why: user made the Discord channel #bannerlator-osc-sharing (BannerHub server) for user layouts; wants them in the app next to
   Winlator's list, credited by Discord display name, one list with Original / Discord shared sections, preview + download as now,

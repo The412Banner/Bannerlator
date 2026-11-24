@@ -492,6 +492,8 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     // ── Advanced tab ─────────────────────────────────────────────────────────
     var cpuList by mutableStateOf(Container.getFallbackCPUList())
     var cpuListWoW64 by mutableStateOf(Container.getFallbackCPUListWoW64())
+    // Sync CPU topology: WINE_CPU_TOPOLOGY from the core pick (off by default).
+    var syncCpuTopology by mutableStateOf(false)
 
     // ── XR tab ────────────────────────────────────────────────────────────────
     var primaryControllerEntries by mutableStateOf(emptyList<String>()); private set
@@ -790,6 +792,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         // CPU lists
         cpuList      = seed?.getCPUList(true) ?: Container.getFallbackCPUList()
         cpuListWoW64 = seed?.getCPUListWoW64(true) ?: Container.getFallbackCPUListWoW64()
+        syncCpuTopology = seed?.isSyncCpuTopology ?: false
 
         // Wine Config (desktop theme)
         val themeStr = seed?.desktopTheme ?: WineThemeManager.DEFAULT_DESKTOP_THEME
@@ -1369,6 +1372,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         }
         c.setCPUList(cpuListIn)
         c.setCPUListWoW64(cpuListWoW64In)
+        c.setSyncCpuTopology(syncCpuTopology)
         c.graphicsDriver     = StringUtils.parseIdentifier(selectedGraphicsDriver)
         c.graphicsDriverConfig = finalGDConfig
         c.setDXWrapper(StringUtils.parseIdentifier(selectedDXWrapper))

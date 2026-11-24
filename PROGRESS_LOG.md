@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-24 15:50–16:50 EST — NIS rewrite: prepass + gathers + coefficients in a uniform buffer (`feat/nis-rewrite`, 09f3d8b0 INSTALLED FIT, DEVICE-TESTED: NIS -80 %, not merged)
+## 2026-11-24 15:50–16:55 EST — NIS rewrite: prepass + gathers + coefficients in a uniform buffer (`feat/nis-rewrite`, MERGED main 671feb8c, DEVICE-TESTED: NIS -80 %)
 - Why: upaio-1124 (FIT, X11 Vulkan, dx11 cube) measured NIS at ~5.0 ms GPU per composited frame (old and half shaders alike) and
   AIO 2894 -> ~765 fps (-74 %). nis.frag is a single-pass fragment port of NVIDIA's LDS compute NVScaler: every output pixel
   fetches its 6x6 luma support (36 textureLod + 1 colour tap, getY on each) and recomputes 4 edge maps; at 1920x1080 that is
@@ -57,6 +57,10 @@
   (1 % low 120.1 / 126.4 vs 103.2 / 100.2) | SGSR HQ 0.154 ms, AIO 261.1.
   -> NIS -80 % GPU time, game +32 % fps; NIS now costs this game ~6.5 % fps (was ~29 %). Screenshots old vs new: same picture.
   Cleanup done (prop "", temp shortcut removed, stream stopped, fan pwm 51, Termux front, peers "done").
+- MERGED to main 16:53 EST on the user's word ("merge nis to main, aio as pre-release first"): backup
+  refs/backup/20261124/main-before-nis-rewrite = a6b1be08 (local + remote); --no-ff merge 671feb8c (parents a6b1be08 +
+  a7aa8b54); merged tree == branch tree; code == tested build 09f3d8b0; author The412Banner, no trailer; main had not moved,
+  no workflow running. No release. FIT keeps 09f3d8b0 (same code as main).
 - 16:30 EST user: "feel free to build scenes for each upscaler like now or one for all to test then being toggled in the aio
   graphics test program" -> helper agent started on The412Banner/AIO-Graphics-Test branch feat/upscaler-test-scene
   (worktree /root/src/AIO-wt/upscaler-test-scene): D3D11 scene `--scene upscale` (static test chart: line fan, zone plate,

@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-23 19:00–19:10 EST — Sync CPU topology + named core picker (`feat/cpu-topology`, IN PROGRESS, nothing built)
+## 2026-11-23 19:00–22:00 EST — Sync CPU topology + named core picker (`feat/cpu-topology`, DEVICE-PROVEN, MERGED main 0912536a)
 - Why: user wants Ludashi's "Sync CPU topology" (WINE_CPU_TOPOLOGY from the core pick) and a core picker that reads the device and
   lists each core by its real name and top speed (Samsung's faster clocks too), reusing the device-info pop-up's data. Also: update the
   Retroid Duo to the latest main and add the Duo (and the user's Fold) to the chip-name list.
@@ -108,6 +108,10 @@
   page shows "6 of 8 cores (2-7) · Next launch · Saved for this game" + Change, and "Sync CPU topology" (on) · Next launch · Saved for
   this game; HUD C0/C1 grey. => HUD grey, tile dimming and in-game rows DEVICE-PROVEN (visual). Not exercised yet: the in-game Change
   picker saving a new pick, Classic in-game page. Branch feat/cpu-topology 2fd4cf96 ready for the user's merge decision.
+- MERGED 22:0x EST (user: "yes merge it into main"): backup refs/backup/20261123/main-before-cpu-topology = 140391d8 (first push
+  attempt failed, retry OK, verified by ls-remote); main was still 140391d8 (no other commits); --no-ff merge 0912536a in a temp
+  worktree; merged tree a371a8d1 == feat/cpu-topology tree (code == tested build 2fd4cf96, only PROGRESS_LOG differs); pushed
+  140391d8..0912536a. Main CI build-artifacts 45315332409 (headSha 0912536a) running. No release (user's call). Branch kept.
 - NOT tested yet: the switch on in a real game (WINE_CPU_TOPOLOGY in the wine process env, Windows CPU count), FIT/Elite screens
   (user has them), Fold. Elite A/B after that.
 - Next: CI green -> stage standard (Duo) + pubg (FIT) APKs, ask before install, check pickers on FIT/Elite/Duo, check

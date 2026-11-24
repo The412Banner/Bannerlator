@@ -71,6 +71,25 @@
   RESUME if interrupted: read /sdcard/Download/perf-harness/results/upaio-1124/run.log; then `rootsh 'setprop
   debug.bannerlator.upscale.shaders ""; rm -f ".../Desktop/ZZ AIO upscale.desktop"; sh /sdcard/Download/perf-harness/fan-restore.sh'`
   and bring Termux back.
+- RESULTS upaio-1124 (FIT, 15:14-15:33 EST, build 099c21fd, X11 Vulkan renderer, 1280x720 desktop -> 1920x1080 panel, AIO
+  2.2.0 --cube dx11 20 s, fan 255, one run per case, old/new order alternated; 15/15 CSV, 0 FATAL/ANR, all 15 screenshots show
+  the cube + results box; AIO cube window stays 640x480, the upscaler scales the whole desktop). Compositor ran at 144 fps.
+  GPU ms per composited frame (mean of the 2 full 10 s windows during the cube), old -> new, + AIO avg fps old -> new:
+  SGSR scale 0.236 -> 0.213 (total -6 %), AIO 2836 -> 2912 | SGSR HQ 0.267 -> 0.226 (-10 %), 2871 -> 2863 |
+  FSR scale 2.215 -> 1.518 (total 2.391 -> 1.704, -29 %), AIO 1908 -> 2183 (+14 %) | NIS 5.008 -> 5.006 (0 %), 776 -> 757 |
+  Sharpen 0.486 -> 0.482 (0 %), 2759 -> 2738 | CAS only effects 0.747 -> 0.384 (total -37 %), 2584 -> 2785 (+8 %) |
+  SGSR HQ + CAS total 1.225 -> 0.792 (-35 %), 2466 -> 2660 (+8 %). Baseline Linear (no upscaler) AIO 2894.
+  Findings: FSR and CAS gain clearly; SGSR/HQ small; NIS no gain and VERY costly (5 ms/frame at 144 fps; AIO 2894 -> ~765,
+  -74 %): the fragment port's 36 fetches per pixel, not ALU precision -> rewrite as compute/LDS like NVIDIA's reference is the
+  real fix (not done). Composite at game res ~0.19 ms in every mode.
+  Not covered: picture quality old vs new (screenshots are at different cube angles; needs a static scene), cursor change
+  (cursor-only path ran once per run at start, no mouse use), Wayland. AIO fps = single runs (+-5 % noise): only FSR/CAS
+  differences are above noise. Every session had to be force-stopped 45 s after the CSV (X11 session did not self-close; same
+  in the baseline run; not investigated).
+  Harness fixes on the way: logcat main buffer is 256 KiB (rotates in ~1 min) -> continuous capture stream.log added mid-run
+  (15:16); per-run captures + stream merged. Results dir /sdcard/Download/perf-harness/results/upaio-1124 (run.log, *.png,
+  *.csvhead, *.renderer.log, stream.log), table json scratchpad upaio.json, contact sheet scratchpad upaio-sheet.jpg.
+  Cleanup done: prop "", temp shortcut removed, fan loop stopped (AYANEO back, pwm 53), Termux in front, peers told "done".
 - Resume point (15:10 EST): FIT has 099c21fd (half set). Test: game with an upscaler (SGSR HQ / FSR / NIS) +/- CAS; logcat
   `rootsh 'logcat -d -s Winlator_Renderer' | grep -E "upscale (shaders|timing)"`; A/B = `rootsh 'setprop
   debug.bannerlator.upscale.shaders old'` + restart the game (back: `setprop ... new` or empty); mouse game for the cursor +

@@ -60,6 +60,17 @@
 - INSTALLED on the Pocket FIT 15:08 EST (user asked 14:50 EST; BL idle, Termux in front): pm install -r Success; installed
   base.apk sha256 6eb177c2... == staged, vc108 3.2.1, lastUpdateTime 15:08:25. debug.bannerlator.upscale.shaders unset ->
   half set active. NOT launched, NOT device-tested.
+- 15:12 EST user: "now, run aio graphics test scene and toggle each to compare". AIO.desktop on the FIT = renderer opengl in a
+  WAYLAND container (container 1 "DD P11-12.8 Arm", 1280x720) -> my timing/cursor code is X11-Vulkan only, so the test uses a
+  temporary copy "ZZ AIO upscale.desktop" (renderer=vulkan, displayBackend=x11, scalingMode/casEnabled per case, AIO
+  --cube dx11 --bench 20 --autoclose 5 --fullscreen); the user's AIO.desktop is not changed. Harness
+  /sdcard/Download/perf-harness/upscale-ab.sh (sha e0579b26..., root): per case setprop debug.bannerlator.upscale.shaders
+  old/new, launch, CSV + screenshot + GPU samples + Winlator_Renderer lines + FATAL count, waits for self-close; at the end
+  prop -> "", test shortcut removed, Termux brought back. Fan max during the block (fan-max.sh / fan-restore.sh).
+  Run tag upaio-1124: 1:0:new (baseline, no upscale) + pairs 3 SGSR, 8 SGSR HQ, 4 FSR, 7 NIS, 6 Sharpen, 1+CAS, 8+CAS.
+  RESUME if interrupted: read /sdcard/Download/perf-harness/results/upaio-1124/run.log; then `rootsh 'setprop
+  debug.bannerlator.upscale.shaders ""; rm -f ".../Desktop/ZZ AIO upscale.desktop"; sh /sdcard/Download/perf-harness/fan-restore.sh'`
+  and bring Termux back.
 - Resume point (15:10 EST): FIT has 099c21fd (half set). Test: game with an upscaler (SGSR HQ / FSR / NIS) +/- CAS; logcat
   `rootsh 'logcat -d -s Winlator_Renderer' | grep -E "upscale (shaders|timing)"`; A/B = `rootsh 'setprop
   debug.bannerlator.upscale.shaders old'` + restart the game (back: `setprop ... new` or empty); mouse game for the cursor +

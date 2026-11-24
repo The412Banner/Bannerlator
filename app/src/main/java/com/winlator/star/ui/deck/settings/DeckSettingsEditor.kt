@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -1772,7 +1773,7 @@ private fun ChipPills(options: List<Opt>, value: String, enabled: Boolean, align
 
 /** A rounded choice. [first]: in an XMB row, the one A on the row lands on (see [xmbLandingIndex]). */
 @Composable
-private fun Pill(label: String, selected: Boolean, enabled: Boolean, first: Boolean = false, onClick: () -> Unit) {
+private fun Pill(label: String, selected: Boolean, enabled: Boolean, first: Boolean = false, compact: Boolean = false, onClick: () -> Unit) {
     val shape = deckShape(22.dp)
     DeckInk { item, cs ->
         Text(
@@ -1783,7 +1784,7 @@ private fun Pill(label: String, selected: Boolean, enabled: Boolean, first: Bool
                 else -> cs.onSurface.copy(alpha = 0.4f)
             },
             fontWeight = FontWeight.Bold,
-            fontSize = 14.5.sp,
+            fontSize = if (compact) 13.5.sp else 14.5.sp,
             maxLines = 1,
             modifier = Modifier
                 .deckFocusRingInk(shape, item, scaleTo = 1f)
@@ -1792,7 +1793,7 @@ private fun Pill(label: String, selected: Boolean, enabled: Boolean, first: Bool
                 .background(if (selected) cs.primary.copy(alpha = 0.14f) else deckInset(0.45f))
                 .border(1.5.dp, if (selected) cs.primary else deckLineAt(0.6f), shape)
                 .clickable(enabled = enabled, onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 9.dp),
+                .padding(horizontal = if (compact) 12.dp else 16.dp, vertical = if (compact) 6.dp else 9.dp),
         )
     }
 }
@@ -2108,33 +2109,65 @@ internal fun CoresControl(value: String, enabled: Boolean, onPick: (String) -> U
         quick + order.map { it in on },
         quick.map { enabled } + order.map { enabled && !(it in on && on.size == 1) },
     )
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        if (chip.isNotEmpty()) Text(chip, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Pill(L("All cores"), selected = on == all, enabled = enabled, first = landing == 0) { pick(all) }
-            if (showBig) Pill(L("Big cores"), selected = on == big, enabled = enabled, first = landing == 1) { pick(big) }
+    // Landscape (a wide, short screen): each cluster on one line, title left and its cores right, with smaller pills, so
+    // four clusters fit a handheld's height. Portrait keeps the title over its pills. Scrolls rather than squeeze Done.
+    val config = LocalConfiguration.current
+    val wide = config.screenWidthDp >= 600 && config.screenWidthDp > config.screenHeightDp
+    val gap = if (wide) 6.dp else 10.dp
+    Column(
+        verticalArrangement = Arrangement.spacedBy(gap),
+        modifier = Modifier
+            .heightIn(max = (config.screenHeightDp * 0.72f).dp)
+            .verticalScroll(androidx.compose.foundation.rememberScrollState()),
+    ) {
+        val quickPicks: @Composable () -> Unit = {
+            Pill(L("All cores"), selected = on == all, enabled = enabled, first = landing == 0, compact = wide) { pick(all) }
+            if (showBig) Pill(L("Big cores"), selected = on == big, enabled = enabled, first = landing == 1, compact = wide) { pick(big) }
+        }
+        if (wide) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(chip, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { quickPicks() }
+            }
+        } else {
+            if (chip.isNotEmpty()) Text(chip, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { quickPicks() }
         }
         var index = quick.size
         for (c in clusters) {
             val groupOn = c.cores.all { it in on }
             // Tapping the title switches the whole cluster (one core always stays on).
-            Text(
-                com.winlator.star.deviceinfo.CpuCores.clusterTitle(c, L(c.tier.label)),
-                color = if (groupOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 13.5.sp,
-                modifier = Modifier
-                    .clickable(enabled = enabled) { pick(if (groupOn) on - c.cores.toSet() else on + c.cores) }
-                    .padding(top = 4.dp),
-            )
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                for (i in c.cores) {
+            val title: @Composable (Modifier) -> Unit = { m ->
+                Text(
+                    com.winlator.star.deviceinfo.CpuCores.clusterTitle(c, L(c.tier.label)),
+                    color = if (groupOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = if (wide) 13.sp else 13.5.sp,
+                    modifier = m.clickable(enabled = enabled) { pick(if (groupOn) on - c.cores.toSet() else on + c.cores) },
+                )
+            }
+            val first = index
+            index += c.cores.size
+            val pills: @Composable () -> Unit = {
+                c.cores.forEachIndexed { k, i ->
                     val sel = i in on
-                    val slot = index++
-                    Pill(L("Core %1\$d", i), selected = sel, enabled = enabled && !(sel && on.size == 1), first = slot == landing) {
+                    Pill(L("Core %1\$d", i), selected = sel, enabled = enabled && !(sel && on.size == 1), first = first + k == landing, compact = wide) {
                         pick(if (sel) on - i else on + i)
                     }
                 }
+            }
+            if (wide) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    title(Modifier.weight(1f).padding(end = 10.dp))
+                    FlowRow(
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) { pills() }
+                }
+            } else {
+                title(Modifier.padding(top = 4.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { pills() }
             }
         }
     }

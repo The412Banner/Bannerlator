@@ -1,5 +1,49 @@
 # Star-Compose — Progress Log
 
+## 2026-11-24 13:29–13:58 EST — Wine / Proton lists split into Proton | Wine tabs, grouped, one row per layer (feat/layer-list-cleanup, CI RUNNING, NOT device-tested)
+- Why: user 11-24 ~14:30-14:50 EST (relayed): "clean up the wine/proton list so they are split wine and proton, and organized better
+  and listed simple"; "do all of them, recommend DroidDeck 12.8, but give me a html preview first"; on the preview: "good, portrait is
+  more touch screen, landscape controller nav like the rest of the app and menus". Spec = the approved preview
+  /root/src/dl/layer-list-preview/layer-picker-preview.html (claude.ai/artifact/EmoUYJcbWNBXkX8nps6gtA).
+- Built 3d46138f (base main 29171b7a, worktree /root/src/Bannerlator-wt/layer-list):
+  - container/LayerList.kt (no Android types): Proton | Wine tabs; Proton groups Proton (Valve) / GE-Proton / DroidDeck-Proton /
+    CachyOS / Other, newest first (version, then verCode); one row per layer (group + version + verCode) = its arm64ec build, x86_64
+    switch = its x86_64 build (layers without one hidden; a layer with only an x86_64 build shows it with an x86_64 tag while the
+    switch is off, so the Wine reference builds always show); older builds = Proton rows below the top Proton verCode, Wine all but
+    the newest 4; short names (GE-Proton 11.0-14, Proton 11.0-2, DroidDeck-Proton 12.8, CachyOS 11.0 (2026-10-05), Wine 9.22, Proton
+    9.0 for the lowercase proton-9.0/10.0 rows); tags v17 / New / Installed / Update / Current / x86_64. Installed = same family +
+    version + arch + verCode; Update = an installed build of the same LayerLine line is older. versionName from the row, else from
+    the label (the live Valve 11.0-3 rows have none).
+  - container/LayerLine.kt = the family helper of feat/layer-family-updates cc08bb0a, copied unchanged (same blob c1587386), with
+    its LayerLineTest; installed family = description prefix, then the catalog rows of its versionName + verCode, then "Proton ..."
+    = Valve / GE (game-fixes) - so GE 11.0-3 v14 and Valve 11.0-3 v17 are two rows that never match each other.
+  - Recommended: optional contents.json field "recommended": true -> ContentProfile.recommended (ContentsManager.setRemoteProfiles,
+    optBoolean). Star card on top of the Proton tab + star in its group; installed picker stars the matching installed build. No
+    row flagged -> no card. Every catalog reader (ContentsManager, WcpJsonCatalog, DeckFirstContainer.parseCatalog) reads named
+    fields only, so old apps ignore the new field.
+  - ui/simple/LabLayerPicker.kt: LayerDownloadDialog ("Get Wine / Proton": catalog rows, Older builds, then community repos when
+    switched on, Install from a file, Community repos switch; A downloads with progress on the row, on an installed row A/X = Info +
+    Remove, on a running one Cancel download) and LayerInstalledDialog ("Wine / Proton version": installed layers, Current tag, A
+    picks, X / long press = Info + Remove (not the current one), "+ Download from source"). Lab colours in Lab, Material ones in
+    Classic/Deck. Portrait: 56 dp rows, 46 dp ✕ and ?, no hint line, no start focus. Landscape: focus on the first row (current
+    layer in the picker), D-pad, A, B close, L1/R1 (L2/R2) tabs, Y x86_64 switch, hints A Get / Y x86_64 / B Close (picker: A Pick /
+    X Options / B Close); the Y hint works without focus (LabHintFallback). 2 columns of groups at >= 720 dp screen width, 1 below;
+    sheet 94 % / 88 % wide (max 980 dp), max 92 % high, the list scrolls.
+  - Wired: ContentDownloadSheet + LabContentDownloadSheet route Wine/Proton type lists to LayerDownloadDialog (Classic container
+    gear, Deck/XMB "Get more" + "Download Wine and Proton versions", community-config missing Wine/Proton); Classic landscape "WIN
+    Components" rail: Wine / Proton open the dialog over the sheet. Lab container editor: the Wine / Proton version row opens
+    LayerInstalledDialog, its "+ Download from source" opens LayerDownloadDialog (was the repository picker; community sources are
+    the switch now). Classic Wine Version field shows the short name and opens LayerInstalledDialog. DeckWindowsSettings select =
+    ordered short labels ("GE-Proton 11.0-14 · v17") for the Deck/XMB drop-downs.
+  - Not changed: the Contents hub (repository browser, own type filter).
+- Tests: LayerListTest 11 + LayerLineTest 13 (kotlinc 2.2.20 -language-version 2.0 + JUnit 4.13.2, local): OK (24). Catalog rows in
+  the test = live contents.json Wine/Proton rows (winlator-contents 5a77857d); installed = the FIT's 12 profile.json descriptions.
+  Mutation check: installed match without the family check -> the same-verCode clash test fails; Wine newest 5 -> Wine test fails.
+- CI: build-artifacts 45464964779 dispatched 13:56 EST, headSha 3d46138f == pushed. RESUME: `gh run view 45464964779 -R
+  The412Banner/Bannerlator --json conclusion,jobs`; then stage pubg as /sdcard/Download/Bannerlator-layer-list-<sha8>-pubg.apk.
+- Open: device test (portrait touch + landscape controller), user to add "recommended": true to the DroidDeck-Proton 11.0-12.8 v17
+  rows after merge; installed Wine profile versionName format not seen on a device (Installed tag on Wine rows unproven).
+
 ## 2026-11-24 11:30–11:45 EST — Idle-thread throttle switches on the device + Lab help title fix (feat/idle-throttle-toggles, row DEVICE-VISIBLE, fix CI running)
 - Installed 5a91cfa4 pubg APK on the Pocket FIT 11:29 EST (user yes; installed base.apk sha256 6f0dc1d1 == staged). User: "it's there now";
   screenshots 11:33: Lab game settings (DiRT Showdown) Advanced -> Idle-thread throttle pop-up with 8 switches (DirectX 7 off, rest on),

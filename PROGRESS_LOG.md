@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-24 13:10–14:20 EST — Upscaler refresh: lighter math, cursor after the upscale, CAS from AMD's file (`feat/upscaler-refresh`, BUILT 44f338f1, CI running, NOT device-tested)
+## 2026-11-24 13:10–15:10 EST — Upscaler refresh: lighter math, cursor after the upscale, CAS from AMD's file (`feat/upscaler-refresh`, 099c21fd INSTALLED FIT, NOT device-tested)
 - Why: Discord question 11-24 (is NIS the limit). Research 11-24 (main 48b4bafb): no newer SPATIAL upscaler exists upstream (all new ones
   since mid-2025 = temporal: SGSR 2, Adreno Neural Fusion, Arm ASR/NSS, FSR 4); our SGSR (both variants, upstream d926f074 2025-10-16),
   FSR1, NIS 1.0.3 are current. Found: (1) all six upscaler shaders (sgsr, sgsr_quality, fsr_easu, fsr_rcas, nis, cas) are fp32 only,
@@ -56,10 +56,14 @@
   shaders)...", "debug.bannerlator.upscale.shaders"; libbannerwayland.so has "..., %s shaders, on %s" + sgsr_quality_half.
   apksigner v2+v3 OK, signer SHA-256 a40da80a... (== earlier staged builds), com.tencent.ig vc108 3.2.1.
   Staged 15:08 EST: /sdcard/Download/Bannerlator-upscaler-refresh-099c21fd-pubg.apk 602984954 B, sha256 6eb177c2... (host ==
-  /sdcard == device). Installing on the FIT next (user asked 14:50 EST).
-- Resume point: CI 45475192285 -> aria2 download pubg artifact -> digest + .so strings -> stage
-  /sdcard/Download/Bannerlator-upscaler-refresh-099c21fd-pubg.apk (sha host == device) -> install on the FIT (user asked in
-  the 14:50 message) -> verify installed base.apk sha. After install: A/B prop debug.bannerlator.upscale.shaders (old / new).
+  /sdcard == device).
+- INSTALLED on the Pocket FIT 15:08 EST (user asked 14:50 EST; BL idle, Termux in front): pm install -r Success; installed
+  base.apk sha256 6eb177c2... == staged, vc108 3.2.1, lastUpdateTime 15:08:25. debug.bannerlator.upscale.shaders unset ->
+  half set active. NOT launched, NOT device-tested.
+- Resume point (15:10 EST): FIT has 099c21fd (half set). Test: game with an upscaler (SGSR HQ / FSR / NIS) +/- CAS; logcat
+  `rootsh 'logcat -d -s Winlator_Renderer' | grep -E "upscale (shaders|timing)"`; A/B = `rootsh 'setprop
+  debug.bannerlator.upscale.shaders old'` + restart the game (back: `setprop ... new` or empty); mouse game for the cursor +
+  "cursor-only" count; logcat FATAL check. Save memory + log before each launch.
 
 ## 2026-11-24 14:20–14:55 EST — Layer family updates + Wine/Proton list cleanup: combined, installed, MERGED to main (main 32282c39; NOT device-tested)
 - Why: user "keep valve 11.0-2 to 11.0-3 update, make one combined app", "install it when it's done", then "merge to main".

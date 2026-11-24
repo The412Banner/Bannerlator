@@ -102,7 +102,22 @@ internal sealed interface Control {
      * comma-separated list of the items switched OFF. [items] is null while they are still being read;
      * [waiting] and [empty] are what the row says then and when there are none.
      */
-    class Checklist(val items: List<String>?, val title: String, val waiting: String, val empty: String) : Control
+    class Checklist(
+        val items: List<String>?,
+        val title: String,
+        val waiting: String,
+        val empty: String,
+        /** The dialog's line over the list, from how many items are on and how many there are; null for none. */
+        val lead: ((Int, Int) -> String)? = null,
+        /** What an item is called on screen; an item with no entry shows as itself. */
+        val labels: Map<String, String> = emptyMap(),
+        /** The row's value from the items switched off; null for "N of M on". */
+        val summary: ((Set<String>) -> String)? = null,
+        /** A short fixed list: every item is a switch and there is no "All on" line. */
+        val switches: Boolean = false,
+        /** The text behind a "?" in the dialog's title; null for no "?". */
+        val help: String? = null,
+    ) : Control
 }
 
 /**

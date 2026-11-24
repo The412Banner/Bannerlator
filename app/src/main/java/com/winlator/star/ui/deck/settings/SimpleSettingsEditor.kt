@@ -434,7 +434,7 @@ internal fun SimpleSettingsEditor(
         else {
             val value = source.value(def)
             ChecklistDialog(
-                title = control.title,
+                control = control,
                 all = items,
                 off = value.split(',').filter { it.isNotEmpty() }.toSet(),
                 onDismiss = { checklistFor = null },

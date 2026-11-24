@@ -494,6 +494,8 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     var cpuListWoW64 by mutableStateOf(Container.getFallbackCPUListWoW64())
     // Sync CPU topology: WINE_CPU_TOPOLOGY from the core pick (off by default).
     var syncCpuTopology by mutableStateOf(false)
+    // Idle-thread throttle: the APIs Wine never throttles (WINE_SLEEP0_THROTTLE_SKIP), stored form ("dx7", "none").
+    var sleep0ThrottleSkip by mutableStateOf(com.winlator.star.core.IdleThrottle.DEFAULT)
 
     // ── XR tab ────────────────────────────────────────────────────────────────
     var primaryControllerEntries by mutableStateOf(emptyList<String>()); private set
@@ -793,6 +795,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         cpuList      = seed?.getCPUList(true) ?: Container.getFallbackCPUList()
         cpuListWoW64 = seed?.getCPUListWoW64(true) ?: Container.getFallbackCPUListWoW64()
         syncCpuTopology = seed?.isSyncCpuTopology ?: false
+        sleep0ThrottleSkip = seed?.sleep0ThrottleSkip ?: com.winlator.star.core.IdleThrottle.DEFAULT
 
         // Wine Config (desktop theme)
         val themeStr = seed?.desktopTheme ?: WineThemeManager.DEFAULT_DESKTOP_THEME
@@ -1373,6 +1376,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         c.setCPUList(cpuListIn)
         c.setCPUListWoW64(cpuListWoW64In)
         c.setSyncCpuTopology(syncCpuTopology)
+        c.setSleep0ThrottleSkip(sleep0ThrottleSkip)
         c.graphicsDriver     = StringUtils.parseIdentifier(selectedGraphicsDriver)
         c.graphicsDriverConfig = finalGDConfig
         c.setDXWrapper(StringUtils.parseIdentifier(selectedDXWrapper))

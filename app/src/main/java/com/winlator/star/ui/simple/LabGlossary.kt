@@ -159,6 +159,7 @@ internal object LabFieldHelp {
         "performance.fexVersion" to R.string.help_fexcore_version,
         "performance.forceSsbs" to R.string.help_force_ssbs,
         "performance.syncCpuTopology" to R.string.help_sync_cpu_topology,
+        "performance.idleThrottle" to R.string.help_idle_throttle,
         "performance.fpsLimiter" to R.string.help_fps_limiter,
         "performance.frameGen" to R.string.help_frame_generation,
         "graphics.gdc.gpuName" to R.string.help_gpu_name,

@@ -87,6 +87,7 @@ import com.winlator.star.core.AppUtils;
 import com.winlator.star.core.DefaultVersion;
 import com.winlator.star.core.EnvVars;
 import com.winlator.star.core.FileUtils;
+import com.winlator.star.core.IdleThrottle;
 import com.winlator.star.core.WinFgCapture;
 import com.winlator.star.core.WinFgDiag;
 import com.winlator.star.core.GPUInformation;
@@ -12663,6 +12664,22 @@ public class XServerDisplayActivity extends AppCompatActivity {
             java.util.List<String> said = new java.util.ArrayList<>();
             putUnlessUsers(envVars, "WINE_CPU_TOPOLOGY", wineCpuTopology, said);
             Log.d("XServerDisplayActivity", "Sync CPU topology: " + said.get(0));
+        }
+
+        // Idle-thread throttle (core.IdleThrottle; Wine layers v17+, older ones ignore it): the APIs whose games Wine never
+        // slows down, the game's own list else the container's. After every env merge: a WINE_SLEEP0_THROTTLE_SKIP or
+        // WINE_SLEEP0_THROTTLE in the user's own env vars wins, and then nothing is set.
+        {
+            String gameIdle = shortcut != null ? shortcut.getExtra(IdleThrottle.KEY, "") : "";
+            String idleSkip = IdleThrottle.resolve(gameIdle, container.getSleep0ThrottleSkip());
+            String userIdle = IdleThrottle.userVariable(envVars::has);
+            if (userIdle != null) {
+                logSessionLine("idle throttle", userIdle + "=" + envVars.get(userIdle) + " (yours, kept)");
+            } else {
+                envVars.put(IdleThrottle.ENV, idleSkip);
+                logSessionLine("idle throttle", IdleThrottle.ENV + "=" + idleSkip
+                        + (IdleThrottle.normalize(gameIdle) != null ? " (this game)" : " (container)"));
+            }
         }
 
         // Turnip TU_DEBUG composition (per-container + per-game). Runs AFTER every env source is

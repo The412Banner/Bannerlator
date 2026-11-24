@@ -87,6 +87,8 @@ object ConfigExporter {
         "forceSsbs",
         // Sync CPU topology ("1" / "0"): WINE_CPU_TOPOLOGY from cpuList at launch.
         "syncCpuTopology",
+        // Idle-thread throttle skip list ("dx7", "dx7,gl", "none"): WINE_SLEEP0_THROTTLE_SKIP at launch.
+        "sleep0ThrottleSkip",
         // Direct XInput (BANNERIN) and its "Allow in-game switching" ("1" / "0"; core.BannerinXInput).
         "bannerinXInput", "bannerinXInputSwitching",
     )

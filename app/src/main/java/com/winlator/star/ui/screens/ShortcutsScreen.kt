@@ -6079,6 +6079,10 @@ internal fun ShortcutSettingsDialogScreen(
     var forceSsbs by remember { mutableStateOf(shortcut.getExtra("forceSsbs", "") ?: "") }
     // Sync CPU topology override: "" = the container's switch, "1" = on, "0" = off.
     var syncCpuTopology by remember { mutableStateOf(shortcut.getExtra("syncCpuTopology", "") ?: "") }
+    // Idle-thread throttle override (core.IdleThrottle): "" = the container's list, else the game's own ("dx7", "none").
+    var idleThrottle by remember {
+        mutableStateOf(com.winlator.star.core.IdleThrottle.normalize(shortcut.getExtra(com.winlator.star.core.IdleThrottle.KEY, "")) ?: "")
+    }
     var selectedFexCorePresetIndex by remember { mutableIntStateOf(0) }
     var selectedControlsProfileIndex by remember { mutableIntStateOf(0) }
 
@@ -6454,6 +6458,7 @@ internal fun ShortcutSettingsDialogScreen(
             putExtra("box64ecVersion", selectedBox64ECVersion.ifEmpty { null })
             putExtra("forceSsbs", forceSsbs.ifEmpty { null })
             putExtra("syncCpuTopology", syncCpuTopology.ifEmpty { null })
+            putExtra(com.winlator.star.core.IdleThrottle.KEY, idleThrottle.ifEmpty { null })
             putExtra("controlsProfile", if (ctrlProfileId > 0) ctrlProfileId.toString() else null)
             putExtra("startupSelection", startupIdx.toString())
             // Persist the Custom enabled set alongside the selection (launch reads it only when
@@ -8600,6 +8605,8 @@ internal fun ShortcutSettingsDialogScreen(
                 onForceSsbsChange = { forceSsbs = it },
                 syncCpuTopology = syncCpuTopology,
                 onSyncCpuTopologyChange = { syncCpuTopology = it },
+                idleThrottle = idleThrottle,
+                onIdleThrottleChange = { idleThrottle = it },
             )
                                 5 -> ScTvTab(
                                     dp = dp,
@@ -9500,6 +9507,9 @@ private fun ScAdvancedTab(
     /** Sync CPU topology override: "" = follow the container, "1" = on, "0" = off. */
     syncCpuTopology: String = "",
     onSyncCpuTopologyChange: (String) -> Unit = {},
+    /** Idle-thread throttle override: "" = follow the container, else the game's own list ("dx7", "none"). */
+    idleThrottle: String = "",
+    onIdleThrottleChange: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
     // Bumped when a preset's values or the preset list change, so the "customised" badges
@@ -9817,6 +9827,14 @@ private fun ScAdvancedTab(
                     Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
                 }
             }
+            Spacer(Modifier.height(8.dp))
+            // Idle-thread throttle: the game's own list, else the container's ("Use container setting" in the pop-up).
+            IdleThrottleRow(
+                value = idleThrottle.ifEmpty { null },
+                containerValue = shortcut.container.sleep0ThrottleSkip,
+                onChange = { onIdleThrottleChange(it ?: "") },
+                onHelp = { helpRes = R.string.help_idle_throttle },
+            )
         }
         }
 

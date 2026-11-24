@@ -27,6 +27,7 @@ import com.winlator.star.core.DInputVibration
 import com.winlator.star.core.DInputVisibility
 import com.winlator.star.core.DirectAudioSupport
 import com.winlator.star.core.FastOpenGL
+import com.winlator.star.core.IdleThrottle
 import com.winlator.star.core.KeyValueSet
 import com.winlator.star.core.LinuxVulkanDriver
 import com.winlator.star.core.MediaDecoder
@@ -306,6 +307,31 @@ internal object SettingsRegistry {
         val next = wcWith(e.get(WINCOMPONENTS)?.takeIf { it.isNotEmpty() } ?: containerWc, key, index)
         return next.takeIf { it != containerWc }
     }
+
+    // ── Idle-thread throttle ──────────────────────────────────────────────────────────────────
+
+    /** The idle-thread throttle row (Advanced): a switch per API, on = Wine may throttle its games (core.IdleThrottle). */
+    const val ID_IDLE_THROTTLE = "performance.idleThrottle"
+
+    /** The row's value as a short line: "On for all", "Off for all" or "Off: DX7, OpenGL". */
+    fun idleThrottleSummary(off: Set<String>): String = when {
+        off.none { it in IdleThrottle.APIS } -> L("On for all")
+        IdleThrottle.APIS.all { it in off } -> L("Off for all")
+        else -> L("Off: %1\$s", IdleThrottle.offNames(IdleThrottle.join(off)))
+    }
+
+    private fun idleThrottleControl(env: SettingsEnv) = Control.Checklist(
+        items = IdleThrottle.APIS,
+        title = L("Idle-thread throttle"),
+        waiting = "",
+        empty = "",
+        labels = IdleThrottle.APIS.associateWith { IdleThrottle.longName(it) },
+        summary = { idleThrottleSummary(it) },
+        switches = true,
+        help = runCatching {
+            com.winlator.star.ui.screens.htmlToAnnotated(env.context.getString(com.winlator.star.R.string.help_idle_throttle)).text
+        }.getOrNull(),
+    )
 
     // ── DX wrapper: leaving VEGAS drops its config file, as the classic editors do ─────────────
 
@@ -1100,6 +1126,21 @@ internal object SettingsRegistry {
             control = { _, _ -> Control.Toggle },
             vm = vmBool({ it.syncCpuTopology }, { vm, v -> vm.syncCpuTopology = v }),
             game = key10("syncCpuTopology"),
+        ),
+        SettingDef(
+            id = ID_IDLE_THROTTLE, category = "performance", group = T("CPU cores"), level = ADVANCED,
+            label = T("Idle-thread throttle"), tech = T("WINE_SLEEP0_THROTTLE_SKIP"),
+            control = { env, _ -> idleThrottleControl(env) },
+            // The editors' list is the APIs switched off; the stored form is Wine's (core.IdleThrottle), "none" for no API.
+            vm = VmBinding(
+                get = { _, vm -> IdleThrottle.toOffList(vm.sleep0ThrottleSkip) },
+                set = { _, vm, v -> vm.sleep0ThrottleSkip = IdleThrottle.fromOffList(v) },
+            ),
+            game = GameBinding(
+                keys = listOf(IdleThrottle.KEY),
+                read = { e -> IdleThrottle.normalize(e.get(IdleThrottle.KEY))?.let { IdleThrottle.toOffList(it) } },
+                write = { e, v -> e.put(IdleThrottle.KEY, IdleThrottle.fromOffList(v)) },
+            ),
         ),
         perfToggle("performance.power.sustained", "sustainedPerfMode", T("Sustained performance mode"), T("Keeps clocks steady for long sessions instead of short bursts.")),
         perfToggle("performance.power.priorityBoost", "perfPriorityBoost", T("Boost game thread priority"), null),

@@ -56,6 +56,19 @@
   the elite after new build is installed". Plan: Elite temp shortcut running C:\cputopo.bat (wmic cpu get NumberOfLogicalProcessors +
   %NUMBER_OF_PROCESSORS% -> C:\cputopo-<run>.txt), cpuList 0-5: run A syncCpuTopology=0, run B =1; check logcat "Sync CPU topology:".
   RESUME if cut: remove the temp .desktop/.bat/.txt from the Elite container, force-stop com.tencent.ig, Termux front, peers "done".
+- INSTALLED 19:58:52 FIT / 19:58:55 Elite / 19:58:58 Duo EST, base.apk == staged (5aa643d9 pubg x2, 184ae2dd standard); old
+  cpu-topology 5013a78b APKs deleted on all three.
+- ELITE SYNC CPU TOPOLOGY TEST 20:00–20:03 EST — DEVICE-PROVEN. Temp shortcut (cpuList 0-5) running C:\cputopo.bat, launched by
+  am start XServerDisplayActivity (container_id 1); Elite = Proton-11.0-12.3-arm64ec-16 (ntdll has WINE_CPU_TOPOLOGY).
+  A  sync=0: no topology line, Windows NUMBER_OF_PROCESSORS=8.
+  B  sync=1: logcat "Sync CPU topology: WINE_CPU_TOPOLOGY=6:0,1,2,3,4,5"; explorer/winhandler/cmd.exe environ carry it and
+     Cpus_allowed_list 0-5; Windows NUMBER_OF_PROCESSORS=6 (written each session by wineboot from Peb->NumberOfProcessors,
+     wineboot.c:790 create_hardware_registry_keys).
+  A2 sync=0: no topology, NUMBER_OF_PROCESSORS=8 again (not a leftover).
+  wmic queries returned nothing (WMI not answering in this prefix) — not used. Side finding: with sync off the wine processes were
+  allowed 0-7 during the first seconds despite cpuList 0-5 (BL applies its affinity to the game later); with sync on wineserver
+  pins from the first thread. Cleanup verified (no temp files, no root-owned files, crash buffer empty since 19:58, Termux front).
+- Next: user decides merge (branch feat/cpu-topology 54fc124d); optional Elite game A/B (fps with sync on vs off).
 - NOT tested yet: the switch on in a real game (WINE_CPU_TOPOLOGY in the wine process env, Windows CPU count), FIT/Elite screens
   (user has them), Fold. Elite A/B after that.
 - Next: CI green -> stage standard (Duo) + pubg (FIT) APKs, ask before install, check pickers on FIT/Elite/Duo, check

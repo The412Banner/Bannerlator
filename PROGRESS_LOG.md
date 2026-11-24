@@ -60,7 +60,7 @@
 - MERGED to main 16:53 EST on the user's word ("merge nis to main, aio as pre-release first"): backup
   refs/backup/20261124/main-before-nis-rewrite = a6b1be08 (local + remote); --no-ff merge 671feb8c (parents a6b1be08 +
   a7aa8b54); merged tree == branch tree; code == tested build 09f3d8b0; author The412Banner, no trailer; main had not moved,
-  no workflow running. No release. FIT keeps 09f3d8b0 (same code as main).
+  no workflow running. No release. FIT keeps 09f3d8b0 (same code as main). Main CI 45495155318 on 671feb8c GREEN 4/4 (16:55 EST).
 - 16:30 EST user: "feel free to build scenes for each upscaler like now or one for all to test then being toggled in the aio
   graphics test program" -> helper agent started on The412Banner/AIO-Graphics-Test branch feat/upscaler-test-scene
   (worktree /root/src/AIO-wt/upscaler-test-scene): D3D11 scene `--scene upscale` (static test chart: line fan, zone plate,

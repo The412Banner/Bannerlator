@@ -119,6 +119,7 @@ object DownloadRegistry {
         _entries.update { it + (entry.key to entry) }
         writeThrough(entry)
         stateSound(was, entry.state)
+        finishedNotice(was, entry)
     }
 
     /**
@@ -138,7 +139,14 @@ object DownloadRegistry {
             if (next.key == key) map + (key to next)
             else map - key + (next.key to next)
         }
-        updated?.let { writeThrough(it); stateSound(was, it.state) }
+        updated?.let { writeThrough(it); stateSound(was, it.state); finishedNotice(was, it) }
+    }
+
+    /** A running download that just became INSTALLED (any store) gets its own "download complete" notification. */
+    private fun finishedNotice(was: DownloadState?, now: DownloadEntry) {
+        if (was != DownloadState.DOWNLOADING || now.state != DownloadState.INSTALLED) return
+        val ctx = appCtx ?: return
+        DownloadForegroundService.postFinished(ctx, now.key, now.name.ifEmpty { "${now.store} ${now.id}" })
     }
 
     /** UI sound for a download that starts, finishes or fails. */

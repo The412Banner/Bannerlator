@@ -28,6 +28,18 @@
   so the program's driver SetCursor is called. Diagnosis run: "AIO Cursor Test - Wayland" shortcut got envVars
   WINEDEBUG=+waylanddrv; I run it with `input mouse swipe` across the tiles and read wine_debug.log (pointer_handle_enter /
   WAYLAND_SetCursor per process).
+- DIAGNOSIS 18:46-18:55 EST (WINEDEBUG=+waylanddrv, `input mouse swipe` over the 6 tiles, wine_debug.log in
+  Download/bannerlator/AIO Cursor Test - Wayland/): the compositor half WORKS - the Cursor Test process gets
+  `pointer_handle_enter hwnd=0x10098` and once `WAYLAND_SetCursor hwnd=0x10098 hcursor=0x10086` (right after the enter).
+  Then explorer (desktop owner) injects all 347 motions with hwnd = desktop 0x10020 (`pointer_handle_motion_internal` ->
+  `NtUserSendHardwareInput(hwnd, ...)`), and wineserver queue.c update_desktop_cursor_pos(desktop, msg->win, ...) keeps
+  msg->win (visible) as the cursor window -> cursor_win = desktop -> `00e0 WAYLAND_SetCursor hwnd=0x10020 hcursor=0x0`
+  (explorer hides it) and update_desktop_cursor_handle never forwards the program's later SetCursor (its input is not the
+  cursor window's). Delivery still works because find_hardware_message_window uses window_thread_from_point.
+  -> Missing half is in Wine: in desktop mode, input injected for the DESKTOP window should carry no hwnd (wineserver then
+  hit-tests with shallow_window_from_point, like real Windows); 4 NtUserSendHardwareInput sites in wayland_pointer.c, same in
+  all 5 v17 layers (10.0, 10.34-GE, 11.0-2, 11.12.8-DroidDeck, 11.14-GE). Compositor hover (b5bbed8e) still needed (winewayland
+  applies a cursor only for its focused window). Proposed to the user; waiting for go (Wine layer rebuilds).
 - Resume point: FIT = b5bbed8e (main 447b4afd + this fix). If the user reports it works: merge only on the user's word; delete the
   4 "AIO Cursor Test - ..." shortcuts after; then AIO 2.3.0-pre1 publish (AIO branch feat/upscaler-test-scene, see its log).
 - Test plan: Cursor Test shortcuts on the FIT ("AIO Cursor Test - Wayland", "- Wayland OLD 2.2.0"): colour quadrants, shadow,

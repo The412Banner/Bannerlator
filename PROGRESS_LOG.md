@@ -85,7 +85,15 @@
   HUD frames: C0/C1 ~25 % busy in BOTH modes (= non-game work; game threads pinned to 2-7 with sync on). Copies:
   FIT /sdcard/Download/Bannerlator-cpu-topology-Elite-DiRT-HUD-{off,on}.png. Harness game-thread probe caught a 1-thread helper
   (not the game) -> ignore that field.
-- User asked for HUD + side-menu ideas to show which cores are used (core pick / topology) — ideas given, awaiting pick.
+- User asked for HUD + side-menu ideas; picked 2 + 4 ("not sure I like 1 and 3, bloating the hud"). Built a2602717:
+  (2) FusionHudView.setGameCores(mask): per-core rows of cores outside the session affinity drawn in colOff grey, same rows;
+  XServerDisplayActivity.updateHudGameCores() at launch (after the topology decision), in buildFusionHud and on the live
+  Prefer big cores change; nothing greyed when the game has every core.
+  (4) In-game Performance page, Lab (LabInGameDashboard) + Classic (PerformanceDashboardDialog), under Prefer Big Cores, only for
+  a shortcut launch: "Game cores" (coresLabel summary + Change -> CoresControl picker) and "Sync CPU topology" toggle, both
+  "Next launch", saved to the shortcut (cpuList / syncCpuTopology) via XServerDrawerState.onGameCoresChange /
+  onGameSyncTopologyChange; starting values set after the launch core decision (shortcut exists there; reset() runs earlier).
+  CI 45306585039 running.
 - NOT tested yet: the switch on in a real game (WINE_CPU_TOPOLOGY in the wine process env, Windows CPU count), FIT/Elite screens
   (user has them), Fold. Elite A/B after that.
 - Next: CI green -> stage standard (Duo) + pubg (FIT) APKs, ask before install, check pickers on FIT/Elite/Duo, check

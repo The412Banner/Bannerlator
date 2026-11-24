@@ -1,5 +1,26 @@
 # Star-Compose — Progress Log
 
+## 2026-11-24 18:40 EST — Wayland desktop mode: program cursors (`fix/wayland-desktop-cursor`, BUILT, CI running, NOT device-tested)
+- Why: AIO Cursor Test (new 2.3.0-pre1 build AND the 2.2.0 CursorTest.exe) on the FIT: Wayland shows the same plain arrow on all
+  6 tiles (incl. the hidden one), X11 correct (user 18:3x EST: "it's the same on wayland old, works correctly on x11. we need to
+  make it work on Wayland please").
+- Cause (read in code): with a Windows virtual desktop (banner_desktop_v1) the compositor sends all pointer input + focus to the
+  desktop surface (pointer_input: target = g_desktop). Every Wine process is its own Wayland client; winewayland
+  (proton-wine v17 dlls/winewayland.drv/wayland_pointer.c wayland_set_cursor) only sends wl_pointer.set_cursor when
+  pointer->focused_hwnd == hwnd, i.e. for a window its own wl_pointer entered. The server forwards the cursor to the process that
+  owns the window under the pointer (server/queue.c update_desktop_cursor_window -> WM_WINE_SETCURSOR -> driver SetCursor), so the
+  program's driver gets the right call and drops it. App side (XServerDisplayActivity waylandSyncGuestCursor) only ever saw
+  serial 0 -> fallback arrow, never hidden. The compositor and app cursor paths themselves are complete.
+- Fix 1 (compositor only, no Wine rebuild, all layers): desktop mode also sends enter/leave to the window under the pointer
+  (toplevel_at, desktop z-order) on that program's own wl_pointer, cursor only (g_hover_win, hover_update/hover_leave); motion,
+  buttons and scroll still go to the desktop; pointer_focus's leave loop skips the hovered window; cleared on surface destroy;
+  windows of the desktop's own client are skipped (one focus per wl_pointer). Expected side effect: winewayland's enter handler
+  injects one motion at the same point (pointer_handle_enter -> pointer_handle_motion_internal).
+- Local check: syntax-only compile of compositor.c (Android target, bundled wayland headers): 0 errors, warning list identical to
+  main (169, all pre-existing unused-parameter).
+- Test plan: Cursor Test shortcuts on the FIT ("AIO Cursor Test - Wayland", "- Wayland OLD 2.2.0"): colour quadrants, shadow,
+  rainbow, animated, arrow, hidden; plus clicks/menus/drag still work, a mouse game hides the pointer when it should.
+
 ## 2026-11-24 15:50–16:55 EST — NIS rewrite: prepass + gathers + coefficients in a uniform buffer (`feat/nis-rewrite`, MERGED main 671feb8c, DEVICE-TESTED: NIS -80 %)
 - Why: upaio-1124 (FIT, X11 Vulkan, dx11 cube) measured NIS at ~5.0 ms GPU per composited frame (old and half shaders alike) and
   AIO 2894 -> ~765 fps (-74 %). nis.frag is a single-pass fragment port of NVIDIA's LDS compute NVScaler: every output pixel

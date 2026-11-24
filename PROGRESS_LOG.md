@@ -68,7 +68,14 @@
   wmic queries returned nothing (WMI not answering in this prefix) — not used. Side finding: with sync off the wine processes were
   allowed 0-7 during the first seconds despite cpuList 0-5 (BL applies its affinity to the game later); with sync on wineserver
   pins from the first thread. Cleanup verified (no temp files, no root-owned files, crash buffer empty since 19:58, Termux front).
-- Next: user decides merge (branch feat/cpu-topology 54fc124d); optional Elite game A/B (fps with sync on vs off).
+- 20:1x EST user: "run the dirt showdown benchmark on the elite first". Harness Elite /sdcard/Download/aio-bench/dirt-topo.sh
+  (sha 939dfa60; from dirt-ab3.sh): per race shortcut gets execArgs -benchmark example_benchmark.xml, fpsLimiterEnabled=0 (container
+  has the limiter on), cpuList=2,3,4,5,6,7, syncCpuTopology=0|1; fan-max before / fan-restore after, no cooldowns (user rule);
+  samples GPU busy/clk/temp, battery, thermal, fan; game threads + Cpus_allowed + env at 70 s. Order: warm, off, on, on, off, off, on.
+  Elite: Prefer big cores never set (off), battery 73 % discharging, 24 °C. Tag dirt-topo-1123.
+  RESUME if cut: on the Elite `cat /sdcard/Download/aio-bench/dirt-topo-1123/run.log`; if not ALLDONE: force-stop com.tencent.ig,
+  `cat /sdcard/Download/aio-bench/dirt-topo-1123/dirt.desktop.orig > "<Desktop>/DiRT Showdown.desktop"` (as root, keeps owner),
+  `sh /sdcard/Download/aio-bench/fan-restore.sh`, Termux front, peers "done".
 - NOT tested yet: the switch on in a real game (WINE_CPU_TOPOLOGY in the wine process env, Windows CPU count), FIT/Elite screens
   (user has them), Fold. Elite A/B after that.
 - Next: CI green -> stage standard (Duo) + pubg (FIT) APKs, ask before install, check pickers on FIT/Elite/Duo, check

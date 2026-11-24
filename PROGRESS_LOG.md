@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-24 15:50–15:56 EST — NIS rewrite: luma prepass + gathers (`feat/nis-rewrite`, BUILT 8530c88e, CI running, NOT device-tested in BL)
+## 2026-11-24 15:50–16:30 EST — NIS rewrite: luma prepass + gathers (`feat/nis-rewrite`, 8530c88e INSTALLED FIT + AIO-tested: only -12 %)
 - Why: upaio-1124 (FIT, X11 Vulkan, dx11 cube) measured NIS at ~5.0 ms GPU per composited frame (old and half shaders alike) and
   AIO 2894 -> ~765 fps (-74 %). nis.frag is a single-pass fragment port of NVIDIA's LDS compute NVScaler: every output pixel
   fetches its 6x6 luma support (36 textureLod + 1 colour tap, getY on each) and recomputes 4 edge maps; at 1920x1080 that is
@@ -36,6 +36,17 @@
   desert, nebula2, planet, ...); every D3D11 scene window is a fixed 640x480 WS_OVERLAPPEDWINDOW (aio_run_d3d11_cube), no
   fullscreen flag -> the cube runs used only a third of the screen. Test now: SCENE=city, SCREEN=640x480 (scene fills the
   desktop, BL upscales 640x480 -> 1440x1080 fit), upscale-ab.sh gained SCENE/SCREEN. Peers root-bf / root-e0 told + acked.
+- INSTALLED 16:13 EST on the FIT (user yes 16:10; peers told): installed base.apk sha256 53c56150... == staged.
+- RESULTS nisaio-1124 (16:13-16:21 EST, X11 Vulkan, AIO --cube dx11 --scene city 20 s in a 640x480 desktop -> 1440x1080 fit,
+  fan 255, 0 FATAL, scene fills the desktop, GPU 99 % busy): baseline (Linear) AIO 263.3 | NIS old 3.412 / 3.419 ms per frame,
+  AIO 185.8 / 185.6 | NIS new (prepass + gathers) 3.018 / 3.008 ms, AIO 192.5 / 192.6 | SGSR HQ new 0.156 ms, AIO 261.2.
+  -> NIS new = -12 % GPU time, +3.6 % game fps (both pairs agree); NIS still costs this game ~27 % fps (SGSR HQ < 1 %).
+  The fetches were not the main cost. Suspect found in the SPIR-V: glslang copies each 384-float const table
+  (coefScale/coefUsm) into a Function variable (OpStore %indexable <table>) before every dynamic index -> per-pixel table
+  copies unless the driver folds them. Next (not done): time variants on the device with the nischeck harness (+ timestamps)
+  to confirm, then move the tables to a UBO/texture (NVIDIA keeps them in textures/LDS) or port NVIDIA's compute NIS (A).
+  Cleanup done: prop "", temp shortcut removed, stream capture stopped, fan back to AYANEO (pwm 51), Termux in front, peers
+  told "done". FIT keeps 8530c88e (main a6b1be08 + NIS rewrite).
 - Resume point: install 8530c88e on the FIT, verify sha; run tag nisaio-1124:
   `API=dx11 BENCH=20 SCENE=city SCREEN=640x480 sh upscale-ab.sh nisaio-1124 1:0:new 7:0:old 7:0:new 7:0:new 7:0:old 8:0:new`
   (fan-max via setsid first; fan-restore + Termux + "done" to peers after). If interrupted: read results/nisaio-1124/run.log,

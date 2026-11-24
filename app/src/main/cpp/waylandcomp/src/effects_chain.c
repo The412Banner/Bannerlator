@@ -24,6 +24,14 @@
 #include "hdr_frag.h"
 #include "ntsc_frag.h"
 #include "crt_frag.h"
+/* Half-precision upscaler/CAS set (winlator/gen_shaders.sh -DBL_HALF=1). */
+#include "sgsr_half_frag.h"
+#include "sgsr_quality_half_frag.h"
+#include "nis_half_frag.h"
+#include "fsr_easu_half_frag.h"
+#include "fsr_rcas_half_frag.h"
+#include "cas_ffx_half_frag.h"
+#include <sys/system_properties.h>
 #include "deband_frag.h"
 
 #define FX_FORMAT VK_FORMAT_R8G8B8A8_UNORM /* the default: every SDR frame */
@@ -432,12 +440,25 @@ static int objects_ensure(void) {
     VkShaderModule vert = shader(upscale_vert_code, sizeof(upscale_vert_code));
     if (!vert) goto fail;
 #define MK(slot, code, name) do { g_pipe[slot] = post_pipeline(vert, code, sizeof(code), name); if (!g_pipe[slot]) { g_vk.DestroyShaderModule(g_dev, vert, NULL); goto fail; } } while (0)
-    MK(P_SGSR, sgsr_code, "sgsr");
-    MK(P_SGSR_HQ, sgsr_quality_code, "sgsr_quality");
-    MK(P_NIS, nis_code, "nis");
-    MK(P_EASU, fsr_easu_code, "fsr_easu");
-    MK(P_RCAS, fsr_rcas_code, "fsr_rcas");
-    MK(P_CAS, cas_code, "cas");
+    /* Upscalers + CAS: the half-precision set unless debug.bannerlator.upscale.shaders is
+     * "old" (the fp32 shaders, for A/B); same choice as the X11 renderer. */
+    char shp[PROP_VALUE_MAX] = {0};
+    const int half = !(__system_property_get("debug.bannerlator.upscale.shaders", shp) > 0 && strcmp(shp, "old") == 0);
+    if (half) {
+        MK(P_SGSR, sgsr_half_code, "sgsr_half");
+        MK(P_SGSR_HQ, sgsr_quality_half_code, "sgsr_quality_half");
+        MK(P_NIS, nis_half_code, "nis_half");
+        MK(P_EASU, fsr_easu_half_code, "fsr_easu_half");
+        MK(P_RCAS, fsr_rcas_half_code, "fsr_rcas_half");
+        MK(P_CAS, cas_ffx_half_code, "cas_ffx_half");
+    } else {
+        MK(P_SGSR, sgsr_code, "sgsr");
+        MK(P_SGSR_HQ, sgsr_quality_code, "sgsr_quality");
+        MK(P_NIS, nis_code, "nis");
+        MK(P_EASU, fsr_easu_code, "fsr_easu");
+        MK(P_RCAS, fsr_rcas_code, "fsr_rcas");
+        MK(P_CAS, cas_code, "cas");
+    }
     MK(P_COLOR, color_code, "color");
     MK(P_FXAA, fxaa_code, "fxaa");
     MK(P_TOON, toon_code, "toon");
@@ -448,7 +469,8 @@ static int objects_ensure(void) {
 #undef MK
     g_vk.DestroyShaderModule(g_dev, vert, NULL);
     g_ready = 1;
-    banner_log("effects", "chain ready: 13 passes (SGSR, SGSR HQ, NIS, FSR EASU+RCAS, CAS, colour, FXAA, Toon, HDR, NTSC, CRT, deband) on %s", vkp_gpu_name());
+    banner_log("effects", "chain ready: 13 passes (SGSR, SGSR HQ, NIS, FSR EASU+RCAS, CAS, colour, FXAA, Toon, HDR, NTSC, CRT, deband), %s shaders, on %s",
+               half ? "half-precision" : "old fp32", vkp_gpu_name());
     return 0;
 fail:
     objects_destroy();

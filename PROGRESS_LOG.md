@@ -27,8 +27,12 @@
   (lavapipe on the host failed first: LLVM 21 targets the X4/A720/A520 as SVE2 cores, the kernel has SVE off -> SIGILL; a fake
   cpuinfo/midr shim fixed clang's detection but not llvmpipe's; dropped in favour of the device test.)
 - CI build-artifacts 45485822464 dispatched 15:55 EST, headSha 8530c88e == pushed.
-- Resume point: CI -> aria2 download pubg -> verify (digest, .so strings) -> stage /sdcard/Download/Bannerlator-nis-rewrite-
-  8530c88e-pubg.apk -> ASK the user before install -> AIO A/B NIS old/new with upscale-ab.sh (stream capture from the start).
+- CI GREEN 15:59 EST: 45485822464, headSha 8530c88e, 4/4 success. aria2 download: digest c8343c2b... == GitHub; APK .so strings:
+  libvulkan_renderer "upscale shaders: NIS = luma prepass + gather pass", libbannerwayland nis2_half / nis_luma_half / "NIS luma";
+  signer a40da80a.... STAGED 16:00 EST: /sdcard/Download/Bannerlator-nis-rewrite-8530c88e-pubg.apk 602987140 B, sha256
+  53c56150... (host == /sdcard == device). NOT installed (asking the user). upscale-ab.sh now captures stream.log itself.
+- Resume point: FIT still has 099c21fd (main code). On "yes": install, verify base.apk sha, then
+  `API=dx11 BENCH=20 sh upscale-ab.sh nisaio-1124 7:0:old 7:0:new 7:0:new 7:0:old` (+ fan-max/fan-restore, save before launch).
 
 ## 2026-11-24 13:10–15:45 EST — Upscaler refresh: lighter math, cursor after the upscale, CAS from AMD's file (`feat/upscaler-refresh`, MERGED main 16595ed8, AIO-tested FIT)
 - Why: Discord question 11-24 (is NIS the limit). Research 11-24 (main 48b4bafb): no newer SPATIAL upscaler exists upstream (all new ones

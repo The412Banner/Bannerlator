@@ -21,8 +21,20 @@
   4 x cores 3-6 0.48–2.40, 1 x core 7 0.48–2.80 (= sysfs). Restored the file (sha == backup), Classic verified by screenshot, Termux back
   in front, crash buffer since 19:00 = only Magisk content-notify (ROM quirk), no BL crash. Screens: FIT /sdcard/Download/Bannerlator-Duo-
   deviceinfo-{1,2}-20261123.png.
-- RESUME: worktree /root/src/Bannerlator-wt/cpu-topology; if the session dies during the Duo step: nothing running on the Duo besides
-  BL; bring Termux back on the Duo (am start com.termux/.app.TermuxActivity) and send peers "done".
+- Built (19:15–19:20 EST): 59c49bfa deviceinfo/CpuCores.kt (core names from /proc/cpuinfo CPU part or midr_el1, part numbers from
+  Linux cputype.h cd2a6b71; clusters Prime/Performance/Efficiency by clock or capacity) + SocNames (SG8350P G3 Gen 3, SM8750P,
+  CQ7790S Dragonwing Q-7790, SM8635/SM8735/SM7675, canoe; -XX suffix; platform family only for empty/SM models; Samsung clock above
+  the reference = "for Galaxy") + CpuCoresTest (8 tests, run locally with the cached Kotlin 2.3.21 compiler: OK; live FIT read =
+  Prime X4 3.30 / A720 3.15 / A720 2.96 / A520 2.27, "Snapdragon G3 Gen 3").
+  5013a78b: Sync CPU topology (Container field + .container key, Lab def performance.syncCpuTopology + Classic rows + glossary help,
+  Classic container switch, Classic game dropdown Container default/On/Off, launch: WINE_CPU_TOPOLOGY=<n>:<list> from the final
+  taskAffinityMask after Prefer big cores, user env wins, log "Sync CPU topology: …"), Lab CoresControl (chip, All/Big cores, titled
+  groups, tap title = group), row summary "all 8 cores"/"6 of 8 cores (2-7)", Classic CPUListView (groups, CRLF kept), Task Manager
+  tiles (Core N + short name/clock), device info CPU rows by tier with names, config export keys.
+- CI: build-artifacts 45296505200 (headSha 5013a78b asserted), running.
+- Next: CI green -> stage standard (Duo) + pubg (FIT) APKs, ask before install, check pickers on FIT/Elite/Duo, check
+  WINE_CPU_TOPOLOGY in a game's wine process env + Windows CPU count, then an Elite A/B.
+- RESUME: worktree /root/src/Bannerlator-wt/cpu-topology; Duo is on main a884ad61 Classic (restored), Termux in front.
 
 ## 2026-11-23 17:58–18:45 EST — Community profiles: Original + Discord shared catalog (`feat/community-catalog`, DEVICE-PROVEN on the FIT, MERGED main a884ad61)
 - Why: user made the Discord channel #bannerlator-osc-sharing (BannerHub server) for user layouts; wants them in the app next to

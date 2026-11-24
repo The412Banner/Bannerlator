@@ -39,8 +39,16 @@
 - INSTALLED 19:34:32 FIT / 19:34:34 Elite / 19:34:38 Duo EST; base.apk == staged on all three (bfd4f489 pubg x2, 748cad86 standard).
 - Old APKs: deleted old Bannerlator test APKs only (FIT 6, Elite 6, Duo 1 = main-a884ad61), kept the installed cpu-topology one on
   each; other projects' APKs + installers (Magisk, Termux, …) left alone (other sessions may need them). Elite free 6.9 -> 9.4 GB.
-- Next: Duo check (idle at home): Classic core picker + Lab device info/picker (Lab switch with the same prefs backup/restore).
-  FIT/Elite pickers: user to look, or me with the user's OK (user may be on them).
+- DUO DEVICE CHECK 19:35–19:40 EST (Lab via the same prefs backup/restore, sha 22b57588 restored + verified): device info Name
+  "Dragonwing Q-7790" (was "Snapdragon 8 Elite family"); CPU rows "Prime 1 x Cortex-A720 · core 7 · 0.48–2.80 GHz", "Performance
+  4 x Cortex-A720 · cores 3-6 · 0.48–2.40", "Efficiency 3 x Cortex-A520 · cores 0-2 · 0.44–1.84"; Lab container Advanced rows
+  "all 8 cores" + "Sync CPU topology" (off); Lab picker: chip "Dragonwing Q-7790 (CQ7790S)", All cores / Big cores, Prime ·
+  Cortex-A720 · 2.80 GHz [Core 7], Performance · Cortex-A720 · 2.40 GHz [3-6], Efficiency · Cortex-A520 · 1.84 GHz [0-2];
+  Classic Edit Container > Advanced: grouped tiles with the same titles + Sync CPU topology switch. Nothing changed, editors left
+  without saving, Termux back in front, crash buffer since 19:34 empty. Screens: FIT /sdcard/Download/Bannerlator-cpu-topology-
+  Duo-{chip,cpu,picker,classic-picker}-20261123.png.
+- NOT tested yet: the switch on in a real game (WINE_CPU_TOPOLOGY in the wine process env, Windows CPU count), FIT/Elite screens
+  (user has them), Fold. Elite A/B after that.
 - Next: CI green -> stage standard (Duo) + pubg (FIT) APKs, ask before install, check pickers on FIT/Elite/Duo, check
   WINE_CPU_TOPOLOGY in a game's wine process env + Windows CPU count, then an Elite A/B.
 - RESUME: worktree /root/src/Bannerlator-wt/cpu-topology; Duo is on main a884ad61 Classic (restored), Termux in front.

@@ -3038,6 +3038,14 @@ private fun AdvancedTab(
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.sync_cpu_topology), modifier = Modifier.weight(1f))
             }
+            Spacer(Modifier.height(8.dp))
+            // Idle-thread throttle: a switch per graphics API in a pop-up (core.IdleThrottle).
+            IdleThrottleRow(
+                value = viewModel.sleep0ThrottleSkip,
+                containerValue = null,
+                onChange = { viewModel.sleep0ThrottleSkip = it ?: com.winlator.star.core.IdleThrottle.DEFAULT },
+                onHelp = { helpRes = R.string.help_idle_throttle },
+            )
         }
     }
 }

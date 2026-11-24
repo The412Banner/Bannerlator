@@ -1136,7 +1136,7 @@ object GoldbergPatcher {
      * folder (only its file name is used, so a stale path in the ini can't point elsewhere); null when
      * there is no ini, no `Exe=` line, or the named file is missing or is itself a loader.
      */
-    private fun gameExeFromLoaderIni(dir: File?): File? {
+    internal fun gameExeFromLoaderIni(dir: File?): File? {
         if (dir == null) return null
         val name = loaderIniExeName(dir) ?: return null
         if (name.startsWith("steamclient_loader", ignoreCase = true)) return null

@@ -88,6 +88,9 @@ internal fun LabFrameGenPanel(state: XServerDrawerState) {
     val waylandFgOk by state.waylandFrameGenAvailable.collectAsState()
     val waylandFgBlocked = isWaylandSession && !waylandFgOk
     val readout by state.frameGenReadout.collectAsState()
+    // Engines that can be switched to while the game runs; empty = fixed for this session.
+    val engineChoices by state.fgEngineChoices.collectAsState()
+    val canSwitchEngine = engineChoices.isNotEmpty() && !waylandFgBlocked
 
     val engineLabel = when (engine) {
         "lsfg" -> "lsfg-vk"
@@ -100,8 +103,16 @@ internal fun LabFrameGenPanel(state: XServerDrawerState) {
     val isRunning = layerActive && engine != "off" && initFgMult > 0
 
     IgCard {
-        IgRow(L("Engine"), hint = readout.ifEmpty { null }) {
-            IgBadge(engineLabel, dot = if (isRunning) Color(0xFF4CAF50) else cs.onSurface.copy(alpha = 0.35f))
+        if (canSwitchEngine) {
+            IgRow(L("Engine"), hint = readout.ifEmpty { null }, scopes = listOf(igGameScope()), wideControl = true) {
+                IgChips(engineChoices.map { it to fgEngineChoiceLabel(it) }, engine) { e ->
+                    state.onFgEngineSelected?.accept(e)
+                }
+            }
+        } else {
+            IgRow(L("Engine"), hint = readout.ifEmpty { null }) {
+                IgBadge(engineLabel, dot = if (isRunning) Color(0xFF4CAF50) else cs.onSurface.copy(alpha = 0.35f))
+            }
         }
 
         if (frameGenEnabled) {
@@ -211,11 +222,19 @@ internal fun LabFrameGenPanel(state: XServerDrawerState) {
         } else if (waylandFgBlocked) {
             IgDivider()
             IgNote(L("Not on Wayland in this build yet."), modifier = Modifier.padding(vertical = 6.dp))
-        } else {
+        } else if (!canSwitchEngine) {
             IgDivider()
             IgNote(L("Off for this container. Turn it on in the container's settings to use it here."), modifier = Modifier.padding(vertical = 6.dp))
         }
     }
+}
+
+/** Chip label for an engine in the in-game engine switch (XServerDrawerState.fgEngineChoices). */
+internal fun fgEngineChoiceLabel(engine: String): String = when (engine) {
+    "lsfg-native" -> L("LSFG Native")
+    "bionic" -> L("Win-FG Native")
+    "wfg" -> "WFG"
+    else -> L("Off")
 }
 
 // What the display is really doing, for the fit advice (copy of XServerDrawer's private FgScreen / rememberFgScreen).

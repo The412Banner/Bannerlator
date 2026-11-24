@@ -1,5 +1,150 @@
 # Star-Compose — Progress Log
 
+## 2026-11-24 11:30–11:45 EST — Idle-thread throttle switches on the device + Lab help title fix (feat/idle-throttle-toggles, row DEVICE-VISIBLE, fix CI running)
+- Installed 5a91cfa4 pubg APK on the Pocket FIT 11:29 EST (user yes; installed base.apk sha256 6f0dc1d1 == staged). User: "it's there now";
+  screenshots 11:33: Lab game settings (DiRT Showdown) Advanced -> Idle-thread throttle pop-up with 8 switches (DirectX 7 off, rest on),
+  "?" and close shown. Launch line + Wine log with this app NOT yet checked.
+- User found the help title shown twice ("?" note: heading + the help text's own bold title line). Fix 45ee683a: LabNote drops a first
+  line equal to its heading (labNoteBody); applies to every Lab note built from a help string. CI build-artifacts 45439470788 running.
+- Wine side (The412Banner/proton-wine staging/*/v17): WINE_SLEEP0_THROTTLE_SKIP default dx7, graphics DLLs noted at image map time
+  (11.0-2 5cad2d70, DD 12.8 c3bd0d3f, GE 11-14 db1ea2c2, 11.0-3 ffdd0555): AIO DirectDraw at full speed on all four (2655-2900 fps,
+  v16 2785), Wine log "Sleep(0) throttle off in this process: DirectX 7", SKIP=none caps it again (2472) - DEVICE-PROVEN on the FIT.
+- Lesson: I ran `find / -maxdepth 6` under proot at ~09:40 EST (HARD rule: never a filesystem-wide find). Search known dirs only.
+
+## 2026-11-24 09:36–11:32 EST — Per-API idle-thread throttle switches (`feat/idle-throttle-toggles`, CI GREEN, APK STAGED, NOT device-tested)
+- Why: user 11-24 ~09:20 EST: "can we also make it a menu popup with per API toggles in advanced tab of game shortcut settings and
+  container settings? ... also include a ? button to explain what it is and does". Wine layers v17 (The412Banner/proton-wine) carry
+  GameNative's Sleep(0) throttle and read WINE_SLEEP0_THROTTLE_SKIP = APIs never throttled (dx7,dx8,dx9,dx10,dx11,dx12,gl,vk or
+  "none"; unset = "dx7"). AIO DirectDraw 2780 -> 1460 fps (FIT) / 9800 -> 1700 (Elite) with the throttle on.
+  Branch off feat/fg-engine-switch 9527099f (the build on the test device), worktree /root/src/Bannerlator-wt/idle-throttle.
+- Built 5a91cfa4:
+  - core/IdleThrottle.java: parse/join (tag order, "none" = empty), resolve game -> container -> "dx7", user-variable check,
+    editor list form, names. Stored keys: container data `sleep0ThrottleSkip` (default "dx7", written only when changed),
+    shortcut extra `sleep0ThrottleSkip` (absent = container's). Community config export carries it; Lab "N settings for this game"
+    counts it.
+  - Launch (XServerDisplayActivity.setupXEnvironment, after the Sync CPU topology env, after every env merge):
+    WINE_SLEEP0_THROTTLE_SKIP=<resolved>, unless the user's env vars have WINE_SLEEP0_THROTTLE_SKIP or WINE_SLEEP0_THROTTLE.
+    Session line (logcat tag XServerDisplayActivity + Wine log): `idle throttle: WINE_SLEEP0_THROTTLE_SKIP=dx7 (container)` /
+    `(this game)` / `idle throttle: <VAR>=<value> (yours, kept)`.
+  - Classic: container editor Advanced tab and game editor Advanced tab, Processor Affinity box, under Sync CPU topology: row
+    "Idle-thread throttle" (read-only field, value "Off: DX7" / "On for all" / "Off for all"; game without own value =
+    "Container default (Off: DX7)") + "?". Tap = pop-up: 8 switches DirectX 7..12 / OpenGL / Vulkan (on = throttled), "?" in the
+    title (HelpDialog), Save / Cancel, game with own value: "Use container setting". Saved with the editor's own Save, as the other rows.
+  - Lab (SimpleClassicEditor): registry row performance.idleThrottle (Control.Checklist with switches/labels/summary/help) placed
+    after Sync CPU topology in both Advanced tabs; row "?" via LabFieldHelp. Lab pop-up LabSwitchListDialog: title + "?" (touch +
+    D-pad focusable) + ✕, 8 LabToolRow switches, game with own value: "Use container setting", Cancel / Save, tappable hints
+    A Switch / B Close; controller: A switch, X save, Start ?, B close, focus starts on DirectX 7.
+  - Deck/XMB editors get the same registry row (Material ChecklistDialog now takes the control: switches, labels, "?", lead line;
+    the Vulkan extensions list keeps its old text and "All on" line).
+  - Strings: values/strings.xml (idle_throttle*, help_idle_throttle). Lab L() strings fall back to English (strings_lab.xml
+    already out of date on the base; not regenerated). No other locale touched.
+  - IdleThrottleTest 8 tests: run locally with javac + cached JUnit 4.13.2: OK (CI runs no unit tests).
+- CI run: build-artifacts 45419830157 (dispatched 09:57 EST, done 10:07 EST), headSha 5a91cfa4 == pushed, 4/4 jobs success
+  (antutu, ludashi, pubg, standard). pubg: BUILD SUCCESSFUL in 7m 54s; non-success steps = skipped only (main-only cache saves +
+  cached natives: JavaSteam/LSFG/libblsteam/Xbox/libfakeinput/PulseAudio). Warnings in new code: Icons.Filled.Help deprecation
+  only (same icon the neighbouring rows use).
+- Staged 11:29 EST: `/sdcard/Download/Bannerlator-idle-throttle-5a91cfa4-pubg.apk` 602851697 B, sha256
+  6f0dc1d1b0129de6458c82487e4c7908c31a86b2394fcef28d614da877f0181c (host == /sdcard == device via rootsh), com.tencent.ig vc108 3.2.1,
+  apksigner verifies, signer SHA-256 a40da80a... == staged base Bannerlator-fg-engine-switch-76f0994b-pubg.apk. Artifact zip sha256
+  2c139403... == GitHub's artifact digest. New code in classes5/6/7.dex (launch line, Lab dialog, registry row). Download note:
+  `gh run download` died with "connection reset by peer" (10:07 EST); the second try (curl on the signed URL with resume) worked.
+  NOT installed by me (the coordinator does the install).
+- Device test: NOT device-tested.
+- Open/Next: user installs (ask first). Test: container settings -> Advanced -> Idle-thread throttle (Classic: Processor Affinity
+  box; Lab: Advanced tab, after Sync CPU topology) -> switch DirectX 7 on/off, "?" text, Save; game settings -> same row ->
+  own value, then "Use container setting". Launch proof: logcat `idle throttle: WINE_SLEEP0_THROTTLE_SKIP=...`; Wine log (v17
+  layer) `wine: Sleep(0) throttle off in this process: ...` / `... on in this process: ...` once per game when it first engages.
+  AIO DirectDraw with DX7 off ~2780 fps (FIT), DX7 on ~1460. Not merged, no release.
+
+## 2026-11-24 04:33–05:00 EST — In-game frame-gen engine switch (`feat/fg-engine-switch`, CI GREEN, APK STAGED, NOT device-tested)
+- Why: user 11-23: "add the ability to switch frame generation types while in game on a separate branch ... between win-fg, wfg and lsfg
+  native". Before: the engine was fixed per session (only level/flow/model live); a game started with FG Off could not turn it on.
+  Branch off feat/upstream-round-3 3c1279de (has the per-game saveFgValue code), worktree /root/src/Bannerlator-wt/fg-engine-switch.
+- Built 76f0994b: engine picker Off / LSFG Native / Win-FG Native / WFG in the in-game Frame generation section (Classic drawer
+  FrameGenSection = 2x2 chip grid; Lab LabFrameGenPanel "Engine" row = chips with the Game/Container scope chip; Deck quick page row
+  when FG is off). Existing labels only, no new hint lines, no new pop-up.
+  - Gate: XServerDisplayActivity.publishFgEngineChoices (end of the launch FG block in setupXEnvironment) ->
+    core.FgEngineSwitch.choices(nativeRenderer = Wayland or X11 Vulkan renderer, guestLayer = "bionic" launched as the guest layer,
+    winFgNativeOk = Wayland or no training capture) -> XServerDrawerState.fgEngineChoices. Empty = badge only, as before.
+  - Switch: switchFrameGenEngine: old engine off via its own apply(0) (locks/readout), unless Win-FG/WFG take over at a level (engine
+    change only, swapchain kept); sessionFgEngine (resolvedFrameGenEngine returns it), winFgNativeSession recomputed, drawer flows
+    (engine, enabled, bionicFgActive, multiplier carried: Win-FG = On/2), then applyWinFgNative/applyWfgNative (renderer
+    setFrameGenEngine / Wayland nativeSetFrameGenEngine) at the current level. LSFG Native: prepareLsfgNative off the UI thread,
+    arms at the menu's level when the cache is ready; a level tapped meanwhile waits for it (lsfgArmDeferred), a stale build
+    for an engine no longer picked is ignored (fgEngineSwitchSeq). applyLsfgNative now selects FG_ENGINE_LSFG explicitly.
+  - Saved per game: saveFgValue("frameGenEngine") -> shortcut extra (container session: Container.setFrameGenEngine); launch already
+    reads shortcut first, else container.
+  - Not switchable: guest-side win-fg layer sessions (X11 + training capture; launch-only), Win-FG Native left out while capture is
+    on, OpenGL / SurfaceFlinger (ASR) renderers, Linux/gamescope sessions.
+  - FgEngineSwitchTest 5 tests: run locally with javac + cached JUnit 4.13.2: OK (CI runs no unit tests).
+- CI run: build-artifacts 45368790769 (dispatched 04:49 EST, done 04:59 EST), headSha 76f0994b == pushed, 4/4 jobs success
+  (antutu, ludashi, pubg, standard). pubg: BUILD SUCCESSFUL in 5m 52s; non-success steps = skipped only (main-only cache saves +
+  cached natives: JavaSteam/LSFG/libblsteam/Xbox/libfakeinput/PulseAudio; no native change here); warnings in touched files = old
+  deprecations on untouched lines. New code in classes5.dex (FgEngineSwitch + the switch log line).
+- Staged 04:59 EST: `/sdcard/Download/Bannerlator-fg-engine-switch-76f0994b-pubg.apk` 602826584 B, sha256
+  ab14d09a2fede11e45dbe2f7fc1bad40e031e854664f61f65fdd96847050d9be (host == /sdcard == device via rootsh), com.tencent.ig vc108 3.2.1,
+  signer SHA-256 a40da80a... == staged base Bannerlator-upstream-round-3-57e1d48c-pubg.apk. NOT installed: awaits the user's yes.
+- Device test: NOT device-tested.
+- Open/Next: user installs (ask first) and tests: Lab menu -> Performance -> Frame generation -> Engine chips. Proof in logcat:
+  `framegen engine switch: offered [...]` at launch, `framegen engine switch: <old> -> <new> mult=N backend=vulkan|wayland`,
+  then `applyWfgNative:` / `applyWinFgNative:` / `applyLsfgNative:` (X11) or `applyWaylandFrameGen: engine=...` + framegen
+  `<engine> engine ready` (Wayland); the renderer's `native-fg: engine <old> -> <new>` prints only with verbose logging. Known edge:
+  a container with the LSFG Vulkan 1.1 compat switch that launched with another engine gets the compat device only at the next
+  launch. Not merged, no release.
+
+## 2026-11-24 00:00–04:25 EST — Overnight Wine v17 benchmarks on the round-3 APK (`feat/upstream-round-3` app; layers on The412Banner/proton-wine staging/*/v17; NOT released)
+- Why: user 11-23 23:36 EST: test the new Wine builds on the new APK overnight (AIO per API + DiRT Showdown benchmark), fix what looks wrong.
+- Device: Pocket FIT, AC power, fan max. App: round-3 APK a0037a2f installed 01:21 EST (user yes 23:36). Test containers xuser-11..15 =
+  copies of container 1; harness /sdcard/Download/perf-harness (bench.sh, runset.sh, swlayer.sh, instlayer.sh, report.py).
+- v16 -> v17 (AIO avg fps, 2 passes; DiRT av fps): P10 10.0-4 = noise (-2..+2 %, DiRT 109.8 = 109.8); GE 10.0-34 +2..+14 % (run order,
+  not claimed); DD 12.8 +4..+18 % on 7 APIs, DiRT 85.8 -> 111.3; 11.0-2 +10..+18 % on 7 APIs, DiRT 109.2 -> 113.1. 0 FATAL except the
+  pre-existing 11.0-2 assert virtual.c:1952 at DiRT force-stop (v16 too). Pictures valid (piccheck 19/19 per line).
+- DX7 regression on the Wine 11 lines only: DD 12.8 2586 -> 1471, 11.0-2 2785 -> 1459. Cause PROVEN = GameNative #119 Sleep(0) throttle
+  (WINE_SLEEP0_THROTTLE=0: 11.0-2 2775/2789, DD 2834). AIO DX7 yields once per frame at ~0.36 ms/frame < the 2 ms reset window -> run never
+  resets -> +0.25 ms nap per frame (~1460 fps). DiRT (9 ms frames) unaffected (111.3 on vs 108.3 off).
+- Found + fixed in DD 12.8 / 11.0-2 / GE 11-14 v17: userspace ntsync closes its alert index as an fd at thread exit (likely the SteamLite
+  sign-in fdsan hang; fix builds f435693d / 5bfaf644 / 570b71f5; hang itself not re-tested). P10/GE10 lack the ntsync patch.
+- 04:24 EST (user): run GE 11-14 test, tune the throttle reset, finish the morning items. Resume point: memory bannerlator-overnight-1124.
+
+## 2026-11-23 23:30–24:00 EST — Upstream round 3: Steam launch entries, download-done notice, per-game in-game FG, SteamLite v10 (`feat/upstream-round-3`, CI GREEN, APK STAGED, NOT device-tested)
+- Why: user approved "step 3" (11-23 ~23:20 EST): build the new BL items overnight on ONE branch, stage a test APK for the morning.
+  Branch off origin/main 48b4bafb, worktree /root/src/Bannerlator-wt/upstream-round-3.
+- 1a3dbdd1 Steam launch entries (GameNative #2408 78f61ffe + #2427 40be44dc, Utkarsh Dalal, GPL-3.0): new store/SteamLaunchEntries.kt
+  reads app-info config/launch (prefs steam_launch_entries; read at shortcut add, at launch when none kept or >7 days old and Steam is
+  signed in (max 5 s), refreshed by the library sync for kept apps via processAppKv). getWineStartCommand (steamLaunchEntryArgs) puts
+  the entry's arguments right after the exe, before the user's args, for Goldberg / raw / Headless Steam launches only: Windows
+  entries (oslist windows/empty), installed branch (BetaKey; build stamp, else selected branch, else public), entry exe == shortcut
+  exe (slashes/case ignored; Cold Client loader -> the ini's game exe), skipped when the user's args already carry them. Exe never
+  changed. SteamLite/RealSteam (launchMode RealSteam or a plan), Windows Steam client, Xbox, other stores untouched. Steam detail page +
+  Downloads list Steam's launch exe first in the exe picker. Counter-Strike (app 10) = hl.exe -game cstrike.
+  SteamLaunchEntriesTest 17 tests: run locally with the cached Kotlin 2.3.21 compiler + stubs: OK (CI runs no unit tests).
+- 14398ae0 Download-finished notification (Ludashi 1462cca9, StevenMXZ, GPL-3.0): DownloadRegistry DOWNLOADING -> INSTALLED (any store,
+  Steam too) -> DownloadForegroundService.postFinished: own notification (game name / "Download complete", tap = Download Manager),
+  id per game, auto-cancel, skipped when notifications are off. Seeds, folder imports, cancelled paused updates don't post.
+- 57e1d48c Per-game in-game frame gen (Ludashi 49f53a2e, StevenMXZ, GPL-3.0): onBionicFgConfigChange saves through saveFgValue to the
+  shortcut (container session: container): frameGenMultiplier/FlowScale/Model/PerfPreset, lsfgPerformanceMode, fgCaptureResolution;
+  only values that changed vs the session start/last save. Launch reads use the game's value else the container's
+  (resolvedFrameGenMultiplier/FlowScale, resolvedLsfgPerformanceMode, resolvedFgCaptureResolution; model/preset already per game).
+- SteamLite v10 (helper agent, not published): v9 asset re-packed byte-identical first (proves the recipe), then v10 = v9 + agent p8
+  from BL 48b4bafb (Build SteamLite agent run 45327465984, == 10b5f944 tree). Staged /sdcard/Download/step3/steamlite-v10-48b4bafb.tzst
+  19224024 B MD5 A16AE460D1B28C4D74223CD84FE083C0 sha256 042d304b… (host == sdcard), unpacked files + md5 list, recipe
+  STEAMLITE-V10-TEST.txt + sl10-install.sh / sl10-undo.sh (backup first). Drafts in /root/src/dl/step3-1124/ (steamlite.json.v10-draft,
+  agent-src-v10.patch.draft). No BL code change needed (catalog version > .steamlite_version marker; MIN_AGENT_VERSION stays 4).
+- GE-proton-11.0-14 (v17) check: no BL change needed. BL keeps no layer-name tables: ContainerLayerUpdater lines are by exact
+  versionName (GE 11.0-9 -> 11.0-14 is a line move, not an "update", by design; DroidDeck-Proton lines grouped by label only);
+  DirectAudio picks by "11.0-" + winepulse imports; no defaults/recommendations by name. 11.0-9 installs keep working.
+- CI GREEN 00:05 EST: build-artifacts run 45329743141, headSha 57e1d48c (== pushed), 4/4 jobs success (antutu, ludashi, pubg,
+  standard); non-success steps = skipped only (main-only cache saves + cached natives: libblsteam/Xbox/LSFG/JavaSteam; no Rust/native
+  change on this branch). pubg log: BUILD SUCCESSFUL, only old deprecation warnings (SteamGameDetailActivity Icons.Filled.Help).
+- STAGED 00:06 EST: `/sdcard/Download/Bannerlator-upstream-round-3-57e1d48c-pubg.apk` sha256 a0037a2f…effc (host == sdcard == device),
+  com.tencent.ig vc108 3.2.1, signer SHA-256 a40da80a… == installed (installed base.apk sha256 843b42af… == staged
+  Bannerlator-cpu-topology-2fd4cf96-pubg.apk, signer a40da80a…). New code in classes5.dex. NOT installed: awaits the user's yes.
+- Morning test (NOT done): (1) CS 1.6 (app 10) shortcut, launch mode Goldberg/raw, clear its Exec Arguments (FIT had "-game cstrike"
+  set by hand 11-23) -> CS opens, logcat BH_STEAM_LAUNCH "appId=10 exe=hl.exe entries=1 args='-game cstrike'"; with "-game cstrike"
+  typed back -> args='' (no double). (2) start a small store download, leave the app -> "Download complete" line in the shade, tap
+  opens Downloads. (3) game A from a shortcut: in-game FG change multiplier/flow, quit, start game B of the same container -> B
+  shows the container's values; relaunch A -> A's flow kept. (4) SteamLite v10 per STEAMLITE-V10-TEST.txt. Then logcat FATAL check.
+
 ## 2026-11-23 19:00–22:00 EST — Sync CPU topology + named core picker (`feat/cpu-topology`, DEVICE-PROVEN, MERGED main 0912536a)
 - Why: user wants Ludashi's "Sync CPU topology" (WINE_CPU_TOPOLOGY from the core pick) and a core picker that reads the device and
   lists each core by its real name and top speed (Samsung's faster clocks too), reusing the device-info pop-up's data. Also: update the

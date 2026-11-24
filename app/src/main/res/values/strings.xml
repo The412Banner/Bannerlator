@@ -1615,6 +1615,18 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="force_ssbs_on">On</string>
     <string name="force_ssbs_off">Off</string>
     <string name="sync_cpu_topology">Sync CPU topology</string>
+    <string name="idle_throttle">Idle-thread throttle</string>
+    <string name="idle_throttle_on_all">On for all</string>
+    <string name="idle_throttle_off_all">Off for all</string>
+    <string name="idle_throttle_off_list">Off: %1$s</string>
+    <string name="idle_throttle_use_container">Use container setting</string>
+    <string name="help_idle_throttle"><![CDATA[
+        <b>Idle-thread throttle</b><br /><br />
+        Some games keep a thread spinning while it has nothing to do. That wastes a whole CPU core: more heat, less battery. Wine slows such threads down.<br /><br />
+        Very fast games (hundreds to thousands of frames per second, mostly old DirectX 7 games) can look idle and get slowed down too.<br /><br />
+        Switch an API off to run its games at full speed. On saves battery.<br /><br />
+        Needs Wine layers v17 or newer.
+    ]]></string>
     <string name="help_sync_cpu_topology"><![CDATA[
         <b>Sync CPU topology</b><br /><br />
         Windows games ask how many CPU cores the device has and start that many worker threads. If you picked fewer cores under Processor Affinity, the game still sees all of them and crowds its threads onto the cores it is allowed to use.<br /><br />

@@ -86,6 +86,51 @@ class DownloadForegroundService : Service() {
             val inst = instance ?: return
             if (active.isEmpty()) inst.stopNow() else inst.refreshNotification()
         }
+
+        private const val FINISHED_TAG = "download-finished"
+
+        /**
+         * A dismissible "<game> / Download complete" line for a finished download, separate from the
+         * ongoing one so it stays after the service stops. Tapping it opens the Download Manager.
+         * Skipped when notifications are off for the app. Safe from any thread.
+         */
+        fun postFinished(ctx: Context, key: String, name: String) {
+            try {
+                val app = ctx.applicationContext
+                val nm = app.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                if (!nm.areNotificationsEnabled()) return
+                ensureChannel(app)
+                val tap = PendingIntent.getActivity(
+                    app, key.hashCode(),
+                    Intent(app, DownloadManagerActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                )
+                val n = Notification.Builder(app, CHANNEL_ID)
+                    .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                    .setContentTitle(name)
+                    .setContentText("Download complete")
+                    .setAutoCancel(true)
+                    .setContentIntent(tap)
+                    .build()
+                nm.notify(FINISHED_TAG, key.hashCode(), n)
+            } catch (t: Throwable) {
+                Log.w(TAG, "finished notification failed for $key: ${t.message}")
+            }
+        }
+
+        private fun ensureChannel(ctx: Context) {
+            val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (nm.getNotificationChannel(CHANNEL_ID) != null) return
+            val ch = NotificationChannel(
+                CHANNEL_ID,
+                "Downloads",
+                NotificationManager.IMPORTANCE_LOW,   // quiet: no sound/heads-up for a progress bar
+            ).apply {
+                description = "Shows game download progress and keeps downloads running in the background"
+                setShowBadge(false)
+            }
+            nm.createNotificationChannel(ch)
+        }
     }
 
     override fun onCreate() {
@@ -121,20 +166,7 @@ class DownloadForegroundService : Service() {
     // Notification
     // -------------------------------------------------------------------------
 
-    private fun createNotificationChannel() {
-        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        if (nm.getNotificationChannel(CHANNEL_ID) != null) return
-
-        val ch = NotificationChannel(
-            CHANNEL_ID,
-            "Downloads",
-            NotificationManager.IMPORTANCE_LOW,   // quiet: no sound/heads-up for a progress bar
-        ).apply {
-            description = "Shows game download progress and keeps downloads running in the background"
-            setShowBadge(false)
-        }
-        nm.createNotificationChannel(ch)
-    }
+    private fun createNotificationChannel() = ensureChannel(this)
 
     /**
      * Build the ongoing notification from the [active] map. One active download → its line as

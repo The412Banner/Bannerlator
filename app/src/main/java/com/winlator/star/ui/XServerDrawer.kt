@@ -1887,6 +1887,14 @@ private fun HelperText(text: String) {
 @Composable
 private fun WaylandNotYetNote() = HelperText("Not on Wayland in this build yet")
 
+/** Button label for an engine in the in-game engine switch (XServerDrawerState.fgEngineChoices). */
+private fun fgEngineChoiceName(engine: String): String = when (engine) {
+    "lsfg-native" -> "LSFG Native"
+    "bionic"      -> "Win-FG Native"
+    "wfg"         -> "WFG"
+    else          -> "Off"
+}
+
 // ───── Runtime-backend diagnostic chip (Graphics tab header) ─────
 // Read-only status: arch · translator, plus the FEX unixlib mode. unixlib (native .so loaded) =
 // accent/green; DLL (self-contained FEX DLL path) = muted. Box64/x86-64 shows no unixlib segment.
@@ -1955,6 +1963,9 @@ internal fun FrameGenSection(state: XServerDrawerState) {
     val isWaylandSession by state.isWaylandMode.collectAsState()
     val waylandFgOk by state.waylandFrameGenAvailable.collectAsState()
     val waylandFgBlocked = isWaylandSession && !waylandFgOk
+    // Engines that can be switched to while the game runs; empty = fixed for this session.
+    val engineChoices by state.fgEngineChoices.collectAsState()
+    val canSwitchEngine = engineChoices.isNotEmpty() && !waylandFgBlocked
 
     // Title on the left, engine badge on the right (green dot = engine actually running this
     // session). Replaces the old standalone "Frame Generation (AI)" header so the engine isn't
@@ -2012,6 +2023,16 @@ internal fun FrameGenSection(state: XServerDrawerState) {
         )
     }
     Spacer(Modifier.height(8.dp))
+
+    if (canSwitchEngine) {
+        ModeChipGrid(
+            engineChoices.map { e ->
+                Triple<String, Boolean, () -> Unit>(fgEngineChoiceName(e), e == engine) { state.onFgEngineSelected?.accept(e) }
+            },
+            perRow = 2
+        )
+        Spacer(Modifier.height(10.dp))
+    }
 
     if (frameGenEnabled) {
         var fgMult by remember(initFgMult) { mutableIntStateOf(initFgMult) }
@@ -2174,7 +2195,7 @@ internal fun FrameGenSection(state: XServerDrawerState) {
         }
     } else if (waylandFgBlocked) {
         WaylandNotYetNote()
-    } else {
+    } else if (!canSwitchEngine) {
         Text(
             "Enable Frame Generation in this container's settings to tune it here.",
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),

@@ -87,6 +87,7 @@ import com.winlator.star.core.AppUtils;
 import com.winlator.star.core.DefaultVersion;
 import com.winlator.star.core.EnvVars;
 import com.winlator.star.core.FileUtils;
+import com.winlator.star.core.IdleThrottle;
 import com.winlator.star.core.WinFgCapture;
 import com.winlator.star.core.WinFgDiag;
 import com.winlator.star.core.GPUInformation;
@@ -2416,14 +2417,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
         };
         // bionic-fg live controls (frame gen multiplier/flow + fps limiter). Each in-menu slider
         // updates the drawer StateFlows then fires this; we rewrite conf.toml (hot-reloads in the
-        // layer) and persist to the container. Only effective when the layer is loaded this session
-        // (bionicFgActive). NOTE: initial drawer state is synced after `container` is loaded (below);
-        // this callback is lazy so it safely captures the field.
+        // layer) and save the changed values for this game (saveFgValue). Only effective while an engine runs this session
+        // (bionicFgActive: set at launch, and by the in-game engine switch). NOTE: initial drawer state is synced after
+        // `container` is loaded (below); this callback is lazy so it safely captures the field.
         // Auto bg/fg pulse to reset win-fg cleanly on an FG toggle-on / model change.
         state.onFgResetPulse = () -> runOnUiThread(this::pulseFgReset);
+        state.onFgEngineSelected = engine -> runOnUiThread(() -> switchFrameGenEngine(engine));
         state.onBionicFgConfigChange = () -> {
             XServerDrawerState s = XServerDrawerState.INSTANCE;
-            if (!s.getBionicFgActive().getValue()) return; // layer not loaded -> needs a relaunch
+            if (!s.getBionicFgActive().getValue()) return; // no engine running this session
             boolean fgOn   = s.getFrameGenEnabled().getValue();
             int   mult     = fgOn ? s.getFrameGenMultiplier().getValue() : 0;
             float flow     = s.getFrameGenFlowScale().getValue();
@@ -2444,14 +2446,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 int wPreset = s.getFrameGenPerfPreset().getValue();
                 Log.i("XServerDisplayActivity", "wayland framegen toggle: engine=" + resolvedFrameGenEngine()
                     + " fgOn=" + fgOn + " mult=" + mult + " flow=" + flow + " model=" + wModel);
-                applyWaylandFrameGen(mult, flow, wModel, wPreset);
-                if (fgOn) container.setFrameGenMultiplier(mult);
-                container.setFrameGenFlowScale(flow);
+                // LSFG Native whose cache is still building arms at this level once it is ready (prepareLsfgNative).
+                if (!lsfgArmDeferred()) applyWaylandFrameGen(mult, flow, wModel, wPreset);
+                boolean changed = fgOn && saveFgValue("frameGenMultiplier", String.valueOf(mult));
+                changed |= saveFgValue("frameGenFlowScale", String.valueOf(flow));
                 if (!resolvedFrameGenEngine().equals("lsfg-native")) {
-                    container.setFrameGenModel(wModel);
-                    container.setFrameGenPerfPreset(wPreset);
+                    changed |= saveFgValue("frameGenModel", String.valueOf(wModel));
+                    changed |= saveFgValue("frameGenPerfPreset", String.valueOf(wPreset));
                 }
-                container.saveData();
+                commitFgValues(changed);
                 // The limiter guard and the exact-fit slack still have to see the >=2 crossing.
                 reapplyFpsLimit();
                 return;
@@ -2470,14 +2473,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 // None of the lsfg-vk workarounds apply and every one of them is deliberately
                 // skipped here - no conf.toml rewrite, no vsync clock, no MAILBOX override and no
                 // pause/teardown/Resume reset. There is no guest layer to re-sync with.
-                applyLsfgNative(mult, flow);
-                if (fgOn) container.setFrameGenMultiplier(mult);
-                container.setFrameGenFlowScale(flow);
+                if (!lsfgArmDeferred()) applyLsfgNative(mult, flow);
+                boolean changed = fgOn && saveFgValue("frameGenMultiplier", String.valueOf(mult));
+                changed |= saveFgValue("frameGenFlowScale", String.valueOf(flow));
                 if (com.winlator.star.FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED) {
                     // The experimental knob rides the same live path and persists with it.
-                    container.setFgCaptureResolution(s.getFgCaptureResolution().getValue());
+                    String cap = s.getFgCaptureResolution().getValue();
+                    changed |= saveFgValue("fgCaptureResolution", cap == null || cap.isEmpty() ? Container.FG_CAPTURE_PANEL : cap);
                 }
-                container.saveData();
+                commitFgValues(changed);
                 // The limiter guard still has to see the >=2 threshold crossing.
                 reapplyFpsLimit();
                 return;
@@ -2487,8 +2491,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 Log.i("XServerDisplayActivity", "wfg native toggle: fgOn=" + fgOn + " mult=" + mult
                     + " renderer=" + (vulkanRendererOrNull() != null ? "vulkan" : "NULL"));
                 applyWfgNative(mult, flow);
-                if (fgOn) container.setFrameGenMultiplier(mult);
-                container.saveData();
+                commitFgValues(fgOn && saveFgValue("frameGenMultiplier", String.valueOf(mult)));
                 reapplyFpsLimit();
                 return;
             }
@@ -2506,10 +2509,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 // Keep the vsync clock running only while frame-gen is actually generating (mult>=2),
                 // so the layer has a grid to phase-lock to; stop it in passthrough.
                 if (mult >= 2) startVsyncClock(); else stopVsyncClock();
-                if (fgOn) container.setFrameGenMultiplier(mult);
-                container.setFrameGenFlowScale(flow);
-                container.setLsfgPerformanceMode(perfMode);
-                container.saveData();
+                boolean changed = fgOn && saveFgValue("frameGenMultiplier", String.valueOf(mult));
+                changed |= saveFgValue("frameGenFlowScale", String.valueOf(flow));
+                changed |= saveFgValue("lsfgPerformanceMode", perfMode ? "1" : "0");
+                commitFgValues(changed);
                 // lsfg multiplier may have crossed the >=2 threshold -> re-evaluate the limiter
                 // guard (lsfgGovernsFps) so the cap steps aside / resumes without extra user action.
                 reapplyFpsLimit();
@@ -2537,20 +2540,20 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     + " preset=" + fgPreset
                     + " renderer=" + (vulkanRendererOrNull() != null ? "vulkan" : "NULL"));
                 applyWinFgNative(mult, flow, fgModel, fgPreset);
-                if (fgOn) container.setFrameGenMultiplier(mult);
-                container.setFrameGenFlowScale(flow);
-                container.setFrameGenModel(fgModel);
-                container.setFrameGenPerfPreset(fgPreset);
-                container.saveData();
+                boolean changed = fgOn && saveFgValue("frameGenMultiplier", String.valueOf(mult));
+                changed |= saveFgValue("frameGenFlowScale", String.valueOf(flow));
+                changed |= saveFgValue("frameGenModel", String.valueOf(fgModel));
+                changed |= saveFgValue("frameGenPerfPreset", String.valueOf(fgPreset));
+                commitFgValues(changed);
                 reapplyFpsLimit();
                 return;
             }
             writeWinFgConfig(mult, flow, false, 0, fgModel, fgPreset);
-            if (fgOn) container.setFrameGenMultiplier(mult);
-            container.setFrameGenFlowScale(flow);
-            container.setFrameGenModel(fgModel);
-            container.setFrameGenPerfPreset(fgPreset);
-            container.saveData();
+            boolean changed = fgOn && saveFgValue("frameGenMultiplier", String.valueOf(mult));
+            changed |= saveFgValue("frameGenFlowScale", String.valueOf(flow));
+            changed |= saveFgValue("frameGenModel", String.valueOf(fgModel));
+            changed |= saveFgValue("frameGenPerfPreset", String.valueOf(fgPreset));
+            commitFgValues(changed);
             // Same present-mode override as lsfg: bionic-fg inserts extra presents too, so force
             // mailbox while multiplying (FIFO backpressure would strangle the generated frames).
             applyEffectivePresentMode();
@@ -3025,11 +3028,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
             Log.w("XServerDisplayActivity", "InGameFriendsSource arm failed", t);
         }
 
-        // Sync the in-game frame-generation controls. bionicFgActive = is a frame-gen layer actually
-        // loaded this session? Live FG tuning only works when it is; the drawer uses this to gate the
-        // FG multiplier row. The engine honors per-game overrides (resolvedFrameGenEngine), else the
-        // container's value. multiplier/flow are NOT per-game — live-tuned in-game, persisted on the
-        // container. The FPS limiter is independent (host pacer) and is always available regardless.
+        // Sync the in-game frame-generation controls. bionicFgActive = is a frame-gen engine actually
+        // running this session? Live FG tuning only works when it is; the drawer uses this to gate the
+        // FG multiplier row (switchFrameGenEngine keeps it current after an in-game engine switch).
+        // The engine honors per-game overrides (resolvedFrameGenEngine), else the
+        // container's value. Multiplier/flow/model/preset are live-tuned in-game and saved per game (the
+        // shortcut; see saveFgValue), the container's values being the default. The FPS limiter is
+        // independent (host pacer) and is always available regardless.
         String fgEngine = resolvedFrameGenEngine();
         boolean fgEnabled = fgEngine.equals("bionic");
         // Both LSFG engines drive the same in-game multiplier row; only WHERE the
@@ -3050,20 +3055,21 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // apply (applyFpsLimit) runs after this seed and re-evaluates lsfgGovernsFps(), so the cap steps
         // aside automatically for mult>=2. The persisted container multiplier is left untouched.
         // LSFG Native never auto-arms at launch (see prepareLsfgNative); lsfg-vk keeps its opt-in.
-        int lsfgSeedMult = (fgEngine.equals("lsfg") && container.isLsfgAutoEnable() && container.getFrameGenMultiplier() >= 2)
-                ? container.getFrameGenMultiplier() : 0;
+        int lsfgSeedMult = (fgEngine.equals("lsfg") && container.isLsfgAutoEnable() && resolvedFrameGenMultiplier() >= 2)
+                ? resolvedFrameGenMultiplier() : 0;
         XServerDrawerState.INSTANCE.setFrameGenMultiplier(lsfgSeedMult);
-        XServerDrawerState.INSTANCE.setFrameGenFlowScale(container.getFrameGenFlowScale());
+        XServerDrawerState.INSTANCE.setFrameGenFlowScale(resolvedFrameGenFlowScale());
         XServerDrawerState.INSTANCE.setFrameGenModel(resolvedFrameGenModel());
         XServerDrawerState.INSTANCE.setFrameGenPerfPreset(resolvedFrameGenPerfPreset());
         XServerDrawerState.INSTANCE.setFrameGenEngine(fgEngine);
         winFgNativeSession = computeWinFgNativeSession();
         XServerDrawerState.INSTANCE.setWinFgNative(winFgNativeSession);
-        XServerDrawerState.INSTANCE.setLsfgPerformanceMode(container.isLsfgPerformanceMode());
+        XServerDrawerState.INSTANCE.setLsfgPerformanceMode(resolvedLsfgPerformanceMode());
         // LSFG Native experimental capture resolution (FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED;
         // with the flag off the seed is always panel, whatever the container stored).
         XServerDrawerState.INSTANCE.setFgCaptureResolution(
-            com.winlator.star.FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED ? container.getFgCaptureResolution() : Container.FG_CAPTURE_PANEL);
+            com.winlator.star.FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED ? resolvedFgCaptureResolution() : Container.FG_CAPTURE_PANEL);
+        seedFgSaved();
         // The panel height in landscape, so the drawer's capture chips can leave out heights the
         // renderer would clamp anyway (it never runs the chain below a quarter of the panel or
         // above it).
@@ -4175,6 +4181,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             Log.w("XServerDisplayActivity",
                 "LSFG Native selected but no Lossless.dll imported (Settings) - leaving frame gen off");
             lsfgNativeStatus = com.winlator.star.core.LsfgNative.STATUS_NOT_INSTALLED;
+            XServerDrawerState.INSTANCE.setFrameGenMultiplier(0);
             refreshNativeFgAvailability(true, 0);
             return;
         }
@@ -4182,24 +4189,42 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // in-game drawer. isLsfgAutoEnable is an lsfg-vk-era setting and is not
         // honoured for the native engine - an auto-armed launch is exactly the
         // state that surprised the tester and cannot be reasoned about from a log.
-        final int launchMult = 0;
-        final float flow = container.getFrameGenFlowScale();
+        // Once the cache is ready the engine arms at the menu's level and flow: 0 at
+        // launch (the seed), or what an in-game engine switch carried over or the
+        // user picked while the cache was building (lsfgArmDeferred).
+        final int seq = fgEngineSwitchSeq;
+        lsfgCacheBuilding = true;
 
         new Thread(() -> {
             final int status = com.winlator.star.core.LsfgNative.ensureCache(
                 XServerDisplayActivity.this, /*preferFp16=*/false);
             runOnUiThread(() -> {
+                // Another engine was picked in game while this built; it owns the renderer now.
+                if (seq != fgEngineSwitchSeq) return;
+                lsfgCacheBuilding = false;
                 lsfgNativeStatus = status;
+                XServerDrawerState s = XServerDrawerState.INSTANCE;
                 if (status != com.winlator.star.core.LsfgNative.STATUS_OK) {
                     Log.e("XServerDisplayActivity", "LSFG Native unavailable: "
                         + com.winlator.star.core.LsfgNative.explain(status));
+                    s.setFrameGenMultiplier(0);
                     refreshNativeFgAvailability(true, 0);
                     return;
                 }
-                applyLsfgNative(launchMult, flow);
+                int mult = s.getFrameGenEnabled().getValue() ? s.getFrameGenMultiplier().getValue() : 0;
+                applyLsfgNative(mult, s.getFrameGenFlowScale().getValue());
                 refreshNativeFgAvailability(true, NATIVE_FG_CHECK_TRIES);
+                if (mult >= 2) reapplyFpsLimit();
             });
         }, "lsfg-native-cache").start();
+    }
+
+    // True while prepareLsfgNative builds the shader cache. A level picked meanwhile is saved and
+    // applied when the cache is ready, not before: arming without the cache fails the engine start.
+    private volatile boolean lsfgCacheBuilding = false;
+
+    private boolean lsfgArmDeferred() {
+        return lsfgCacheBuilding && "lsfg-native".equals(resolvedFrameGenEngine());
     }
 
     /**
@@ -4233,6 +4258,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         Log.i("XServerDisplayActivity", "applyLsfgNative: multiplier=" + multiplier
             + " flow=" + flowScale + " refresh=" + currentDisplayRefreshHz()
             + " capture=" + XServerDrawerState.INSTANCE.getFgCaptureResolution().getValue());
+        // LSFG is the renderer's default engine; selected here too for an in-game switch from another one.
+        vkr.setFrameGenEngine(com.winlator.star.renderer.vulkan.VulkanRenderer.FG_ENGINE_LSFG);
         vkr.setLsfgCachePath(
             com.winlator.star.core.LsfgNative.cacheFile(this).getAbsolutePath());
         pushNativeFgTuning(vkr, flowScale);
@@ -4250,15 +4277,101 @@ public class XServerDisplayActivity extends AppCompatActivity {
      * launch rule as LSFG Native: every session starts with frame gen off.
      */
     private void prepareWinFgNative() {
-        applyWinFgNative(0, container.getFrameGenFlowScale(),
+        applyWinFgNative(0, resolvedFrameGenFlowScale(),
             resolvedFrameGenModel(), resolvedFrameGenPerfPreset());
         refreshNativeFgAvailability(true, NATIVE_FG_CHECK_TRIES);
     }
 
     /** WFG at launch: select the engine and arm it OFF, like the other native engines. */
     private void prepareWfgNative() {
-        applyWfgNative(0, container.getFrameGenFlowScale());
+        applyWfgNative(0, resolvedFrameGenFlowScale());
         refreshNativeFgAvailability(true, NATIVE_FG_CHECK_TRIES);
+    }
+
+    // ── In-game engine switch (Off / LSFG Native / Win-FG Native / WFG) ──
+    // All three engines generate in our compositor, and both the X11 Vulkan renderer
+    // (VulkanRendererContext::setFrameGenEngine) and the Wayland bridge (vkp_framegen_set_engine)
+    // change engine at runtime: the old engine's GPU resources are dropped and the new one is built
+    // on the next frame. The guest-side win-fg layer is the exception, it is loaded at launch.
+
+    // Engines the menu may switch between this session; published once launch has set frame gen up.
+    private volatile java.util.List<String> fgEngineChoices = java.util.Collections.emptyList();
+    // The engine picked in game this session (resolvedFrameGenEngine); null = the launch value.
+    private volatile String sessionFgEngine = null;
+    // Bumped on every switch, so an LSFG cache build for an engine no longer picked leaves the renderer alone.
+    private int fgEngineSwitchSeq = 0;
+
+    private void publishFgEngineChoices() {
+        boolean nativeRenderer = waylandMode
+            || ("vulkan".equalsIgnoreCase(resolvedRenderer()) && vulkanRendererOrNull() != null);
+        boolean guestLayer = "bionic".equals(resolvedFrameGenEngine()) && !winFgNativeSession;
+        // Off Wayland, training capture needs the guest layer, so "bionic" would not be Win-FG Native.
+        boolean winFgNativeOk = waylandMode || !WinFgCapture.isEnabled(this);
+        java.util.List<String> choices = com.winlator.star.core.FgEngineSwitch.choices(
+            nativeRenderer, guestLayer, winFgNativeOk);
+        fgEngineChoices = choices;
+        XServerDrawerState.INSTANCE.setFgEngineChoices(choices);
+        Log.i("XServerDisplayActivity", "framegen engine switch: "
+            + (choices.isEmpty() ? "not offered (renderer=" + resolvedRenderer() + " nativeRenderer=" + nativeRenderer
+                + " guestLayer=" + guestLayer + ")" : "offered " + choices));
+    }
+
+    /**
+     * Switch the running engine from the in-game menu and save it for the game (shortcut, or the
+     * container for a container session). The old engine goes off through its own path (limiter/VRR
+     * locks, readout) unless Win-FG or WFG takes over at a level, which only changes the engine and
+     * keeps the swapchain. The new engine arms at the current level; LSFG Native first needs its
+     * shader cache, built off the UI thread by prepareLsfgNative, and arms when that is ready.
+     */
+    private void switchFrameGenEngine(String engine) {
+        if (engine == null || !fgEngineChoices.contains(engine)) return;
+        final String was = resolvedFrameGenEngine();
+        if (engine.equals(was)) return;
+        XServerDrawerState s = XServerDrawerState.INSTANCE;
+        final boolean on = !com.winlator.star.core.FgEngineSwitch.OFF.equals(engine);
+        final boolean lsfg = com.winlator.star.core.FgEngineSwitch.LSFG_NATIVE.equals(engine);
+        final int level = s.getFrameGenEnabled().getValue() ? s.getFrameGenMultiplier().getValue() : 0;
+        final int mult = com.winlator.star.core.FgEngineSwitch.carryMultiplier(engine, level);
+        final float flow = s.getFrameGenFlowScale().getValue();
+        final boolean stayArmed = on && !lsfg && mult >= 2 && nativeFgLocksHeld;
+        Log.i("XServerDisplayActivity", "framegen engine switch: " + was + " -> " + engine
+            + " mult=" + mult + " backend=" + (waylandMode ? "wayland" : "vulkan")
+            + (stayArmed ? " (stays armed)" : ""));
+        if (!stayArmed && nativeFrameGenEngine()) applyNativeFgEngine(0, flow);
+        fgCheckHandler.removeCallbacksAndMessages(null);
+        fgEngineSwitchSeq++;
+        lsfgCacheBuilding = false;
+        sessionFgEngine = engine;
+        winFgNativeSession = computeWinFgNativeSession();
+        commitFgValues(saveFgValue("frameGenEngine", engine));
+        s.setFgUnavailable("", "");
+        s.setFrameGenReadout("");
+        s.setFrameGenEngine(engine);
+        s.setWinFgNative(winFgNativeSession);
+        s.setBionicFgActive(on);
+        s.setFrameGenEnabled(on);
+        s.setFrameGenMultiplier(mult);
+        if (!on) {
+            reapplyFpsLimit();
+            return;
+        }
+        if (lsfg) {
+            lsfgNativeStatus = -1;
+            prepareLsfgNative();
+            return;
+        }
+        applyNativeFgEngine(mult, flow);
+        refreshNativeFgAvailability(false, NATIVE_FG_CHECK_TRIES);
+        reapplyFpsLimit();
+    }
+
+    /** Arm the native engine this session runs at {@code mult} (0 = off), with the menu's model. */
+    private void applyNativeFgEngine(int mult, float flow) {
+        XServerDrawerState s = XServerDrawerState.INSTANCE;
+        final String engine = resolvedFrameGenEngine();
+        if ("lsfg-native".equals(engine)) applyLsfgNative(mult, flow);
+        else if ("wfg".equals(engine)) applyWfgNative(mult, flow);
+        else applyWinFgNative(mult, flow, s.getFrameGenModel().getValue(), s.getFrameGenPerfPreset().getValue());
     }
 
     // ── Native frame gen that cannot run: say so instead of failing silently ──
@@ -12119,9 +12232,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     // re-applies the user's multiplier without a relaunch). Container value untouched.
                     // EXCEPTION: a container that opted into auto-enable starts LIVE at its saved
                     // multiplier from frame one (GameNative-style), matching the drawer seed above.
-                    int lsfgSavedMult = container.getFrameGenMultiplier();
+                    int lsfgSavedMult = resolvedFrameGenMultiplier();
                     int lsfgLaunchMult = (container.isLsfgAutoEnable() && lsfgSavedMult >= 2) ? lsfgSavedMult : 1;
-                    writeLsfgConfig(lsfgLaunchMult, container.getFrameGenFlowScale(), losslessDll.getAbsolutePath(), container.isLsfgPerformanceMode());
+                    writeLsfgConfig(lsfgLaunchMult, resolvedFrameGenFlowScale(), losslessDll.getAbsolutePath(), resolvedLsfgPerformanceMode());
                     File lsfgConf = new File(imageFs.home_path, ".config/lsfg-vk/conf.toml");
                     envVars.put("ENABLE_LSFG", "1");
                     envVars.put("LSFG_CONFIG", lsfgConf.getAbsolutePath());
@@ -12160,7 +12273,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     WinFgDiag.applyLaunchEnv(this, envVars);
                     writeWinFgConfig(
                             0,
-                            container.getFrameGenFlowScale(),
+                            resolvedFrameGenFlowScale(),
                             false,
                             0,
                             resolvedFrameGenModel(),
@@ -12188,6 +12301,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                         + ") requested but host renderer is " + resolvedRenderer()
                         + " — skipping FG layer (Vulkan required).");
             }
+            // The launch engine is set up; from here the in-game menu may switch it.
+            publishFgEngineChoices();
 
             if (shortcut != null) envVars.putAll(shortcut.getExtra("envVars"));
 
@@ -12549,6 +12664,22 @@ public class XServerDisplayActivity extends AppCompatActivity {
             java.util.List<String> said = new java.util.ArrayList<>();
             putUnlessUsers(envVars, "WINE_CPU_TOPOLOGY", wineCpuTopology, said);
             Log.d("XServerDisplayActivity", "Sync CPU topology: " + said.get(0));
+        }
+
+        // Idle-thread throttle (core.IdleThrottle; Wine layers v17+, older ones ignore it): the APIs whose games Wine never
+        // slows down, the game's own list else the container's. After every env merge: a WINE_SLEEP0_THROTTLE_SKIP or
+        // WINE_SLEEP0_THROTTLE in the user's own env vars wins, and then nothing is set.
+        {
+            String gameIdle = shortcut != null ? shortcut.getExtra(IdleThrottle.KEY, "") : "";
+            String idleSkip = IdleThrottle.resolve(gameIdle, container.getSleep0ThrottleSkip());
+            String userIdle = IdleThrottle.userVariable(envVars::has);
+            if (userIdle != null) {
+                logSessionLine("idle throttle", userIdle + "=" + envVars.get(userIdle) + " (yours, kept)");
+            } else {
+                envVars.put(IdleThrottle.ENV, idleSkip);
+                logSessionLine("idle throttle", IdleThrottle.ENV + "=" + idleSkip
+                        + (IdleThrottle.normalize(gameIdle) != null ? " (this game)" : " (container)"));
+            }
         }
 
         // Turnip TU_DEBUG composition (per-container + per-game). Runs AFTER every env source is
@@ -16422,6 +16553,27 @@ return true;
         }
     }
 
+    /**
+     * The Steam launch entry's arguments for this launch's exe (see SteamLaunchEntries), for a Steam game BL
+     * starts itself; "" for SteamLite / Real Steam (Steam picks the entry there), the Windows Steam client,
+     * other stores and anything unresolved. Launch worker thread.
+     */
+    private String steamLaunchEntryArgs(String userArgs) {
+        try {
+            if (shortcut == null || realSteamPlan != null || windowsSteamSession || xboxLaunch != null) return "";
+            if ("RealSteam".equals(shortcut.getExtra("launchMode"))) return "";
+            String store = shortcut.getExtra("storeSource", "");
+            if (!store.isEmpty() && !"steam".equals(store)) return "";
+            SteamAppRef ref = resolveSteamAppRef();
+            if (ref == null) return "";
+            return com.winlator.star.store.SteamLaunchEntries.launchArguments(getApplicationContext(), ref.appId,
+                    ref.installDir, GoldbergPatcher.hostExeOf(shortcut), userArgs);
+        } catch (Throwable t) {
+            Log.w("BH_STEAM_LAUNCH", "launch entry arguments skipped", t);
+            return "";
+        }
+    }
+
     private String getWineStartCommand() {
         // Initialize overrideEnvVars if not already done
         EnvVars envVars = getOverrideEnvVars();
@@ -16473,6 +16625,11 @@ return true;
                     execArgs = filename.substring(spaceIndex + 1) + execArgs;
                     filename = filename.substring(0, spaceIndex);
                 }
+
+                // A Steam game started directly gets its Steam launch entry's arguments first (hl.exe -game cstrike).
+                String steamEntryArgs = steamLaunchEntryArgs(execArgs);
+                if (!steamEntryArgs.isEmpty())
+                    execArgs = " " + steamEntryArgs + (execArgs.isEmpty() || execArgs.startsWith(" ") ? execArgs : " " + execArgs);
 
                 // Goldberg ColdClient: run the loader that sits beside the game exe (resolved NOW, so an
                 // existing shortcut works and a stale loader shortcut is repaired). Same folder → /dir holds.
@@ -16642,6 +16799,7 @@ return true;
     }
 
     private String resolvedFrameGenEngine() {
+        if (sessionFgEngine != null) return sessionFgEngine;
         final String e = shortcut != null
             ? shortcut.getExtra("frameGenEngine", container.getFrameGenEngine())
             : container.getFrameGenEngine();
@@ -17270,6 +17428,84 @@ return true;
 
     private String buildSlotOverridesJson() {
         return com.winlator.star.winhandler.WinHandler.buildSlotOverridesJson(winHandler.getManualSlotOverrides());
+    }
+
+    // In-game frame-gen values belong to the game: a game started from a shortcut keeps its own
+    // (shortcut extras), a container session uses the container. A game without its own value gets the
+    // container's. The resolvers below read them; saveFgValue writes one only when it differs from what
+    // this session started with or last saved, so opening the menu or changing one control never copies
+    // the container's other values into the game.
+    private final java.util.Map<String, String> fgSaved = new java.util.HashMap<>();
+
+    /** The values the frame-gen menu starts from (call after the drawer is seeded). */
+    private void seedFgSaved() {
+        fgSaved.clear();
+        fgSaved.put("frameGenEngine", resolvedFrameGenEngine());
+        fgSaved.put("frameGenMultiplier", String.valueOf(resolvedFrameGenMultiplier()));
+        fgSaved.put("frameGenFlowScale", String.valueOf(resolvedFrameGenFlowScale()));
+        fgSaved.put("frameGenModel", String.valueOf(resolvedFrameGenModel()));
+        fgSaved.put("frameGenPerfPreset", String.valueOf(resolvedFrameGenPerfPreset()));
+        fgSaved.put("lsfgPerformanceMode", resolvedLsfgPerformanceMode() ? "1" : "0");
+        fgSaved.put("fgCaptureResolution", resolvedFgCaptureResolution());
+    }
+
+    /** Puts [value] under [key] on the shortcut (or the container) when it changed; true when it did. */
+    private boolean saveFgValue(String key, String value) {
+        if (value == null || value.equals(fgSaved.get(key))) return false;
+        fgSaved.put(key, value);
+        if (shortcut != null) shortcut.putExtra(key, value);
+        // The container setter also keeps its legacy frameGenEnabled flag in step.
+        else if ("frameGenEngine".equals(key)) container.setFrameGenEngine(value);
+        else container.putExtra(key, value);
+        return true;
+    }
+
+    private void commitFgValues(boolean changed) {
+        if (!changed) return;
+        if (shortcut != null) shortcut.saveData();
+        else container.saveData();
+    }
+
+    private String fgGameValue(String key) {
+        return shortcut != null ? shortcut.getExtra(key, "").trim() : "";
+    }
+
+    // Saved frame-gen multiplier (0 = Off, 2-4): the game's own, else the container's.
+    private int resolvedFrameGenMultiplier() {
+        int fallback = container.getFrameGenMultiplier();
+        String v = fgGameValue("frameGenMultiplier");
+        if (v.isEmpty()) return fallback;
+        try {
+            int m = Integer.parseInt(v);
+            return (m == 0 || (m >= 2 && m <= 4)) ? m : fallback;
+        }
+        catch (NumberFormatException e) {
+            return fallback;
+        }
+    }
+
+    // Frame-gen flow scale: the game's own (layer clamp 0.2-1.0), else the container's.
+    private float resolvedFrameGenFlowScale() {
+        float fallback = container.getFrameGenFlowScale();
+        String v = fgGameValue("frameGenFlowScale");
+        if (v.isEmpty()) return fallback;
+        try {
+            float f = Float.parseFloat(v);
+            return (f < 0.2f || f > 1.0f) ? fallback : f;
+        }
+        catch (NumberFormatException e) {
+            return fallback;
+        }
+    }
+
+    private boolean resolvedLsfgPerformanceMode() {
+        String v = fgGameValue("lsfgPerformanceMode");
+        return v.isEmpty() ? container.isLsfgPerformanceMode() : v.equals("1");
+    }
+
+    private String resolvedFgCaptureResolution() {
+        String v = fgGameValue("fgCaptureResolution");
+        return v.isEmpty() ? container.getFgCaptureResolution() : v;
     }
 
     // bionic-fg interpolation model for this launch: per-game override else the container value.

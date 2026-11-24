@@ -604,6 +604,7 @@ internal object GraphicsRows {
                     title = L("Vulkan extensions"),
                     waiting = L("Reading the driver's extensions…"),
                     empty = L("None listed"),
+                    lead = { on, all -> "$on of $all on. Games don't see an extension that is off." },
                 )
             },
             decode = { _, r -> (r ?: "").split(",").filter { it.isNotEmpty() }.joinToString(",") },

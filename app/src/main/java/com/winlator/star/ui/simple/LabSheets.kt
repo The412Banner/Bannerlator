@@ -137,7 +137,16 @@ internal fun LabFieldDialog(
 /** A Lab note with one OK (what Classic shows as an information dialog). */
 @Composable
 internal fun LabNote(title: String, body: String, onDismiss: () -> Unit) {
-    SimpleActionSheet(title = title, actions = listOf(MenuAction(L("OK"), onDismiss)), onDismiss = onDismiss, message = body) { it.run() }
+    // Help texts start with their own title line (Classic shows them without a heading): not repeated under the heading.
+    val text = labNoteBody(title, body)
+    SimpleActionSheet(title = title, actions = listOf(MenuAction(L("OK"), onDismiss)), onDismiss = onDismiss, message = text) { it.run() }
+}
+
+/** [body] without a first line equal to [title]. */
+internal fun labNoteBody(title: String, body: String): String {
+    val trimmed = body.trimStart()
+    val first = trimmed.substringBefore('\n').trim()
+    return if (first.isNotEmpty() && first.equals(title.trim(), ignoreCase = true)) trimmed.substringAfter('\n', "").trimStart() else body
 }
 
 /** A Lab panel in a dialog around [content] (a setting's own control), with [doneLabel] to close it. */

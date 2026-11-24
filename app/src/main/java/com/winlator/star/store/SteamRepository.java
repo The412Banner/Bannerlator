@@ -2069,6 +2069,8 @@ public final class SteamRepository {
      * {@code steam_dlc} rows. Returns true when the app was stored, false when it was filtered/skipped.
      */
     boolean processAppKv(int appId, KeyValue root, SteamDatabase db, java.util.Set<Integer> licensedApps) {
+                    // Fresh launch entries for a game whose entries are kept (SteamLaunchEntries).
+                    SteamLaunchEntries.rememberIfKept(appContext, appId, root);
                     try {
                         KeyValue common = root.get("common");
                         // "type" is absent on some entries (tools, hardware, etc.) — skip those

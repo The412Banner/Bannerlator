@@ -275,6 +275,7 @@ private fun containerLayout(defaults: Boolean): List<CTab> = listOf(
             CRow("performance.cpuAffinity", L("Processor Affinity")),
             CRow("performance.cpuAffinity32", L("Processor Affinity (32-bit apps)")),
             CRow("performance.syncCpuTopology", L("Sync CPU topology")),
+            CRow(SettingsRegistry.ID_IDLE_THROTTLE, L("Idle-thread throttle")),
         ),
         leftovers = setOf("performance", "visuals"),
     ),
@@ -386,6 +387,7 @@ private fun gameLayout(): List<CTab> = listOf(
             CRow("performance.cpuAffinity", L("Processor Affinity")),
             CRow("performance.cpuAffinity32", L("Processor Affinity (32-bit apps)")),
             CRow("performance.syncCpuTopology", L("Sync CPU topology")),
+            CRow(SettingsRegistry.ID_IDLE_THROTTLE, L("Idle-thread throttle")),
             CHead(L("Sharpness (VKBasalt)")),
             CRow("visuals.vkbasalt", L("Effect")),
             CMatch(pre("visuals.vkbasalt")),
@@ -900,16 +902,30 @@ internal fun SimpleClassicEditor(
         if (control == null || items == null) checklistFor = null
         else {
             val value = source.value(def)
-            ChecklistDialog(
+            val off = value.split(',').filter { it.isNotEmpty() }.toSet()
+            val done: (Set<String>) -> Unit = { picked ->
+                checklistFor = null
+                val next = items.filter { it in picked }.joinToString(",")
+                if (next != value) pick(def, next)
+            }
+            // A short list of switches (the idle-thread throttle's APIs) is a Lab pop-up; a game's own value can go back to
+            // the container's from it.
+            if (control.switches) com.winlator.star.ui.simple.LabSwitchListDialog(
                 title = control.title,
-                all = items,
-                off = value.split(',').filter { it.isNotEmpty() }.toSet(),
+                items = items,
+                labels = control.labels,
+                off = off,
+                help = control.help,
+                onUseContainer = if (game && source.origin(def) == Origin.SET_HERE) ({ checklistFor = null; source.reset(def) }) else null,
                 onDismiss = { checklistFor = null },
-                onDone = { picked ->
-                    checklistFor = null
-                    val next = items.filter { it in picked }.joinToString(",")
-                    if (next != value) pick(def, next)
-                },
+                onDone = done,
+            )
+            else ChecklistDialog(
+                control = control,
+                all = items,
+                off = off,
+                onDismiss = { checklistFor = null },
+                onDone = done,
             )
         }
     }

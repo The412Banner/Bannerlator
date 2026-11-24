@@ -612,8 +612,18 @@ private fun FrameGenQuickRow(state: XServerDrawerState) {
     val wayland by state.isWaylandMode.collectAsState()
     val waylandFgOk by state.waylandFrameGenAvailable.collectAsState()
     val waylandBlocked = wayland && !waylandFgOk
+    val engineChoices by state.fgEngineChoices.collectAsState()
     val scopes = listOf(SaveScope.SESSION)
     val note = L("Starts off each launch; the level you pick is kept for this container.")
+    // Off but switchable in game: pick the engine here; the level row takes its place once one runs.
+    if (!fgEnabled && !waylandBlocked && engineChoices.isNotEmpty()) {
+        IgRow(L("Frame generation"), scopes = listOf(igGameScope()), wideControl = true) {
+            IgChips(engineChoices.map { it to fgEngineChoiceLabel(it) }, engine) { e ->
+                state.onFgEngineSelected?.accept(e)
+            }
+        }
+        return
+    }
     if (!fgEnabled || waylandBlocked) {
         IgRow(
             L("Frame generation"),

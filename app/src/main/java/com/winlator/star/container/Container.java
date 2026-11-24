@@ -9,6 +9,7 @@ import com.winlator.star.core.ControllerIdentity;
 import com.winlator.star.core.DefaultVersion;
 import com.winlator.star.core.EnvVars;
 import com.winlator.star.core.FileUtils;
+import com.winlator.star.core.IdleThrottle;
 import com.winlator.star.core.KeyValueSet;
 import com.winlator.star.core.RumbleMotors;
 import com.winlator.star.core.WineInfo;
@@ -195,6 +196,9 @@ public class Container {
     // Sync CPU topology (off by default): WINE_CPU_TOPOLOGY=<count>:<cores> from the game's core pick, so Windows sees
     // only the picked cores (games size their thread pools to the CPU count). Same switch as Winlator Ludashi (StevenMXZ).
     private boolean syncCpuTopology = false;
+    // Idle-thread throttle (Wine layers v17+): the graphics APIs whose games Wine never slows down for spinning on
+    // Sleep(0), as WINE_SLEEP0_THROTTLE_SKIP (core.IdleThrottle). "dx7" is Wine's own default; "none" skips no API.
+    private String sleep0ThrottleSkip = IdleThrottle.DEFAULT;
     private String renderer = "vulkan";
     private boolean exclusiveXInput = true;
     // "Direct XInput (BANNERIN)": XInput games read the pad straight from the BANNERIN slot files
@@ -487,6 +491,16 @@ public class Container {
 
     public boolean isSyncCpuTopology() {
         return this.syncCpuTopology;
+    }
+
+    /** The idle-thread throttle's skip list (stored form: "dx7", "dx7,gl", "none"); an invalid value keeps the default. */
+    public void setSleep0ThrottleSkip(String value) {
+        String v = IdleThrottle.normalize(value);
+        this.sleep0ThrottleSkip = v != null ? v : IdleThrottle.DEFAULT;
+    }
+
+    public String getSleep0ThrottleSkip() {
+        return this.sleep0ThrottleSkip;
     }
 
     public File getRootDir() {
@@ -1485,6 +1499,7 @@ public class Container {
             // Always written: the default is on, so an "off" must be stored to survive a reload.
             data.put("forceSsbs", forceSsbs);
             if (syncCpuTopology) data.put("syncCpuTopology", true);
+            if (!IdleThrottle.DEFAULT.equals(sleep0ThrottleSkip)) data.put(IdleThrottle.KEY, sleep0ThrottleSkip);
             data.put("fexcorePreset", fexcorePreset);
             data.put("fexcoreVersion", fexcoreVersion);
             data.put("box64Preset", box64Preset);
@@ -1614,6 +1629,9 @@ public class Container {
                     break;
                 case "syncCpuTopology":
                     setSyncCpuTopology(data.getBoolean(key));
+                    break;
+                case IdleThrottle.KEY:
+                    setSleep0ThrottleSkip(data.getString(key));
                     break;
                 case "fexcoreVersion":
                     setFEXCoreVersion(data.getString(key));

@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -28,6 +29,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -1451,7 +1453,7 @@ internal fun SettingRow(
     val items = checklistItems
     if (checklistOpen.value && control is Control.Checklist && items != null) {
         ChecklistDialog(
-            title = control.title,
+            control = control,
             all = items,
             off = value.split(',').filter { it.isNotEmpty() }.toSet(),
             onDismiss = { checklistOpen.value = false },
@@ -1622,7 +1624,9 @@ internal fun labelFor(control: Control, v: String): String = when (control) {
     is Control.Slider -> v.toFloatOrNull()?.let(control.display) ?: v
     is Control.TextField -> v.ifEmpty { "empty" }
     Control.Cores -> coresLabel(v)
-    is Control.Checklist -> v.split(',').count { it.isNotEmpty() }.let { if (it == 0) "all on" else "$it off" }
+    is Control.Checklist -> v.split(',').filter { it.isNotEmpty() }.toSet().let { off ->
+        control.summary?.invoke(off) ?: if (off.isEmpty()) "all on" else "${off.size} off"
+    }
 }
 
 // ── Controls ────────────────────────────────────────────────────────────────────────────────────
@@ -2021,6 +2025,7 @@ private fun ChecklistControl(control: Control.Checklist, value: String, enabled:
             text = when {
                 items == null -> control.waiting
                 items.isEmpty() -> control.empty
+                control.summary != null -> control.summary.invoke(off)
                 else -> "${items.count { it !in off }} of ${items.size} on"
             },
             color = if (usable) cs.onSurface else cs.onSurface.copy(alpha = 0.5f),
@@ -2035,11 +2040,15 @@ private fun ChecklistControl(control: Control.Checklist, value: String, enabled:
     }
 }
 
-/** Every item with a tick; the whole line is the focus target and A switches it. OK hands back the ones switched off. */
+/**
+ * Every item with a tick (a switch for a [Control.Checklist.switches] list); the whole line is the focus target and A
+ * switches it. OK hands back the ones switched off. A "?" in the title shows [Control.Checklist.help].
+ */
 @Composable
-internal fun ChecklistDialog(title: String, all: List<String>, off: Set<String>, onDismiss: () -> Unit, onDone: (Set<String>) -> Unit) {
+internal fun ChecklistDialog(control: Control.Checklist, all: List<String>, off: Set<String>, onDismiss: () -> Unit, onDone: (Set<String>) -> Unit) {
     val cs = MaterialTheme.colorScheme
     var picked by remember(all, off) { mutableStateOf(all.filter { it in off }.toSet()) }
+    var helpOpen by remember { mutableStateOf(false) }
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         withFrameNanos { }
@@ -2049,30 +2058,62 @@ internal fun ChecklistDialog(title: String, all: List<String>, off: Set<String>,
         onDismissRequest = onDismiss,
         confirmButton = { TextButton(onClick = { onDone(picked) }) { Text("OK") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-        title = { Text(title) },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(control.title, modifier = Modifier.weight(1f, fill = false))
+                if (control.help != null) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .padding(start = 6.dp)
+                            .size(30.dp)
+                            .deckFocusRing(CircleShape, scaleTo = 1f)
+                            .clip(CircleShape)
+                            .clickable { helpOpen = true },
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "What is this?", tint = cs.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                    }
+                }
+            }
+        },
         text = {
             Column {
-                Text(
-                    "${all.size - picked.size} of ${all.size} on. Games don't see an extension that is off.",
-                    color = cs.onSurfaceVariant,
-                    fontSize = 13.5.sp,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
+                control.lead?.let { lead ->
+                    Text(
+                        lead(all.size - picked.size, all.size),
+                        color = cs.onSurfaceVariant,
+                        fontSize = 13.5.sp,
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    )
+                }
                 LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
-                    item(key = "all") {
+                    if (!control.switches) item(key = "all") {
                         ChecklistLine("All on", checked = picked.isEmpty(), modifier = Modifier.focusRequester(first)) { picked = emptySet() }
                     }
-                    items(all, key = { it }) { ext ->
-                        ChecklistLine(ext, checked = ext !in picked) { picked = if (ext in picked) picked - ext else picked + ext }
+                    itemsIndexed(all, key = { _, it -> it }) { i, item ->
+                        ChecklistLine(
+                            control.labels[item] ?: item,
+                            checked = item !in picked,
+                            switch = control.switches,
+                            modifier = if (control.switches && i == 0) Modifier.focusRequester(first) else Modifier,
+                        ) { picked = if (item in picked) picked - item else picked + item }
                     }
                 }
             }
         },
     )
+    if (helpOpen && control.help != null) {
+        OutlinedAlertDialog(
+            onDismissRequest = { helpOpen = false },
+            confirmButton = { TextButton(onClick = { helpOpen = false }) { Text("OK") } },
+            title = { Text(control.title) },
+            text = { Text(control.help, modifier = Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) },
+        )
+    }
 }
 
 @Composable
-private fun ChecklistLine(label: String, checked: Boolean, modifier: Modifier = Modifier, onToggle: () -> Unit) {
+private fun ChecklistLine(label: String, checked: Boolean, modifier: Modifier = Modifier, switch: Boolean = false, onToggle: () -> Unit) {
     val shape = deckShape(10.dp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -2081,10 +2122,11 @@ private fun ChecklistLine(label: String, checked: Boolean, modifier: Modifier = 
             .deckFocusRing(shape, scaleTo = 1f)
             .clip(shape)
             .clickable(onClick = onToggle)
-            .padding(end = 8.dp),
+            .padding(start = if (switch) 12.dp else 0.dp, end = 8.dp, top = if (switch) 4.dp else 0.dp, bottom = if (switch) 4.dp else 0.dp),
     ) {
-        Checkbox(checked = checked, onCheckedChange = null)
-        Text(label, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        if (!switch) Checkbox(checked = checked, onCheckedChange = null)
+        Text(label, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = if (switch) Modifier.weight(1f) else Modifier)
+        if (switch) Switch(checked = checked, onCheckedChange = null, colors = deckSwitchColors())
     }
 }
 

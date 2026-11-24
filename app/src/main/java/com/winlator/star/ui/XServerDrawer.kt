@@ -5763,12 +5763,16 @@ internal fun TmCoreStrip(h: XServerDialogState.TmHeaderStats?) {
     if (cores.isEmpty()) return
     val accent = MaterialTheme.colorScheme.primary
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    // Cores the game is not running on (core pick / Prefer big cores) are dimmed, as on the HUD.
+    val gameMask by XServerDrawerState.gameCoreMask.collectAsState()
     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         CorePanel(count = cores.size) { i ->
             val mhz = cores[i]
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 4.dp),
+                modifier = Modifier.fillMaxWidth()
+                    .alpha(if (gameMask != 0 && (gameMask shr i) and 1 == 0) 0.35f else 1f)
+                    .padding(vertical = 8.dp, horizontal = 4.dp),
             ) {
                 Text("C$i", color = muted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                 Text(

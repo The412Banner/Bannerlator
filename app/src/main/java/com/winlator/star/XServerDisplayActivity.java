@@ -9512,12 +9512,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return dirs;
     }
 
-    /** The HUD greys out the per-core rows of cores the game is not using; nothing is greyed when it uses them all. */
+    /** The HUD and the Task Manager core tiles grey out the cores the game is not using; nothing is greyed when it
+     *  uses them all. */
     private void updateHudGameCores() {
-        if (fusionHud == null) return;
         int all = (1 << Math.min(16, com.winlator.star.deviceinfo.CpuCores.INSTANCE.count())) - 1;
         int mask = taskAffinityMask & 0xFFFF;
-        fusionHud.setGameCores(mask == 0 || (mask & all) == all ? 0 : mask);
+        int shown = mask == 0 || (mask & all) == all ? 0 : mask;
+        XServerDrawerState.INSTANCE.setGameCoreMask(shown);
+        if (fusionHud != null) fusionHud.setGameCores(shown);
     }
 
     /** "<count>:<core>,<core>,..." for WINE_CPU_TOPOLOGY from an affinity mask (bit n = core n); empty for no cores. */

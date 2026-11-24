@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-24 04:24–04:45 EST — GE 11-14 v17 bench + Sleep(0) throttle work reset (proton-wine staging/*/v17, CI GREEN, staged, tests running)
+- Why: user 04:2x EST: "go ahead with GE 11-14 test, tune the reset, finish what needs done".
+- GE 11-14 alert_fd build 570b71f5 installed (instlayer), container 13 -> Proton-11.0-14-arm64ec-17, full set ran (results ge1114-v17).
+- Throttle fix: android/patches/dlls_ntdll_unix_sync.c_sleep0_work_reset.patch (applied last + MARKERS row): a throttle run restarts when
+  the thread used > 50 us of its own CPU time between two non-switching yields; WINE_SLEEP0_THROTTLE=<iters>,<usec>,<work_us>.
+  11.0-2 8a6cd6b9 (CI 45365734539), DD 12.8 2e03bc99 (45365762450), GE 11-14 39b5de76 (45365810846): GREEN 2/2 legs each, patch applied +
+  marker ok in all 6 logs; staged /sdcard/Download/v17-layers (sha in FILES.tsv). Test exe sleeptest.exe (idle spinner, spinner + 7 busy
+  threads, frame loop with Sleep(0) wait) for the A/B. NOT device-tested yet. Resume: memory bannerlator-overnight-1124.
+
 ## 2026-11-24 00:00–04:25 EST — Overnight Wine v17 benchmarks on the round-3 APK (`feat/upstream-round-3` app; layers on The412Banner/proton-wine staging/*/v17; NOT released)
 - Why: user 11-23 23:36 EST: test the new Wine builds on the new APK overnight (AIO per API + DiRT Showdown benchmark), fix what looks wrong.
 - Device: Pocket FIT, AC power, fan max. App: round-3 APK a0037a2f installed 01:21 EST (user yes 23:36). Test containers xuser-11..15 =

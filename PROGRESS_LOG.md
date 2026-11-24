@@ -51,6 +51,12 @@
   commit; main's log kept whole, this entry on top); cpp/shader tree identical to bfa71c42; force-with-lease pushed
   -> head 099c21fd (shaders ec80abb3, renderers 03ea3d27). CI build-artifacts 45475192285 dispatched 14:54 EST, headSha 099c21fd
   == pushed. aria2 1.37.0 installed in the container (apt) for multi-connection download.
+- CI GREEN 15:05 EST: 45475192285, headSha 099c21fd, 4/4 success. aria2 16 connections: artifact 14959731137 (597192487 B) in
+  ~1.5 min, sha256 647b5886... == GitHub digest. APK: libvulkan_renderer.so has "upscale shaders: %s", "upscale timing (%s
+  shaders)...", "debug.bannerlator.upscale.shaders"; libbannerwayland.so has "..., %s shaders, on %s" + sgsr_quality_half.
+  apksigner v2+v3 OK, signer SHA-256 a40da80a... (== earlier staged builds), com.tencent.ig vc108 3.2.1.
+  Staged 15:08 EST: /sdcard/Download/Bannerlator-upscaler-refresh-099c21fd-pubg.apk 602984954 B, sha256 6eb177c2... (host ==
+  /sdcard == device). Installing on the FIT next (user asked 14:50 EST).
 - Resume point: CI 45475192285 -> aria2 download pubg artifact -> digest + .so strings -> stage
   /sdcard/Download/Bannerlator-upscaler-refresh-099c21fd-pubg.apk (sha host == device) -> install on the FIT (user asked in
   the 14:50 message) -> verify installed base.apk sha. After install: A/B prop debug.bannerlator.upscale.shaders (old / new).

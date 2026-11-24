@@ -46,23 +46,40 @@ vec3  AMin3F3(vec3 a, vec3 b, vec3 c) { return min(a, min(b, c)); }
 vec3  AMax3F3(vec3 a, vec3 b, vec3 c) { return max(a, max(b, c)); }
 // ---------------------------------------------------------------------------
 
-layout(binding = 0) uniform sampler2D InputTexture;
+// BL_HALF is set for the *_half_frag.h build (gen_shaders.sh): colour and
+// weight maths in mediump (RelaxedPrecision, 16-bit on Adreno) as in AMD's
+// FSR_EASU_H / FSR_RCAS_H paths; positions and texture coordinates stay highp.
+#ifdef BL_HALF
+precision mediump float;
+#define BL_MP mediump
+#else
+#define BL_MP
+#endif
+#ifdef BL_HALF
+// 1/32768 is a 16-bit subnormal (flushed to 0 where denormals are not kept);
+// 1/16384 is the smallest normal one.
+#define BL_EASU_DIR_ZERO (1.0/16384.0)
+#else
+#define BL_EASU_DIR_ZERO (1.0/32768.0)
+#endif
+
+layout(binding = 0) uniform BL_MP sampler2D InputTexture;
 
 layout(push_constant) uniform PC {
-    vec4  ndc;        // quad NDC rect, consumed by window.vert (offset 0)
+    highp vec4  ndc;        // quad NDC rect, consumed by window.vert (offset 0)
     uvec4 con0;
     uvec4 con1;
     uvec4 con2;
     uvec4 con3;
-    vec2  outputSize; // EASU output (this pass's render-target) size in pixels
+    highp vec2  outputSize; // EASU output (this pass's render-target) size in pixels
 } pc;
 
-layout(location = 0) in  vec2 fragTexCoord;
+layout(location = 0) in  highp vec2 fragTexCoord;
 layout(location = 0) out vec4 outColor;
 
-AF4 FsrEasuRF(AF2 p) { return textureGather(InputTexture, p, 0); }
-AF4 FsrEasuGF(AF2 p) { return textureGather(InputTexture, p, 1); }
-AF4 FsrEasuBF(AF2 p) { return textureGather(InputTexture, p, 2); }
+AF4 FsrEasuRF(highp AF2 p) { return textureGather(InputTexture, p, 0); }
+AF4 FsrEasuGF(highp AF2 p) { return textureGather(InputTexture, p, 1); }
+AF4 FsrEasuBF(highp AF2 p) { return textureGather(InputTexture, p, 2); }
 
 void FsrEasuTapF(
  inout AF3 aC,
@@ -124,13 +141,13 @@ void FsrEasuF(
  AU4 con1,
  AU4 con2,
  AU4 con3){
-  AF2 pp=AF2(ip)*AF2_AU2(con0.xy)+AF2_AU2(con0.zw);
-  AF2 fp=floor(pp);
+  highp AF2 pp=AF2(ip)*AF2_AU2(con0.xy)+AF2_AU2(con0.zw);
+  highp AF2 fp=floor(pp);
   pp-=fp;
-  AF2 p0=fp*AF2_AU2(con1.xy)+AF2_AU2(con1.zw);
-  AF2 p1=p0+AF2_AU2(con2.xy);
-  AF2 p2=p0+AF2_AU2(con2.zw);
-  AF2 p3=p0+AF2_AU2(con3.xy);
+  highp AF2 p0=fp*AF2_AU2(con1.xy)+AF2_AU2(con1.zw);
+  highp AF2 p1=p0+AF2_AU2(con2.xy);
+  highp AF2 p2=p0+AF2_AU2(con2.zw);
+  highp AF2 p3=p0+AF2_AU2(con3.xy);
   AF4 bczzR=FsrEasuRF(p0);
   AF4 bczzG=FsrEasuGF(p0);
   AF4 bczzB=FsrEasuBF(p0);
@@ -167,7 +184,7 @@ void FsrEasuF(
   FsrEasuSetF(dir,len,pp,false,false,false,true ,gL,jL,kL,lL,oL);
   AF2 dir2=dir*dir;
   AF1 dirR=dir2.x+dir2.y;
-  AP1 zro=dirR<AF1_(1.0/32768.0);
+  AP1 zro=dirR<AF1_(BL_EASU_DIR_ZERO);
   dirR=APrxLoRsqF1(dirR);
   dirR=zro?AF1_(1.0):dirR;
   dir.x=zro?AF1_(1.0):dir.x;

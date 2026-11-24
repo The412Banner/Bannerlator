@@ -1,5 +1,100 @@
 # Star-Compose — Progress Log
 
+## 2026-11-24 13:10–15:10 EST — Upscaler refresh: lighter math, cursor after the upscale, CAS from AMD's file (`feat/upscaler-refresh`, 099c21fd INSTALLED FIT, NOT device-tested)
+- Why: Discord question 11-24 (is NIS the limit). Research 11-24 (main 48b4bafb): no newer SPATIAL upscaler exists upstream (all new ones
+  since mid-2025 = temporal: SGSR 2, Adreno Neural Fusion, Arm ASR/NSS, FSR 4); our SGSR (both variants, upstream d926f074 2025-10-16),
+  FSR1, NIS 1.0.3 are current. Found: (1) all six upscaler shaders (sgsr, sgsr_quality, fsr_easu, fsr_rcas, nis, cas) are fp32 only,
+  while Qualcomm's SGSR reference is mediump and AMD/NVIDIA ship fp16 paths; compositor default driver = system Qualcomm.
+  (2) X11 renderer composites the cursor INTO the game-res image before the upscale (soft cursor below native) and every cursor move
+  reruns composite + upscale + effects even with no new game frame. (3) cas.frag is a port of the GL FSREffect shader, not ffx_cas.h.
+  User 11-24 ~13:05 EST: "honestly I'd like all 3 on a new branch off main to test".
+- Plan (branch off main 29171b7a, worktree /root/src/Bannerlator-wt/upscaler-refresh):
+  1. GPU timing of the upscale/effects passes in the log (timestamp queries), so before/after is measured, not guessed.
+  2. CAS re-ported from AMD FidelityFX-CAS v1.0.2 ffx_cas.h (MIT, notice kept), sharpen-only path.
+  3. Half-precision (mediump/RelaxedPrecision) variants of SGSR, SGSR HQ, EASU, RCAS, CAS, NIS for colour/weight math; coordinates
+     stay full precision. Both variants built in; a switch picks one so A/B needs no reinstall.
+  4. X11: cursor drawn after the upscale at screen size (same on-screen size as before, sharper); cursor-only moves reuse the last
+     upscaled picture instead of rerunning the chain.
+- Test plan: GPU ms per pass fp32 vs fp16 (Elite + FIT), screenshot diff fp32 vs fp16 on a paused scene, mouse-driven game for the
+  cursor, logcat FATAL check. Nothing merged/released without the user's go.
+- Built:
+  - d743566d shaders: gen_shaders.sh builds sgsr, sgsr_quality, fsr_easu, fsr_rcas, nis, cas_ffx again with -DBL_HALF=1 ->
+    *_half_frag.h (mediump colour/weight maths, highp positions/coords/push-constant rects). Plain builds of the five existing
+    shaders compared byte-equal to main's SPIR-V (sgsr_quality_frag.h on main says glslang 1116.5.0, local is 16.2.0: same
+    array, file left as main's). spirv-val (vulkan1.0) passes all six half builds. Half-only guards: SGSR HQ std capped at
+    65504 + edge-direction epsilon 3.07574e-05 (16-bit subnormal) computed highp; EASU zero-direction threshold 1/16384.
+    cas_ffx.frag = AMD FidelityFX CAS v1.0.2 ffx_cas.h (MIT, notice kept) CasFilter noScaling in AMD's default build (5 taps,
+    green weight), black-pixel guard on 1/max. CORRECTION to what I told the user 11-24: our old cas.frag is NOT a wrong copy:
+    its maths equals AMD's high-quality variant (CAS_BETTER_DIAGONALS + CAS_SLOW, 9 taps); the new one is AMD's standard faster
+    variant, not "more accurate".
+  - 44f338f1 renderers: shader set picked at pipeline build from `debug.bannerlator.upscale.shaders` (`old` = previous fp32
+    shaders, anything else = half set), X11 + Wayland; log "upscale shaders: ..." (tag Winlator_Renderer) / Wayland "chain
+    ready: ..., <set> shaders". X11 timing: 4 timestamps per slot, info line every ~10 s "upscale timing (<set> shaders): <mode>
+    + N effect(s) ... composite / scale / effects / total ms; cursor-only N frames, ms". X11 cursor drawn over the final pass at
+    output size (through the scaler's dest rect), not composited at game res; cursor-only frames re-run only the kept final pass
+    (dropped on target destroy / swapchain / scanout / frame-gen ring / plan change); scene-dirty carried over bailed frames.
+  - Not changed: the OpenGL renderer (GLRenderer/EffectComposer), Wayland cursor path, Wayland timing.
+  - Local checks: syntax-only compile (host clang 21, --target=aarch64-linux-android30, Termux headers + host Vulkan headers,
+    -Wall -Wextra) of VulkanRendererContext.cpp, vulkan_jni.cpp, effects_chain.c: 0 errors, 0 warnings (control with an
+    injected error is caught).
+- CI: build-artifacts 45468124950 dispatched 14:14 EST, headSha 44f338f1 == pushed (ls-remote == local).
+- A/B on device (root): `rootsh 'setprop debug.bannerlator.upscale.shaders old'` (fp32) / `... new` (half), then restart the
+  game; read `logcat -s Winlator_Renderer | grep -E "upscale (shaders|timing)"`.
+- CI GREEN: build-artifacts 45468124950 (done 14:18 EST), headSha 44f338f1, 4/4 jobs success (antutu, standard, pubg, ludashi);
+  pubg job log: CMake/ninja native build ran (BUILD SUCCESSFUL in 1m 15s, Java/Kotlin from Gradle cache). Artifact
+  Bannerlator-upscaler-refresh-44f338f1-pubg id 14956511115, 597130473 B, digest sha256:e31fbb5f...
+- Download: gh api zip broke at 72 MB (connection reset); curl on the signed URL ran at ~20 MB/min; STOPPED by the user at
+  14:37 EST at 277 MB. Nothing verified, staged or installed. The .so string check (new code in the APK) is NOT done.
+- 14:50 EST user: "can you rebuild this branch from main and it's new merged work, then redownload and install when done? use
+  multiple connections for download also please". Backup refs/backup/20261124/upscaler-refresh-before-rebase = bfa71c42 (local +
+  remote). Rebased onto main f05120aa (layer family updates + Wine/Proton lists merges); only PROGRESS_LOG conflicted (first
+  commit; main's log kept whole, this entry on top); cpp/shader tree identical to bfa71c42; force-with-lease pushed
+  -> head 099c21fd (shaders ec80abb3, renderers 03ea3d27). CI build-artifacts 45475192285 dispatched 14:54 EST, headSha 099c21fd
+  == pushed. aria2 1.37.0 installed in the container (apt) for multi-connection download.
+- CI GREEN 15:05 EST: 45475192285, headSha 099c21fd, 4/4 success. aria2 16 connections: artifact 14959731137 (597192487 B) in
+  ~1.5 min, sha256 647b5886... == GitHub digest. APK: libvulkan_renderer.so has "upscale shaders: %s", "upscale timing (%s
+  shaders)...", "debug.bannerlator.upscale.shaders"; libbannerwayland.so has "..., %s shaders, on %s" + sgsr_quality_half.
+  apksigner v2+v3 OK, signer SHA-256 a40da80a... (== earlier staged builds), com.tencent.ig vc108 3.2.1.
+  Staged 15:08 EST: /sdcard/Download/Bannerlator-upscaler-refresh-099c21fd-pubg.apk 602984954 B, sha256 6eb177c2... (host ==
+  /sdcard == device).
+- INSTALLED on the Pocket FIT 15:08 EST (user asked 14:50 EST; BL idle, Termux in front): pm install -r Success; installed
+  base.apk sha256 6eb177c2... == staged, vc108 3.2.1, lastUpdateTime 15:08:25. debug.bannerlator.upscale.shaders unset ->
+  half set active. NOT launched, NOT device-tested.
+- 15:12 EST user: "now, run aio graphics test scene and toggle each to compare". AIO.desktop on the FIT = renderer opengl in a
+  WAYLAND container (container 1 "DD P11-12.8 Arm", 1280x720) -> my timing/cursor code is X11-Vulkan only, so the test uses a
+  temporary copy "ZZ AIO upscale.desktop" (renderer=vulkan, displayBackend=x11, scalingMode/casEnabled per case, AIO
+  --cube dx11 --bench 20 --autoclose 5 --fullscreen); the user's AIO.desktop is not changed. Harness
+  /sdcard/Download/perf-harness/upscale-ab.sh (sha e0579b26..., root): per case setprop debug.bannerlator.upscale.shaders
+  old/new, launch, CSV + screenshot + GPU samples + Winlator_Renderer lines + FATAL count, waits for self-close; at the end
+  prop -> "", test shortcut removed, Termux brought back. Fan max during the block (fan-max.sh / fan-restore.sh).
+  Run tag upaio-1124: 1:0:new (baseline, no upscale) + pairs 3 SGSR, 8 SGSR HQ, 4 FSR, 7 NIS, 6 Sharpen, 1+CAS, 8+CAS.
+  RESUME if interrupted: read /sdcard/Download/perf-harness/results/upaio-1124/run.log; then `rootsh 'setprop
+  debug.bannerlator.upscale.shaders ""; rm -f ".../Desktop/ZZ AIO upscale.desktop"; sh /sdcard/Download/perf-harness/fan-restore.sh'`
+  and bring Termux back.
+- RESULTS upaio-1124 (FIT, 15:14-15:33 EST, build 099c21fd, X11 Vulkan renderer, 1280x720 desktop -> 1920x1080 panel, AIO
+  2.2.0 --cube dx11 20 s, fan 255, one run per case, old/new order alternated; 15/15 CSV, 0 FATAL/ANR, all 15 screenshots show
+  the cube + results box; AIO cube window stays 640x480, the upscaler scales the whole desktop). Compositor ran at 144 fps.
+  GPU ms per composited frame (mean of the 2 full 10 s windows during the cube), old -> new, + AIO avg fps old -> new:
+  SGSR scale 0.236 -> 0.213 (total -6 %), AIO 2836 -> 2912 | SGSR HQ 0.267 -> 0.226 (-10 %), 2871 -> 2863 |
+  FSR scale 2.215 -> 1.518 (total 2.391 -> 1.704, -29 %), AIO 1908 -> 2183 (+14 %) | NIS 5.008 -> 5.006 (0 %), 776 -> 757 |
+  Sharpen 0.486 -> 0.482 (0 %), 2759 -> 2738 | CAS only effects 0.747 -> 0.384 (total -37 %), 2584 -> 2785 (+8 %) |
+  SGSR HQ + CAS total 1.225 -> 0.792 (-35 %), 2466 -> 2660 (+8 %). Baseline Linear (no upscaler) AIO 2894.
+  Findings: FSR and CAS gain clearly; SGSR/HQ small; NIS no gain and VERY costly (5 ms/frame at 144 fps; AIO 2894 -> ~765,
+  -74 %): the fragment port's 36 fetches per pixel, not ALU precision -> rewrite as compute/LDS like NVIDIA's reference is the
+  real fix (not done). Composite at game res ~0.19 ms in every mode.
+  Not covered: picture quality old vs new (screenshots are at different cube angles; needs a static scene), cursor change
+  (cursor-only path ran once per run at start, no mouse use), Wayland. AIO fps = single runs (+-5 % noise): only FSR/CAS
+  differences are above noise. Every session had to be force-stopped 45 s after the CSV (X11 session did not self-close; same
+  in the baseline run; not investigated).
+  Harness fixes on the way: logcat main buffer is 256 KiB (rotates in ~1 min) -> continuous capture stream.log added mid-run
+  (15:16); per-run captures + stream merged. Results dir /sdcard/Download/perf-harness/results/upaio-1124 (run.log, *.png,
+  *.csvhead, *.renderer.log, stream.log), table json scratchpad upaio.json, contact sheet scratchpad upaio-sheet.jpg.
+  Cleanup done: prop "", temp shortcut removed, fan loop stopped (AYANEO back, pwm 53), Termux in front, peers told "done".
+- Resume point (15:10 EST): FIT has 099c21fd (half set). Test: game with an upscaler (SGSR HQ / FSR / NIS) +/- CAS; logcat
+  `rootsh 'logcat -d -s Winlator_Renderer' | grep -E "upscale (shaders|timing)"`; A/B = `rootsh 'setprop
+  debug.bannerlator.upscale.shaders old'` + restart the game (back: `setprop ... new` or empty); mouse game for the cursor +
+  "cursor-only" count; logcat FATAL check. Save memory + log before each launch.
+
 ## 2026-11-24 14:20–14:55 EST — Layer family updates + Wine/Proton list cleanup: combined, installed, MERGED to main (main 32282c39; NOT device-tested)
 - Why: user "keep valve 11.0-2 to 11.0-3 update, make one combined app", "install it when it's done", then "merge to main".
 - Combined branch feat/layer-family-and-list 32282c39 = main dd64e653 + feat/layer-family-updates 767f41a7 (code cc08bb0a)

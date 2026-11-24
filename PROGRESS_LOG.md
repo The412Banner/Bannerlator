@@ -40,6 +40,12 @@
   hit-tests with shallow_window_from_point, like real Windows); 4 NtUserSendHardwareInput sites in wayland_pointer.c, same in
   all 5 v17 layers (10.0, 10.34-GE, 11.0-2, 11.12.8-DroidDeck, 11.14-GE). Compositor hover (b5bbed8e) still needed (winewayland
   applies a cursor only for its focused window). Proposed to the user; waiting for go (Wine layer rebuilds).
+- 18:56 EST user "yes go ahead" (Wine half, DD 12.8 first + swap test). proton-wine branch
+  staging/proton_11.12.8-DroidDeck/wayland-cursor (worktree /root/src/proton-wine-wt-wayland-cursor, off .../v17 d9e61d24):
+  ad20651d = wayland_pointer.c pointer_input_hwnd(): desktop window + desktop mode -> NULL hwnd at the 4 NtUserSendHardwareInput
+  sites (motion, button, wheel, relative). CI "DroidDeck-Proton 11.0-12.8" 45513998126 (push, headSha ad20651d == pushed,
+  cold cache). Swap target on the FIT: files/contents/Proton/11.0-12.8-arm64ec-17/lib/wine/aarch64-unix/winewayland.so
+  (sha256 d3b0a2e0..., container 1 uses -17); back it up first.
 - Resume point: FIT = b5bbed8e (main 447b4afd + this fix). If the user reports it works: merge only on the user's word; delete the
   4 "AIO Cursor Test - ..." shortcuts after; then AIO 2.3.0-pre1 publish (AIO branch feat/upscaler-test-scene, see its log).
 - Test plan: Cursor Test shortcuts on the FIT ("AIO Cursor Test - Wayland", "- Wayland OLD 2.2.0"): colour quadrants, shadow,

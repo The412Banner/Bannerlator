@@ -154,7 +154,8 @@ class DownloadManagerActivity : ComponentActivity() {
     }
 
     /** Clear ✓: drop terminal FAILED/CANCELLED rows and wipe the installed library,
-     *  leaving active downloads untouched (BannerHub "clear finished" semantics). */
+     *  leaving active downloads untouched (BannerHub "clear finished" semantics). Games found
+     *  in a Steam library folder come back at once: their records outlive the library list. */
     private fun clearTerminalAndLibrary() {
         DownloadRegistry.entries.value.forEach { e ->
             if (e.state == DownloadState.FAILED || e.state == DownloadState.CANCELLED) {
@@ -162,6 +163,7 @@ class DownloadManagerActivity : ComponentActivity() {
             }
         }
         DownloadRegistry.clearLibrary()
+        SteamLibraryFound.seedAsync(this)
     }
 }
 
@@ -231,7 +233,8 @@ private fun Modifier.dmButton(look: DmLook, first: Boolean = false): Modifier =
 /** XMB cards only (inside a group item): the controller's way to open the game's page, as a tap on the card does. */
 @Composable
 private fun DetailsButton(entry: DownloadEntry, onOpen: (DownloadEntry) -> Unit, look: DmLook) {
-    if (LocalXmbGroup.current == null) return
+    // A game found in a Steam library folder has no store row to open (its card taps open nothing either).
+    if (LocalXmbGroup.current == null || entry.found) return
     OutlinedButton(
         onClick = { onOpen(entry) },
         shape = deckShape(8.dp),
@@ -521,8 +524,9 @@ private fun DownloadCardBody(
                     // Amber "Update available" mirrors the store list's own language
                     // (AmazonGamesActivity "✓ Installed — Update Available"); up-to-date
                     // stays installed-green. Store-agnostic: any store that sets
-                    // entry.updateAvailable gets the same marker.
-                    if (entry.updateAvailable) {
+                    // entry.updateAvailable gets the same marker. A game found in a Steam
+                    // library folder is never updated from here.
+                    if (entry.showsUpdate) {
                         Text(
                             text = "● Installed — Update available",
                             style = MaterialTheme.typography.bodySmall,

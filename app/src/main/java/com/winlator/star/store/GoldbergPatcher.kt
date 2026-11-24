@@ -341,7 +341,10 @@ object GoldbergPatcher {
             val fromDb: String? = try { db?.getGame(appId)?.installDir } catch (_: Throwable) { null }
             installDir = fromDb.orEmpty()
         }
-        if ((appId <= 0 || installDir.isEmpty()) && exe != null) {
+        // A recorded dir that is gone (library folder moved, card not mounted) is no better than no answer:
+        // fall back exactly as for empty, and the located depot dir wins over that dead path.
+        val staleDir = installDir.isNotEmpty() && !File(installDir).isDirectory
+        if ((appId <= 0 || installDir.isEmpty() || staleDir) && exe != null) {
             val depot: File? = try { InstallScriptExecutor.locateInstallDir(exe) } catch (_: Throwable) { null }
             if (depot != null) {
                 val dp = depot.absolutePath.trimEnd('/')
@@ -363,7 +366,7 @@ object GoldbergPatcher {
                     if (installDir.isEmpty()) installDir = row.installDir.orEmpty()
                 }
                 // No DB row (e.g. a folder import): the depot dir we located is still the folder to patch.
-                if (installDir.isEmpty()) installDir = dp
+                if (installDir.isEmpty() || staleDir) installDir = dp
             }
         }
         if (appId <= 0) {

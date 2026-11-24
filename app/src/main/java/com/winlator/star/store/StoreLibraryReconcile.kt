@@ -21,6 +21,9 @@ object StoreLibraryReconcile {
         val amazon = app.getSharedPreferences("bh_amazon_prefs", Context.MODE_PRIVATE)
         var dropped = 0
         for (row in rows) {
+            // A game found in a Steam library folder is the found scan's to drop: the DB can call an owned game uninstalled while
+            // its folder still holds the files, and the found record is what the card rests on.
+            if (row.found) continue
             val installed = try {
                 when (row.store) {
                     Store.STEAM -> row.id.toIntOrNull()?.let { SteamDatabase.getInstance(app).getGame(it)?.isInstalled } ?: true

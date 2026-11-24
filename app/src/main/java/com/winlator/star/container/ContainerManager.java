@@ -397,6 +397,9 @@ public class ContainerManager {
                         // shortcuts via winemenubuilder; those are not games — never auto-import them.
                         String base = fileName.substring(0, fileName.length() - 4);
                         if (VENDOR_CLIENT_LNK.contains(base)) continue;
+                        // A game installed by the Windows Steam client: it is listed in Downloads from the library records, and
+                        // its desktop shortcut would add a second, custom entry to the Home.
+                        if (isWindowsSteamGameEntry(file)) continue;
                         String filePath = file.getPath();
                         File desktopFile = new File(filePath.substring(0, filePath.lastIndexOf(".")) + ".desktop");
                         if (!desktopFile.exists()) {
@@ -411,6 +414,7 @@ public class ContainerManager {
                         // installs, and it rewrites them on every client start. Those are launchers,
                         // not games — keep them out of the Games grid.
                         if (isVendorClientDesktopEntry(file)) continue;
+                        if (isWindowsSteamGameEntry(file)) continue;
                         Shortcut shortcut = loadShortcutOrNull(container, file);
                         if (shortcut != null) shortcuts.add(shortcut);
                     }
@@ -474,6 +478,36 @@ public class ContainerManager {
             "ealauncher.exe", "eadesktop.exe", "eaapp.exe", "eabackgroundservice.exe", "eaapprecovery.exe",
             "eaerrorreporter.exe", "link2ea.exe", "origin.exe", "originwebhelperservice.exe",
             "upc.exe", "uplay.exe", "ubisoftconnect.exe", "ubisoftconnectinstaller.exe"));
+
+    /**
+     * A shortcut the Windows Steam client wrote for a game it installed. That game already shows in Downloads from the
+     * library records, so importing the desktop entry would add a second, custom entry to the Home. Steam's own client
+     * shortcut is not one of these: it does not run from `steamapps/common`.
+     */
+    static boolean isWindowsSteamGameEntry(File desktopOrLnk) {
+        String name = desktopOrLnk.getName();
+        if (name.endsWith(".lnk")) {
+            String target = MSLink.parseFilePath(desktopOrLnk);
+            return target != null && target.toLowerCase(java.util.Locale.ROOT).contains("\\steamapps\\common\\");
+        }
+        try {
+            String text = FileUtils.readString(desktopOrLnk);
+            if (text == null) return false;
+            // The app's own shortcuts carry their store, which isVendorClientDesktopEntry also tests: they are never
+            // the client's copy.
+            if (text.contains("storeSource=") || text.contains("steamAppId=")) return false;
+            // .desktop Exec lines escape each backslash, so collapse runs first (as isVendorClientDesktopEntry does).
+            for (String line : text.split("\n")) {
+                String l = line.trim();
+                if (!l.startsWith("Exec=")) continue;
+                String exec = l.toLowerCase(java.util.Locale.ROOT).replaceAll("\\\\+", "\\\\");
+                if (exec.contains("steamapps\\common\\")) return true;
+            }
+        } catch (Exception e) {
+            return false;
+        }
+        return false;
+    }
 
     /**
      * True for a Desktop .desktop entry that a store client (EA Desktop / Origin / Ubisoft Connect) dropped

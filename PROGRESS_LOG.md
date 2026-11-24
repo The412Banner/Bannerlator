@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-24 13:10 EST — Upscaler refresh: lighter math, cursor after the upscale, CAS from AMD's file (`feat/upscaler-refresh`, IN PROGRESS, NOT built)
+## 2026-11-24 13:10–14:20 EST — Upscaler refresh: lighter math, cursor after the upscale, CAS from AMD's file (`feat/upscaler-refresh`, BUILT 44f338f1, CI running, NOT device-tested)
 - Why: Discord question 11-24 (is NIS the limit). Research 11-24 (main 48b4bafb): no newer SPATIAL upscaler exists upstream (all new ones
   since mid-2025 = temporal: SGSR 2, Adreno Neural Fusion, Arm ASR/NSS, FSR 4); our SGSR (both variants, upstream d926f074 2025-10-16),
   FSR1, NIS 1.0.3 are current. Found: (1) all six upscaler shaders (sgsr, sgsr_quality, fsr_easu, fsr_rcas, nis, cas) are fp32 only,
@@ -17,6 +17,30 @@
      upscaled picture instead of rerunning the chain.
 - Test plan: GPU ms per pass fp32 vs fp16 (Elite + FIT), screenshot diff fp32 vs fp16 on a paused scene, mouse-driven game for the
   cursor, logcat FATAL check. Nothing merged/released without the user's go.
+- Built:
+  - d743566d shaders: gen_shaders.sh builds sgsr, sgsr_quality, fsr_easu, fsr_rcas, nis, cas_ffx again with -DBL_HALF=1 ->
+    *_half_frag.h (mediump colour/weight maths, highp positions/coords/push-constant rects). Plain builds of the five existing
+    shaders compared byte-equal to main's SPIR-V (sgsr_quality_frag.h on main says glslang 1116.5.0, local is 16.2.0: same
+    array, file left as main's). spirv-val (vulkan1.0) passes all six half builds. Half-only guards: SGSR HQ std capped at
+    65504 + edge-direction epsilon 3.07574e-05 (16-bit subnormal) computed highp; EASU zero-direction threshold 1/16384.
+    cas_ffx.frag = AMD FidelityFX CAS v1.0.2 ffx_cas.h (MIT, notice kept) CasFilter noScaling in AMD's default build (5 taps,
+    green weight), black-pixel guard on 1/max. CORRECTION to what I told the user 11-24: our old cas.frag is NOT a wrong copy:
+    its maths equals AMD's high-quality variant (CAS_BETTER_DIAGONALS + CAS_SLOW, 9 taps); the new one is AMD's standard faster
+    variant, not "more accurate".
+  - 44f338f1 renderers: shader set picked at pipeline build from `debug.bannerlator.upscale.shaders` (`old` = previous fp32
+    shaders, anything else = half set), X11 + Wayland; log "upscale shaders: ..." (tag Winlator_Renderer) / Wayland "chain
+    ready: ..., <set> shaders". X11 timing: 4 timestamps per slot, info line every ~10 s "upscale timing (<set> shaders): <mode>
+    + N effect(s) ... composite / scale / effects / total ms; cursor-only N frames, ms". X11 cursor drawn over the final pass at
+    output size (through the scaler's dest rect), not composited at game res; cursor-only frames re-run only the kept final pass
+    (dropped on target destroy / swapchain / scanout / frame-gen ring / plan change); scene-dirty carried over bailed frames.
+  - Not changed: the OpenGL renderer (GLRenderer/EffectComposer), Wayland cursor path, Wayland timing.
+  - Local checks: syntax-only compile (host clang 21, --target=aarch64-linux-android30, Termux headers + host Vulkan headers,
+    -Wall -Wextra) of VulkanRendererContext.cpp, vulkan_jni.cpp, effects_chain.c: 0 errors, 0 warnings (control with an
+    injected error is caught).
+- CI: build-artifacts 45468124950 dispatched 14:14 EST, headSha 44f338f1 == pushed (ls-remote == local).
+- A/B on device (root): `rootsh 'setprop debug.bannerlator.upscale.shaders old'` (fp32) / `... new` (half), then restart the
+  game; read `logcat -s Winlator_Renderer | grep -E "upscale (shaders|timing)"`.
+- Resume point: branch feat/upscaler-refresh 44f338f1 pushed; nothing installed; next = CI result -> stage APK -> ask user.
 
 ## 2026-11-24 11:30–11:45 EST — Idle-thread throttle switches on the device + Lab help title fix (feat/idle-throttle-toggles, row DEVICE-VISIBLE, fix CI running)
 - Installed 5a91cfa4 pubg APK on the Pocket FIT 11:29 EST (user yes; installed base.apk sha256 6f0dc1d1 == staged). User: "it's there now";

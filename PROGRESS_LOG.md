@@ -1,5 +1,41 @@
 # Star-Compose — Progress Log
 
+## 2026-11-24 04:33–05:00 EST — In-game frame-gen engine switch (`feat/fg-engine-switch`, CI GREEN, APK STAGED, NOT device-tested)
+- Why: user 11-23: "add the ability to switch frame generation types while in game on a separate branch ... between win-fg, wfg and lsfg
+  native". Before: the engine was fixed per session (only level/flow/model live); a game started with FG Off could not turn it on.
+  Branch off feat/upstream-round-3 3c1279de (has the per-game saveFgValue code), worktree /root/src/Bannerlator-wt/fg-engine-switch.
+- Built 76f0994b: engine picker Off / LSFG Native / Win-FG Native / WFG in the in-game Frame generation section (Classic drawer
+  FrameGenSection = 2x2 chip grid; Lab LabFrameGenPanel "Engine" row = chips with the Game/Container scope chip; Deck quick page row
+  when FG is off). Existing labels only, no new hint lines, no new pop-up.
+  - Gate: XServerDisplayActivity.publishFgEngineChoices (end of the launch FG block in setupXEnvironment) ->
+    core.FgEngineSwitch.choices(nativeRenderer = Wayland or X11 Vulkan renderer, guestLayer = "bionic" launched as the guest layer,
+    winFgNativeOk = Wayland or no training capture) -> XServerDrawerState.fgEngineChoices. Empty = badge only, as before.
+  - Switch: switchFrameGenEngine: old engine off via its own apply(0) (locks/readout), unless Win-FG/WFG take over at a level (engine
+    change only, swapchain kept); sessionFgEngine (resolvedFrameGenEngine returns it), winFgNativeSession recomputed, drawer flows
+    (engine, enabled, bionicFgActive, multiplier carried: Win-FG = On/2), then applyWinFgNative/applyWfgNative (renderer
+    setFrameGenEngine / Wayland nativeSetFrameGenEngine) at the current level. LSFG Native: prepareLsfgNative off the UI thread,
+    arms at the menu's level when the cache is ready; a level tapped meanwhile waits for it (lsfgArmDeferred), a stale build
+    for an engine no longer picked is ignored (fgEngineSwitchSeq). applyLsfgNative now selects FG_ENGINE_LSFG explicitly.
+  - Saved per game: saveFgValue("frameGenEngine") -> shortcut extra (container session: Container.setFrameGenEngine); launch already
+    reads shortcut first, else container.
+  - Not switchable: guest-side win-fg layer sessions (X11 + training capture; launch-only), Win-FG Native left out while capture is
+    on, OpenGL / SurfaceFlinger (ASR) renderers, Linux/gamescope sessions.
+  - FgEngineSwitchTest 5 tests: run locally with javac + cached JUnit 4.13.2: OK (CI runs no unit tests).
+- CI run: build-artifacts 45368790769 (dispatched 04:49 EST, done 04:59 EST), headSha 76f0994b == pushed, 4/4 jobs success
+  (antutu, ludashi, pubg, standard). pubg: BUILD SUCCESSFUL in 5m 52s; non-success steps = skipped only (main-only cache saves +
+  cached natives: JavaSteam/LSFG/libblsteam/Xbox/libfakeinput/PulseAudio; no native change here); warnings in touched files = old
+  deprecations on untouched lines. New code in classes5.dex (FgEngineSwitch + the switch log line).
+- Staged 04:59 EST: `/sdcard/Download/Bannerlator-fg-engine-switch-76f0994b-pubg.apk` 602826584 B, sha256
+  ab14d09a2fede11e45dbe2f7fc1bad40e031e854664f61f65fdd96847050d9be (host == /sdcard == device via rootsh), com.tencent.ig vc108 3.2.1,
+  signer SHA-256 a40da80a... == staged base Bannerlator-upstream-round-3-57e1d48c-pubg.apk. NOT installed: awaits the user's yes.
+- Device test: NOT device-tested.
+- Open/Next: user installs (ask first) and tests: Lab menu -> Performance -> Frame generation -> Engine chips. Proof in logcat:
+  `framegen engine switch: offered [...]` at launch, `framegen engine switch: <old> -> <new> mult=N backend=vulkan|wayland`,
+  then `applyWfgNative:` / `applyWinFgNative:` / `applyLsfgNative:` (X11) or `applyWaylandFrameGen: engine=...` + framegen
+  `<engine> engine ready` (Wayland); the renderer's `native-fg: engine <old> -> <new>` prints only with verbose logging. Known edge:
+  a container with the LSFG Vulkan 1.1 compat switch that launched with another engine gets the compat device only at the next
+  launch. Not merged, no release.
+
 ## 2026-11-24 00:00–04:25 EST — Overnight Wine v17 benchmarks on the round-3 APK (`feat/upstream-round-3` app; layers on The412Banner/proton-wine staging/*/v17; NOT released)
 - Why: user 11-23 23:36 EST: test the new Wine builds on the new APK overnight (AIO per API + DiRT Showdown benchmark), fix what looks wrong.
 - Device: Pocket FIT, AC power, fan max. App: round-3 APK a0037a2f installed 01:21 EST (user yes 23:36). Test containers xuser-11..15 =

@@ -379,6 +379,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private float globalCursorSpeed = 1.0f;
     private short taskAffinityMask = 0;
     private short taskAffinityMaskWoW64 = 0;
+    /** WINE_CPU_TOPOLOGY for this session ("<count>:<cores>"), empty when Sync CPU topology is off. */
+    private String wineCpuTopology = "";
     // Prefer-big-cores live re-pin: guest pid -> its affinity mask BEFORE we changed it, so toggle OFF
     // restores each process exactly (revert philosophy). Populated on toggle ON, cleared on OFF.
     private final java.util.HashMap<Integer, Integer> bigCoreAffinitySnapshot = new java.util.HashMap<>();
@@ -3136,6 +3138,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 Log.d("XServerDisplayActivity", "Prefer big cores: affinity -> " + bigList);
             }
         }
+
+        // Sync CPU topology (the game's "1"/"0" overrides the container): Windows is shown only the cores the session
+        // runs on, as WINE_CPU_TOPOLOGY=<count>:<cores> (Proton's ntdll fill_cpu_override). Same switch as Winlator
+        // Ludashi's "Sync CPU Topology" (StevenMXZ). Uses the final affinity, after Prefer big cores.
+        boolean syncTopology = container.isSyncCpuTopology();
+        if (shortcut != null) {
+            String topo = shortcut.getExtra("syncCpuTopology");
+            if ("1".equals(topo) || "0".equals(topo)) syncTopology = "1".equals(topo);
+        }
+        wineCpuTopology = syncTopology ? cpuTopologyValue(taskAffinityMask) : "";
 
         // Determine the class name for the startup workarounds
         String wmClass = shortcut != null ? shortcut.getExtra("wmClass", "") : "";
@@ -9484,6 +9496,18 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return dirs;
     }
 
+    /** "<count>:<core>,<core>,..." for WINE_CPU_TOPOLOGY from an affinity mask (bit n = core n); empty for no cores. */
+    static String cpuTopologyValue(int mask) {
+        StringBuilder cores = new StringBuilder();
+        int count = 0;
+        for (int i = 0; i < 16; i++) {
+            if ((mask & (1 << i)) == 0) continue;
+            if (count++ > 0) cores.append(',');
+            cores.append(i);
+        }
+        return count == 0 ? "" : count + ":" + cores;
+    }
+
     /** {@code key=value} into the launch env unless the user's own env vars set {@code key} (theirs wins);
      *  either way one "key=value" note for the log. */
     private static void putUnlessUsers(EnvVars envVars, String key, String value, java.util.List<String> said) {
@@ -12492,6 +12516,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // by changeWineAudioDriver(); route changes are handled inside the driver.
             DirectAudioSupport.installDriver(this, container.getWineVersion());   // newest driver build on the layer before the guest loads it
             applyDirectAudioConfig(envVars);
+        }
+
+        // Sync CPU topology, after every env source is merged: a WINE_CPU_TOPOLOGY in the user's own env vars wins.
+        if (!wineCpuTopology.isEmpty()) {
+            java.util.List<String> said = new java.util.ArrayList<>();
+            putUnlessUsers(envVars, "WINE_CPU_TOPOLOGY", wineCpuTopology, said);
+            Log.d("XServerDisplayActivity", "Sync CPU topology: " + said.get(0));
         }
 
         // Turnip TU_DEBUG composition (per-container + per-game). Runs AFTER every env source is

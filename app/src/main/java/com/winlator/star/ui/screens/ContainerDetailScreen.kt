@@ -3029,6 +3029,15 @@ private fun AdvancedTab(
                     modifier = Modifier.fillMaxWidth().wrapContentHeight()
                 )
             }
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(
+                    checked = viewModel.syncCpuTopology,
+                    onCheckedChange = { viewModel.syncCpuTopology = it }
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.sync_cpu_topology), modifier = Modifier.weight(1f))
+            }
         }
     }
 }

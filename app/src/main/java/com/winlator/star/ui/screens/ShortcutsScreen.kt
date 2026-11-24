@@ -6077,6 +6077,8 @@ internal fun ShortcutSettingsDialogScreen(
     var selectedBox64ECVersion by remember { mutableStateOf(shortcut.getExtra("box64ecVersion", "") ?: "") }
     // Force SSBS override: "" = no extra = the container's switch, "1" = on, "0" = off.
     var forceSsbs by remember { mutableStateOf(shortcut.getExtra("forceSsbs", "") ?: "") }
+    // Sync CPU topology override: "" = the container's switch, "1" = on, "0" = off.
+    var syncCpuTopology by remember { mutableStateOf(shortcut.getExtra("syncCpuTopology", "") ?: "") }
     var selectedFexCorePresetIndex by remember { mutableIntStateOf(0) }
     var selectedControlsProfileIndex by remember { mutableIntStateOf(0) }
 
@@ -6451,6 +6453,7 @@ internal fun ShortcutSettingsDialogScreen(
             putExtra("fexcorePreset", fexPresetId)
             putExtra("box64ecVersion", selectedBox64ECVersion.ifEmpty { null })
             putExtra("forceSsbs", forceSsbs.ifEmpty { null })
+            putExtra("syncCpuTopology", syncCpuTopology.ifEmpty { null })
             putExtra("controlsProfile", if (ctrlProfileId > 0) ctrlProfileId.toString() else null)
             putExtra("startupSelection", startupIdx.toString())
             // Persist the Custom enabled set alongside the selection (launch reads it only when
@@ -8595,6 +8598,8 @@ internal fun ShortcutSettingsDialogScreen(
                 onShowBox64ECDownloadSheet = { showBox64ECDownloadSheet = true },
                 forceSsbs = forceSsbs,
                 onForceSsbsChange = { forceSsbs = it },
+                syncCpuTopology = syncCpuTopology,
+                onSyncCpuTopologyChange = { syncCpuTopology = it },
             )
                                 5 -> ScTvTab(
                                     dp = dp,
@@ -9492,6 +9497,9 @@ private fun ScAdvancedTab(
     /** Force SSBS override: "" = follow the container, "1" = on, "0" = off. */
     forceSsbs: String = "",
     onForceSsbsChange: (String) -> Unit = {},
+    /** Sync CPU topology override: "" = follow the container, "1" = on, "0" = off. */
+    syncCpuTopology: String = "",
+    onSyncCpuTopologyChange: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
     // Bumped when a preset's values or the preset list change, so the "customised" badges
@@ -9788,6 +9796,27 @@ private fun ScAdvancedTab(
                 },
                 modifier = Modifier.fillMaxWidth().wrapContentHeight()
             )
+            Spacer(Modifier.height(8.dp))
+            // Entry 0 names what the container is set to, as Force SSBS does.
+            val topoOn = stringResource(R.string.force_ssbs_on)
+            val topoOff = stringResource(R.string.force_ssbs_off)
+            val topoOptions = listOf(
+                stringResource(R.string.force_ssbs_container_default,
+                    if (shortcut.container.isSyncCpuTopology) topoOn else topoOff),
+                topoOn, topoOff
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                LabeledDropdown(
+                    label = stringResource(R.string.sync_cpu_topology),
+                    options = topoOptions,
+                    selectedOption = when (syncCpuTopology) { "1" -> topoOptions[1]; "0" -> topoOptions[2]; else -> topoOptions[0] },
+                    onSelect = { onSyncCpuTopologyChange(when (it) { topoOptions[1] -> "1"; topoOptions[2] -> "0"; else -> "" }) },
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = { helpRes = R.string.help_sync_cpu_topology }) {
+                    Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                }
+            }
         }
         }
 

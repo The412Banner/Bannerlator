@@ -148,6 +148,7 @@ import com.winlator.star.ui.deck.rememberXmbSlice
 import androidx.compose.runtime.CompositionLocalProvider
 import com.winlator.star.ui.deck.xmbInner
 import com.winlator.star.ui.deck.xmbLandingIndex
+import com.winlator.star.ui.simple.L
 import com.winlator.star.ui.deck.xmbPageFrost
 import com.winlator.star.ui.deck.xmbRailGroup
 import com.winlator.star.ui.deck.xmbRailItem
@@ -1603,6 +1604,14 @@ internal fun optionsOf(control: Control): List<Opt> = when (control) {
     else -> emptyList()
 }
 
+/** "all 8 cores", or "6 of 8 cores (2-7)". */
+internal fun coresLabel(v: String, total: Int = com.winlator.star.deviceinfo.CpuCores.count()): String {
+    val picked = v.split(',').mapNotNull { it.trim().toIntOrNull() }.filter { it in 0 until total }.distinct().sorted()
+    if (picked.isEmpty() || picked.size == total) return "all $total cores"
+    val list = if (picked.last() - picked.first() == picked.size - 1) "${picked.first()}-${picked.last()}" else picked.joinToString(",")
+    return "${picked.size} of $total cores ($list)"
+}
+
 /** A stored value as the row shows it: the option's label, On/Off, or the slider's display text. */
 internal fun labelFor(control: Control, v: String): String = when (control) {
     Control.Toggle -> if (v == "1") "On" else "Off"
@@ -1611,7 +1620,7 @@ internal fun labelFor(control: Control, v: String): String = when (control) {
     is Control.Select -> control.options.firstOrNull { it.value == v }?.label ?: SettingsRegistry.prettyResolution(v)
     is Control.Slider -> v.toFloatOrNull()?.let(control.display) ?: v
     is Control.TextField -> v.ifEmpty { "empty" }
-    Control.Cores -> if (v.isEmpty()) "all cores" else "cores $v"
+    Control.Cores -> coresLabel(v)
     is Control.Checklist -> v.split(',').count { it.isNotEmpty() }.let { if (it == 0) "all on" else "$it off" }
 }
 
@@ -2081,16 +2090,51 @@ private fun ChecklistLine(label: String, checked: Boolean, modifier: Modifier = 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CoresControl(value: String, enabled: Boolean, onPick: (String) -> Unit) {
-    val cores = remember { Runtime.getRuntime().availableProcessors() }
-    val on = value.split(',').mapNotNull { it.trim().toIntOrNull() }.toSet()
-    // The last core left can't be turned off: a game needs at least one.
-    val landing = xmbLandingIndex((0 until cores).map { it in on }, (0 until cores).map { enabled && !(it in on && on.size == 1) })
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        for (i in 0 until cores) {
-            val sel = i in on
-            Pill("Core $i", selected = sel, enabled = enabled && !(sel && on.size == 1), first = i == landing) {
-                val next = if (sel) on - i else on + i
-                onPick(next.sorted().joinToString(","))
+    // The device's own cores, grouped fastest first: "Prime · Cortex-X4 · 3.30 GHz" over its "Core 7" pill.
+    val cores = remember { com.winlator.star.deviceinfo.CpuCores.read() }
+    val clusters = remember(cores) { com.winlator.star.deviceinfo.CpuCores.clusters(cores) }
+    val chip = remember { com.winlator.star.deviceinfo.CpuCores.chipLabel() }
+    val big = remember(cores) {
+        com.winlator.star.perf.CpuTopology.bigCoreIndices(IntArray(cores.size) { (cores[it].maxKhz / 1000).toInt() }).toSet()
+    }
+    val all = remember(cores) { cores.indices.toSet() }
+    val on = value.split(',').mapNotNull { it.trim().toIntOrNull() }.filter { it in all }.toSet()
+    fun pick(set: Set<Int>) { if (set.isNotEmpty()) onPick(set.sorted().joinToString(",")) }
+    // Pill order on screen: the quick picks, then every core cluster by cluster. The last core left can't be turned off.
+    val order = clusters.flatMap { it.cores }
+    val showBig = big.isNotEmpty() && big != all
+    val quick = listOf(on == all) + (if (showBig) listOf(on == big) else emptyList())
+    val landing = xmbLandingIndex(
+        quick + order.map { it in on },
+        quick.map { enabled } + order.map { enabled && !(it in on && on.size == 1) },
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (chip.isNotEmpty()) Text(chip, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Pill(L("All cores"), selected = on == all, enabled = enabled, first = landing == 0) { pick(all) }
+            if (showBig) Pill(L("Big cores"), selected = on == big, enabled = enabled, first = landing == 1) { pick(big) }
+        }
+        var index = quick.size
+        for (c in clusters) {
+            val groupOn = c.cores.all { it in on }
+            // Tapping the title switches the whole cluster (one core always stays on).
+            Text(
+                com.winlator.star.deviceinfo.CpuCores.clusterTitle(c, L(c.tier.label)),
+                color = if (groupOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.5.sp,
+                modifier = Modifier
+                    .clickable(enabled = enabled) { pick(if (groupOn) on - c.cores.toSet() else on + c.cores) }
+                    .padding(top = 4.dp),
+            )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (i in c.cores) {
+                    val sel = i in on
+                    val slot = index++
+                    Pill(L("Core %1\$d", i), selected = sel, enabled = enabled && !(sel && on.size == 1), first = slot == landing) {
+                        pick(if (sel) on - i else on + i)
+                    }
+                }
             }
         }
     }

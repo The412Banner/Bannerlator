@@ -140,6 +140,9 @@ object CpuCores {
     /** Top clock of the fastest core in kHz, 0 when unreadable. */
     fun primeKhz(cores: List<Core> = read()): Long = cores.maxOfOrNull { it.maxKhz } ?: 0
 
+    /** The chip's name for the core pickers ("Snapdragon G3 Gen 3 (SG8350P)"), empty when unknown. */
+    @JvmStatic fun chipLabel(): String = runCatching { SocNames.label() }.getOrDefault("")
+
     @Volatile private var cached: List<Core>? = null
 
     /** This device's cores (read once per process). */

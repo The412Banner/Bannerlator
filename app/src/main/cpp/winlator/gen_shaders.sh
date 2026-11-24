@@ -27,8 +27,8 @@ if ! command -v glslangValidator >/dev/null 2>&1; then
     exit 1
 fi
 
-HALF=(sgsr sgsr_quality fsr_easu fsr_rcas cas_ffx nis_luma nis2)
-HALF_ONLY=(cas_ffx nis_luma nis2)
+HALF=(sgsr sgsr_quality fsr_easu fsr_rcas cas_ffx nis_luma nis3)
+HALF_ONLY=(cas_ffx nis_luma nis3)
 
 in_list() {
     local x="$1"; shift

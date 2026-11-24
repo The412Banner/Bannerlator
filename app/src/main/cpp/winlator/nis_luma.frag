@@ -1,8 +1,8 @@
 #version 450
 
 // =============================================================================
-//  NIS prepass for nis2.frag: the game image copied 1:1 with its NIS luma in
-//  alpha (the compositor never uses the alpha of these targets). nis2.frag then
+//  NIS prepass for nis3.frag: the game image copied 1:1 with its NIS luma in
+//  alpha (the compositor never uses the alpha of these targets). nis3.frag then
 //  reads four luma texels per textureGather instead of computing luma for each
 //  of 36 fetches per output pixel.
 //

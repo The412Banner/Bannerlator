@@ -1,5 +1,29 @@
 # Star-Compose — Progress Log
 
+## 2026-11-24 12:00–14:25 EST — Merge to main, Wine v17 released, SteamLite v10 / Goldberg v3 / FEX gn-8 published (main 29171b7a, released content; app NOT released)
+- Why: user, after the morning device tests: "merge it, include 11.0-3, replace 11-9, release as latest"; "publish v10 now, keep v9
+  backup"; "update the Goldberg release"; "replace the fex cs2 version with new gn ... add it to the contents json"; "yes merge it".
+- User device tests (FIT, 11:3x–14:15 EST): Lab note single title (45ee683a), per-game frame gen, download-complete notification,
+  Steam launch-entry arguments, in-game FG engine switch (DiRT session log: WFG x2/x3/x4, LSFG, Win-FG, WFG, 0 errors), per-API
+  idle-throttle row + pop-up + "?" + launch line (WINE_SLEEP0_THROTTLE_SKIP=dx7 reaches the Wine processes) - all work.
+- MERGED main 29171b7a (= feat/idle-throttle-toggles 57447cf8 + round-3 log commits; code == tested 45ee683a; backup
+  refs/backup/20261124/main-before-upstream-round-3-fg-idle-throttle = 48b4bafb); main CI 45453530814 GREEN x4.
+- Wine v17 RELEASED (proton-wine build-bionic-layers-20261124-v17, Latest, tag 5cad2d70; delivery copy winlator-contents
+  bionic-layers-20261124-v17): Proton 10.0-4, GE 10.0-34, Proton 11.0-2, Proton 11.0-3 (new), DroidDeck 12.8, GE 11.0-14 (replaces
+  11.0-9); 10 files sha256 == tested builds. Catalog winlator-contents 5a77857d: v16 -> v17 rows, GE 11-9 -> 11-14, Proton 11.0-3
+  rows WITHOUT versionName (GE-Proton 11.0-3 v14 shares "11.0-3-arm64ec"; current apps would offer it as an update).
+- Published: SteamLite v10 (release steamlite-v1 in place, catalog 642796ed + agent-src = BL 48b4bafb; v9 backup in Download) -
+  DEVICE-PROVEN by the user 14:14 EST via the in-app update (CS 1.6: WN_STEAM_USER_ARGS 13 chars -> LaunchApp; game got
+  "-game cstrike", doubled because Steam adds it). Goldberg v3 = new release goldberg-v3 + catalog 337d2b25 (not device-tested).
+  FEX gn-8 on Nightlies FexCore (gn-cs2 removed, backup in Download) + contents.json 00146cf9 (listed in the app, not installed yet).
+- Elite: test container + test layers removed (11 GB free). FIT container 1 -> DroidDeck 12.8 v17 (user yes; undo = old v16 layer).
+- Open: feat/layer-family-updates cc08bb0a (GE 11.x -> 11-14 and Valve 11.0-2 -> 11.0-3 as updates; user keeps the Valve one) and
+  feat/layer-list-cleanup (Wine/Proton list: tabs, families, one row per layer, older builds, DroidDeck 12.8 recommended; preview
+  claude.ai/artifact/EmoUYJcbWNBXkX8nps6gtA) -> ONE combined test APK, install on the user's yes. Valve 11.0-3 rows get versionName
+  only after that app is released.
+- Lessons: (1) I ran `find / -maxdepth 6` under proot (~09:40 EST) - never a filesystem-wide find. (2) My memory/log times from
+  ~12:45 to ~14:00 were estimated and ran up to 1 h ahead; use `date` for every timestamp.
+
 ## 2026-11-24 11:30–11:45 EST — Idle-thread throttle switches on the device + Lab help title fix (feat/idle-throttle-toggles, row DEVICE-VISIBLE, fix CI running)
 - Installed 5a91cfa4 pubg APK on the Pocket FIT 11:29 EST (user yes; installed base.apk sha256 6f0dc1d1 == staged). User: "it's there now";
   screenshots 11:33: Lab game settings (DiRT Showdown) Advanced -> Idle-thread throttle pop-up with 8 switches (DirectX 7 off, rest on),

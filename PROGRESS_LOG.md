@@ -1,5 +1,22 @@
 # Star-Compose — Progress Log
 
+## 2026-11-23 19:00–19:10 EST — Sync CPU topology + named core picker (`feat/cpu-topology`, IN PROGRESS, nothing built)
+- Why: user wants Ludashi's "Sync CPU topology" (WINE_CPU_TOPOLOGY from the core pick) and a core picker that reads the device and
+  lists each core by its real name and top speed (Samsung's faster clocks too), reusing the device-info pop-up's data. Also: update the
+  Retroid Duo to the latest main and add the Duo (and the user's Fold) to the chip-name list.
+- Verified: core pickers = Lab CoresControl (DeckSettingsEditor.kt:2083), Classic CPUListView (ContainerDetailScreen/ShortcutsScreen),
+  Task Manager affinity (XServerDrawer.kt ~5543); device info = deviceinfo/DeviceInfo.kt cpu() + SocNames.kt; installed Wine layers
+  11.0-12.3/12.8/11.0-2 v16 ntdll.so contain WINE_CPU_TOPOLOGY (proton-wine system.c:859, formats N:list / pN / N).
+- Device data (cpuinfo CPU part + cpuinfo_max_freq): FIT SG8350P A520x2 2.27 / A720x3 3.15 / A720x2 2.96 / X4 3.30; Elite SM8750P
+  Oryon 0x51/0x001 x6 3.53 + x2 4.32; Duo CQ7790S (Dragonwing Q-7790) A520x3 1.84 / A720x4 2.40 / A720 2.80; user's Fold SM-F976U
+  (screenshots) SM8850 canoe 6 x 3.63 + 2 x 4.74 GHz (standard 8 Elite Gen 5 prime is lower = Samsung clock).
+- Bug: SocNames maps platform "sun" -> Snapdragon 8 Elite, so the Duo shows "Snapdragon 8 Elite family (CQ7790S)".
+- Duo: main a884ad61 standard (CI 45290962010, 4/4 green) staged `/sdcard/Download/Bannerlator-main-a884ad61.apk` sha256 2b0b7e9f…
+  (host == Duo), INSTALLED 19:06:10 EST (user: "update the duo to latest bannerlator"), base.apk 2b0b7e9f… == staged, vc108 3.2.1.
+  Duo display 0 had a Retroid FOTA "NoticeActivity" on top (left alone). Next: open BL on the Duo -> device info screenshot.
+- RESUME: worktree /root/src/Bannerlator-wt/cpu-topology; if the session dies during the Duo step: nothing running on the Duo besides
+  BL; bring Termux back on the Duo (am start com.termux/.app.TermuxActivity) and send peers "done".
+
 ## 2026-11-23 17:58–18:45 EST — Community profiles: Original + Discord shared catalog (`feat/community-catalog`, DEVICE-PROVEN on the FIT, MERGED main a884ad61)
 - Why: user made the Discord channel #bannerlator-osc-sharing (BannerHub server) for user layouts; wants them in the app next to
   Winlator's list, credited by Discord display name, one list with Original / Discord shared sections, preview + download as now,

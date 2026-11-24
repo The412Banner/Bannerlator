@@ -27,7 +27,8 @@
 /* Half-precision upscaler/CAS set (winlator/gen_shaders.sh -DBL_HALF=1). */
 #include "sgsr_half_frag.h"
 #include "sgsr_quality_half_frag.h"
-#include "nis_half_frag.h"
+#include "nis_luma_half_frag.h"
+#include "nis2_half_frag.h"
 #include "fsr_easu_half_frag.h"
 #include "fsr_rcas_half_frag.h"
 #include "cas_ffx_half_frag.h"
@@ -207,9 +208,13 @@ static VkDescriptorSetLayout g_dsl;
 static VkPipelineLayout g_pl;
 static VkDescriptorPool g_dpool;
 static VkSampler g_sampler;  /* linear, clamp-to-edge: what the X11 chain samples its targets with */
-enum { P_SGSR, P_SGSR_HQ, P_NIS, P_EASU, P_RCAS, P_CAS, P_COLOR, P_FXAA, P_TOON, P_HDR, P_NTSC, P_CRT, P_DEBAND, P_COUNT };
+enum { P_SGSR, P_SGSR_HQ, P_NIS, P_EASU, P_RCAS, P_CAS, P_COLOR, P_FXAA, P_TOON, P_HDR, P_NTSC, P_CRT, P_DEBAND, P_NIS_LUMA, P_COUNT };
 static VkPipeline g_pipe[P_COUNT];
 static struct fx_target g_t[2], g_mid; /* ping-pong pair + the EASU output (FSR only) */
+/* Half set: NIS = nis_luma prepass (scene rgb + luma in alpha, scene size) into g_nissrc, then
+ * nis2 gathers its luma from that alpha. Old set: nis.frag on the scene, P_NIS_LUMA unused. */
+static struct fx_target g_nissrc;
+static int g_nis2;
 /* The scene image belongs to vk_present; only its view + descriptor live here. */
 static struct { VkImage img; VkImageView view; VkDescriptorSet ds; int w, h; } g_scene;
 static uint32_t g_ntsc_frame;
@@ -355,7 +360,7 @@ static VkPipeline post_pipeline(VkShaderModule vert, const uint32_t *frag_code, 
 static void objects_destroy(void) {
     if (!g_dev) return;
     scene_release();
-    target_destroy(&g_t[0]); target_destroy(&g_t[1]); target_destroy(&g_mid);
+    target_destroy(&g_t[0]); target_destroy(&g_t[1]); target_destroy(&g_mid); target_destroy(&g_nissrc);
     for (int i = 0; i < P_COUNT; i++) { if (g_pipe[i]) g_vk.DestroyPipeline(g_dev, g_pipe[i], NULL); g_pipe[i] = VK_NULL_HANDLE; }
     if (g_dpool) g_vk.DestroyDescriptorPool(g_dev, g_dpool, NULL);
     if (g_pl) g_vk.DestroyPipelineLayout(g_dev, g_pl, NULL);
@@ -444,10 +449,12 @@ static int objects_ensure(void) {
      * "old" (the fp32 shaders, for A/B); same choice as the X11 renderer. */
     char shp[PROP_VALUE_MAX] = {0};
     const int half = !(__system_property_get("debug.bannerlator.upscale.shaders", shp) > 0 && strcmp(shp, "old") == 0);
+    g_nis2 = half;
     if (half) {
         MK(P_SGSR, sgsr_half_code, "sgsr_half");
         MK(P_SGSR_HQ, sgsr_quality_half_code, "sgsr_quality_half");
-        MK(P_NIS, nis_half_code, "nis_half");
+        MK(P_NIS, nis2_half_code, "nis2_half");
+        MK(P_NIS_LUMA, nis_luma_half_code, "nis_luma_half");
         MK(P_EASU, fsr_easu_half_code, "fsr_easu_half");
         MK(P_RCAS, fsr_rcas_half_code, "fsr_rcas_half");
         MK(P_CAS, cas_ffx_half_code, "cas_ffx_half");
@@ -539,7 +546,8 @@ VkImage vkp_effects_run(VkCommandBuffer cmd, VkImage scene, int scene_w, int sce
 
     if ((spatial || nfx) && objects_ensure() == 0 && scene_ensure(scene, scene_w, scene_h) == 0 &&
         target_ensure(&g_t[0], cw, ch, "chain") == 0 && (npasses < 2 || target_ensure(&g_t[1], cw, ch, "chain") == 0) &&
-        (!(spatial == 4 || spatial == 5) || target_ensure(&g_mid, cw, ch, "EASU") == 0)) {
+        (!(spatial == 4 || spatial == 5) || target_ensure(&g_mid, cw, ch, "EASU") == 0) &&
+        (!(spatial == 7 && g_nis2) || target_ensure(&g_nissrc, scene_w, scene_h, "NIS luma") == 0)) {
         /* `cur` = the image the next pass samples; `cur_ds` its descriptor. Every pass writes the
          * target that is not being read (the pair alternates; the scene is read only first). */
         VkDescriptorSet cur_ds;
@@ -560,7 +568,15 @@ VkImage vkp_effects_run(VkCommandBuffer cmd, VkImage scene, int scene_w, int sce
                 pc.vp[2] = (float)scene_w;        pc.vp[3] = (float)scene_h;
                 /* SGSR EdgeSharpness 0.5 (slider 0) .. 4.5 (slider 100); NIS takes the slider as is. */
                 pc.edge = spatial == 7 ? sharp01 : 0.5f + sharp01 * 4.0f;
-                pass(cmd, g_pipe[spatial == 3 ? P_SGSR : spatial == 8 ? P_SGSR_HQ : P_NIS], dst, g_scene.ds, &pc, sizeof(pc));
+                VkDescriptorSet src = g_scene.ds;
+                if (spatial == 7 && g_nis2) {
+                    /* NIS prepass: scene -> g_nissrc 1:1 (rgb + luma in alpha); only ndc is read. */
+                    struct pc_res pl = {0};
+                    SET_NDC(pl);
+                    pass(cmd, g_pipe[P_NIS_LUMA], &g_nissrc, g_scene.ds, &pl, sizeof(pl.ndc));
+                    src = g_nissrc.ds;
+                }
+                pass(cmd, g_pipe[spatial == 3 ? P_SGSR : spatial == 8 ? P_SGSR_HQ : P_NIS], dst, src, &pc, sizeof(pc));
             } else if (spatial == 6) {
                 /* Sharpen: RCAS fetches the scene 1:1 (outputSize = scene size) while the quad
                  * covers the chain target = nearest scale + sharpen, as the X11 renderer does. */

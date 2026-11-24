@@ -727,6 +727,9 @@ private:
     VkPipelineLayout  postPipeLayout    = VK_NULL_HANDLE;
     VkPipeline        sgsrPipeline      = VK_NULL_HANDLE;
     VkPipeline        nisPipeline       = VK_NULL_HANDLE; // NVIDIA Image Scaling (mode 7)
+    // Half set only: NIS prepass (nis_luma.frag, game rgb + luma in alpha) into nisSrc,
+    // which nisPipeline (nis2.frag) then gathers from. Null in the old set (nis.frag).
+    VkPipeline        nisLumaPipeline   = VK_NULL_HANDLE;
     VkPipeline        sgsrQualityPipeline = VK_NULL_HANDLE; // SGSR 1 edge-direction (mode 8)
     VkPipeline        easuPipeline      = VK_NULL_HANDLE;
     VkPipeline        rcasPipeline      = VK_NULL_HANDLE;
@@ -767,6 +770,14 @@ private:
     VkFramebuffer     midFB   = VK_NULL_HANDLE;
     VkDescriptorSet   midDS   = VK_NULL_HANDLE;
     int               midW = 0, midH = 0;
+
+    // NIS prepass output @ game resolution (half set): rgb = the composite, a = luma.
+    VkImage           nisSrcImg  = VK_NULL_HANDLE;
+    VkDeviceMemory    nisSrcMem  = VK_NULL_HANDLE;
+    VkImageView       nisSrcView = VK_NULL_HANDLE;
+    VkFramebuffer     nisSrcFB   = VK_NULL_HANDLE;
+    VkDescriptorSet   nisSrcDS   = VK_NULL_HANDLE;
+    int               nisSrcW = 0, nisSrcH = 0;
 
     // Effect-chain intermediates @ swapchain resolution. fx1 holds the scaled (or
     // composited) image fed into CAS/HDR; fx2 ping-pongs when both effects run.
@@ -858,6 +869,7 @@ private:
                             VkFramebuffer& fb, VkDescriptorSet& ds);
     bool ensureOffscreen(int w, int h);
     bool ensureMid(int w, int h);
+    bool ensureNisSrc(int w, int h);
     bool ensureFx1(int w, int h);
     bool ensureFx2(int w, int h);
     void recordUpscalePasses(VkCommandBuffer cb, uint32_t imgIdx,

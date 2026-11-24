@@ -43,10 +43,11 @@
 // Half-precision upscaler/CAS set (gen_shaders.sh -DBL_HALF=1).
 #include "sgsr_half_frag.h"
 #include "sgsr_quality_half_frag.h"
-#include "nis_half_frag.h"
 #include "fsr_easu_half_frag.h"
 #include "fsr_rcas_half_frag.h"
 #include "cas_ffx_half_frag.h"
+#include "nis_luma_half_frag.h"
+#include "nis2_half_frag.h"
 
 // Internal sentinel for upFrame.mode: high-quality supersampling downscale.
 // (Not a user-selectable upscalerMode; gated by the hqDownscale flag.)
@@ -129,11 +130,13 @@ VulkanRendererContext::~VulkanRendererContext() {
     // upscaler resources (DS freed back to winTexPool while it is still alive)
     destroyColorTarget(offscreenImg, offscreenMem, offscreenView, offscreenFB, offscreenDS);
     destroyColorTarget(midImg, midMem, midView, midFB, midDS);
+    destroyColorTarget(nisSrcImg, nisSrcMem, nisSrcView, nisSrcFB, nisSrcDS);
     destroyColorTarget(fx1Img, fx1Mem, fx1View, fx1FB, fx1DS);
     destroyColorTarget(fx2Img, fx2Mem, fx2View, fx2FB, fx2DS);
     if (sgsrPipeline      != VK_NULL_HANDLE) vk_.DestroyPipeline(device, sgsrPipeline, nullptr);
     if (sgsrQualityPipeline != VK_NULL_HANDLE) vk_.DestroyPipeline(device, sgsrQualityPipeline, nullptr);
     if (nisPipeline       != VK_NULL_HANDLE) vk_.DestroyPipeline(device, nisPipeline, nullptr);
+    if (nisLumaPipeline   != VK_NULL_HANDLE) vk_.DestroyPipeline(device, nisLumaPipeline, nullptr);
     if (easuPipeline      != VK_NULL_HANDLE) vk_.DestroyPipeline(device, easuPipeline, nullptr);
     if (rcasPipeline      != VK_NULL_HANDLE) vk_.DestroyPipeline(device, rcasPipeline, nullptr);
     if (downscalePipeline != VK_NULL_HANDLE) vk_.DestroyPipeline(device, downscalePipeline, nullptr);
@@ -756,6 +759,8 @@ void VulkanRendererContext::createPostPipelines() {
         __android_log_print(ANDROID_LOG_INFO, WLOG_TAG, "upscale shaders: %s",
             halfShaders_ ? "half precision (SGSR, SGSR HQ, NIS, FSR EASU+RCAS, CAS 5-tap)"
                          : "old fp32 (debug.bannerlator.upscale.shaders=old)");
+        if (halfShaders_)
+            __android_log_print(ANDROID_LOG_INFO, WLOG_TAG, "upscale shaders: NIS = luma prepass + gather pass");
     }
 #define UPSHADER(name) (halfShaders_ ? name##_half_code : name##_code), \
                        (halfShaders_ ? sizeof(name##_half_code) : sizeof(name##_code))
@@ -766,7 +771,14 @@ void VulkanRendererContext::createPostPipelines() {
     // SGSR Quality (mode 8): same single pass + push constants, edge-direction weights.
     sgsrQualityPipeline = createPostPipeline(UPSHADER(sgsr_quality), renderPass);
     // NIS NVScaler is single-pass and writes the swapchain directly -> renderPass.
-    nisPipeline  = createPostPipeline(UPSHADER(nis),      renderPass);
+    // NIS: the half set runs a game-res prepass (rgb + luma in alpha, offscreenRenderPass)
+    // and nis2 (9 gathers on that alpha instead of 36 fetches); the old set the single nis.frag.
+    if (halfShaders_) {
+        nisLumaPipeline = createPostPipeline(nis_luma_half_code, sizeof(nis_luma_half_code), offscreenRenderPass);
+        nisPipeline     = createPostPipeline(nis2_half_code,     sizeof(nis2_half_code),     renderPass);
+    } else {
+        nisPipeline     = createPostPipeline(nis_code,           sizeof(nis_code),           renderPass);
+    }
     rcasPipeline = createPostPipeline(UPSHADER(fsr_rcas), renderPass);
 #undef UPSHADER
     // Supersampling downscale writes the swapchain too.
@@ -1676,6 +1688,19 @@ bool VulkanRendererContext::ensureMid(int w, int h) {
     return true;
 }
 
+bool VulkanRendererContext::ensureNisSrc(int w, int h) {
+    if (nisSrcImg!=VK_NULL_HANDLE && nisSrcW==w && nisSrcH==h) return true;
+    if (w<=0||h<=0) return false;
+    if (nisSrcImg!=VK_NULL_HANDLE) { vk_.DeviceWaitIdle(device); destroyColorTarget(nisSrcImg,nisSrcMem,nisSrcView,nisSrcFB,nisSrcDS); }
+    nisSrcW=nisSrcH=0;
+    if (!createColorTarget(w,h,nisSrcImg,nisSrcMem,nisSrcView,nisSrcFB,nisSrcDS)) {
+        RLOG_E("ensureNisSrc: createColorTarget %dx%d failed", w, h);
+        return false;
+    }
+    nisSrcW=w; nisSrcH=h;
+    return true;
+}
+
 bool VulkanRendererContext::ensureFx1(int w, int h) {
     if (fx1Img!=VK_NULL_HANDLE && fx1W==w && fx1H==h) return true;
     if (w<=0||h<=0) return false;
@@ -2374,7 +2399,26 @@ void VulkanRendererContext::recordUpscalePasses(VkCommandBuffer cb, uint32_t img
             else if (upFrame.mode==7) { pcd=&upFrame.nisPC;  pcsz=sizeof(upFrame.nisPC);  }
             else if (upFrame.mode==6) { pcd=&upFrame.rcasPC; pcsz=sizeof(upFrame.rcasPC); }
             else                      { pcd=&upFrame.dsPC;   pcsz=sizeof(upFrame.dsPC);   }
-            postPass(pl, stFB, scaleFinal, offscreenDS, pcd, pcsz);
+            VkDescriptorSet src = offscreenDS;
+            if (upFrame.mode==7 && nisLumaPipeline!=VK_NULL_HANDLE) {
+                // NIS prepass: offscreen -> nisSrc (same size, rgb + luma in alpha); nis2
+                // gathers its 6x6 luma support from that alpha.
+                VkRenderPassBeginInfo rpi{}; rpi.sType=VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+                rpi.renderPass=offscreenRenderPass; rpi.framebuffer=nisSrcFB;
+                rpi.renderArea={{0,0},{(uint32_t)nisSrcW,(uint32_t)nisSrcH}};
+                rpi.clearValueCount=1; rpi.pClearValues=&blk;
+                vk_.CmdBeginRenderPass(cb,&rpi,VK_SUBPASS_CONTENTS_INLINE);
+                VkViewport lvp{0,0,(float)nisSrcW,(float)nisSrcH,0,1}; vk_.CmdSetViewport(cb,0,1,&lvp);
+                VkRect2D lsc{{0,0},{(uint32_t)nisSrcW,(uint32_t)nisSrcH}}; vk_.CmdSetScissor(cb,0,1,&lsc);
+                vk_.CmdBindPipeline(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,nisLumaPipeline);
+                vk_.CmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,postPipeLayout,0,1,&offscreenDS,0,nullptr);
+                const float fullNdc[4]={-1.f,-1.f,1.f,1.f};
+                vk_.CmdPushConstants(cb,postPipeLayout,VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(fullNdc),fullNdc);
+                vk_.CmdDraw(cb,4,1,0,0);
+                vk_.CmdEndRenderPass(cb);
+                src = nisSrcDS;
+            }
+            postPass(pl, stFB, scaleFinal, src, pcd, pcsz);
         } else {
             // FSR: EASU offscreen -> mid (at output res, mid viewport), then RCAS mid -> stFB.
             VkRenderPassBeginInfo rpi{}; rpi.sType=VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -2511,6 +2555,7 @@ void VulkanRendererContext::planUpscaleFrame() {
             }
             bool ok = (outW>0 && outH>0) && ensureOffscreen(containerWidth,containerHeight);
             if (ok && (mode==4||mode==5)) ok = ensureMid(outW,outH);
+            if (ok && mode==7 && nisLumaPipeline!=VK_NULL_HANDLE) ok = ensureNisSrc(containerWidth,containerHeight);
             if (ok) {
                 float nx0=(float)outX/scW*2.f-1.f, ny0=(float)outY/scH*2.f-1.f;
                 float nx1=(float)(outX+outW)/scW*2.f-1.f, ny1=(float)(outY+outH)/scH*2.f-1.f;

@@ -1,5 +1,50 @@
 # Star-Compose — Progress Log
 
+## 2026-11-24 09:36–11:32 EST — Per-API idle-thread throttle switches (`feat/idle-throttle-toggles`, CI GREEN, APK STAGED, NOT device-tested)
+- Why: user 11-24 ~09:20 EST: "can we also make it a menu popup with per API toggles in advanced tab of game shortcut settings and
+  container settings? ... also include a ? button to explain what it is and does". Wine layers v17 (The412Banner/proton-wine) carry
+  GameNative's Sleep(0) throttle and read WINE_SLEEP0_THROTTLE_SKIP = APIs never throttled (dx7,dx8,dx9,dx10,dx11,dx12,gl,vk or
+  "none"; unset = "dx7"). AIO DirectDraw 2780 -> 1460 fps (FIT) / 9800 -> 1700 (Elite) with the throttle on.
+  Branch off feat/fg-engine-switch 9527099f (the build on the test device), worktree /root/src/Bannerlator-wt/idle-throttle.
+- Built 5a91cfa4:
+  - core/IdleThrottle.java: parse/join (tag order, "none" = empty), resolve game -> container -> "dx7", user-variable check,
+    editor list form, names. Stored keys: container data `sleep0ThrottleSkip` (default "dx7", written only when changed),
+    shortcut extra `sleep0ThrottleSkip` (absent = container's). Community config export carries it; Lab "N settings for this game"
+    counts it.
+  - Launch (XServerDisplayActivity.setupXEnvironment, after the Sync CPU topology env, after every env merge):
+    WINE_SLEEP0_THROTTLE_SKIP=<resolved>, unless the user's env vars have WINE_SLEEP0_THROTTLE_SKIP or WINE_SLEEP0_THROTTLE.
+    Session line (logcat tag XServerDisplayActivity + Wine log): `idle throttle: WINE_SLEEP0_THROTTLE_SKIP=dx7 (container)` /
+    `(this game)` / `idle throttle: <VAR>=<value> (yours, kept)`.
+  - Classic: container editor Advanced tab and game editor Advanced tab, Processor Affinity box, under Sync CPU topology: row
+    "Idle-thread throttle" (read-only field, value "Off: DX7" / "On for all" / "Off for all"; game without own value =
+    "Container default (Off: DX7)") + "?". Tap = pop-up: 8 switches DirectX 7..12 / OpenGL / Vulkan (on = throttled), "?" in the
+    title (HelpDialog), Save / Cancel, game with own value: "Use container setting". Saved with the editor's own Save, as the other rows.
+  - Lab (SimpleClassicEditor): registry row performance.idleThrottle (Control.Checklist with switches/labels/summary/help) placed
+    after Sync CPU topology in both Advanced tabs; row "?" via LabFieldHelp. Lab pop-up LabSwitchListDialog: title + "?" (touch +
+    D-pad focusable) + ✕, 8 LabToolRow switches, game with own value: "Use container setting", Cancel / Save, tappable hints
+    A Switch / B Close; controller: A switch, X save, Start ?, B close, focus starts on DirectX 7.
+  - Deck/XMB editors get the same registry row (Material ChecklistDialog now takes the control: switches, labels, "?", lead line;
+    the Vulkan extensions list keeps its old text and "All on" line).
+  - Strings: values/strings.xml (idle_throttle*, help_idle_throttle). Lab L() strings fall back to English (strings_lab.xml
+    already out of date on the base; not regenerated). No other locale touched.
+  - IdleThrottleTest 8 tests: run locally with javac + cached JUnit 4.13.2: OK (CI runs no unit tests).
+- CI run: build-artifacts 45419830157 (dispatched 09:57 EST, done 10:07 EST), headSha 5a91cfa4 == pushed, 4/4 jobs success
+  (antutu, ludashi, pubg, standard). pubg: BUILD SUCCESSFUL in 7m 54s; non-success steps = skipped only (main-only cache saves +
+  cached natives: JavaSteam/LSFG/libblsteam/Xbox/libfakeinput/PulseAudio). Warnings in new code: Icons.Filled.Help deprecation
+  only (same icon the neighbouring rows use).
+- Staged 11:29 EST: `/sdcard/Download/Bannerlator-idle-throttle-5a91cfa4-pubg.apk` 602851697 B, sha256
+  6f0dc1d1b0129de6458c82487e4c7908c31a86b2394fcef28d614da877f0181c (host == /sdcard == device via rootsh), com.tencent.ig vc108 3.2.1,
+  apksigner verifies, signer SHA-256 a40da80a... == staged base Bannerlator-fg-engine-switch-76f0994b-pubg.apk. Artifact zip sha256
+  2c139403... == GitHub's artifact digest. New code in classes5/6/7.dex (launch line, Lab dialog, registry row). Download note:
+  `gh run download` died with "connection reset by peer" (10:07 EST); the second try (curl on the signed URL with resume) worked.
+  NOT installed by me (the coordinator does the install).
+- Device test: NOT device-tested.
+- Open/Next: user installs (ask first). Test: container settings -> Advanced -> Idle-thread throttle (Classic: Processor Affinity
+  box; Lab: Advanced tab, after Sync CPU topology) -> switch DirectX 7 on/off, "?" text, Save; game settings -> same row ->
+  own value, then "Use container setting". Launch proof: logcat `idle throttle: WINE_SLEEP0_THROTTLE_SKIP=...`; Wine log (v17
+  layer) `wine: Sleep(0) throttle off in this process: ...` / `... on in this process: ...` once per game when it first engages.
+  AIO DirectDraw with DX7 off ~2780 fps (FIT), DX7 on ~1460. Not merged, no release.
+
 ## 2026-11-24 04:33–05:00 EST — In-game frame-gen engine switch (`feat/fg-engine-switch`, CI GREEN, APK STAGED, NOT device-tested)
 - Why: user 11-23: "add the ability to switch frame generation types while in game on a separate branch ... between win-fg, wfg and lsfg
   native". Before: the engine was fixed per session (only level/flow/model live); a game started with FG Off could not turn it on.

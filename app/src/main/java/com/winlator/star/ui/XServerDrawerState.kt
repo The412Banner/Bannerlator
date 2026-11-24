@@ -495,6 +495,13 @@ object XServerDrawerState {
     private val _preferBigCores = MutableStateFlow(false)
     val preferBigCores: StateFlow<Boolean> = _preferBigCores
 
+    // This game's core pick and Sync CPU topology (its shortcut's cpuList / syncCpuTopology), shown on the
+    // in-game Performance page. Saved to the shortcut; the game reads them at its next launch.
+    private val _gameCpuList = MutableStateFlow("")
+    val gameCpuList: StateFlow<String> = _gameCpuList
+    private val _gameSyncTopology = MutableStateFlow(false)
+    val gameSyncTopology: StateFlow<Boolean> = _gameSyncTopology
+
     // Callbacks wired by XServerDisplayActivity.
     // @JvmField exposes these as public fields so Java can assign them directly.
     // Runnable avoids the kotlin.Unit return-type mismatch for Java void lambdas.
@@ -597,6 +604,8 @@ object XServerDrawerState {
     @JvmField var onSustainedPerfModeChange: Runnable? = null
     @JvmField var onPerfPriorityBoostChange: Runnable? = null
     @JvmField var onPreferBigCoresChange:    Runnable? = null
+    @JvmField var onGameCoresChange: java.util.function.Consumer<String>? = null
+    @JvmField var onGameSyncTopologyChange: java.util.function.Consumer<Boolean>? = null
 
     var onCursorExpandedChanged: ((Boolean) -> Unit)? = null
 
@@ -698,6 +707,8 @@ object XServerDrawerState {
     fun setSustainedPerfMode(v: Boolean) { _sustainedPerfMode.value = v }
     fun setPerfPriorityBoost(v: Boolean) { _perfPriorityBoost.value = v }
     fun setPreferBigCores(v: Boolean)    { _preferBigCores.value = v }
+    fun setGameCpuList(v: String)        { _gameCpuList.value = v }
+    fun setGameSyncTopology(v: Boolean)  { _gameSyncTopology.value = v }
 
     // ── Two-way sync + per-game override tracking (unified for all 9 perf keys) ──
     // overriddenKeys = the perf keys the running game overrides per-game (shortcut.hasExtra at launch,
@@ -844,6 +855,8 @@ object XServerDrawerState {
         _sustainedPerfMode.value = false
         _perfPriorityBoost.value = false
         _preferBigCores.value = false
+        _gameCpuList.value = ""
+        _gameSyncTopology.value = false
         perfSyncJob?.cancel(); perfSyncJob = null
         _overriddenKeys.value = emptySet()
         _rootToggles.value = emptyMap()
@@ -873,6 +886,8 @@ object XServerDrawerState {
         onSustainedPerfModeChange = null
         onPerfPriorityBoostChange = null
         onPreferBigCoresChange = null
+        onGameCoresChange = null
+        onGameSyncTopologyChange = null
         onCursorExpandedChanged = null
     }
 }

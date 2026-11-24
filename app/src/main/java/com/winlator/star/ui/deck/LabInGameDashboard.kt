@@ -110,6 +110,9 @@ internal fun LabPerformanceDashboardDialog(state: XServerDrawerState, onDismiss:
     val sustained by state.sustainedPerfMode.collectAsState()
     val priority by state.perfPriorityBoost.collectAsState()
     val bigCores by state.preferBigCores.collectAsState()
+    val gameCores by state.gameCpuList.collectAsState()
+    val gameTopology by state.gameSyncTopology.collectAsState()
+    var pickGameCores by remember { mutableStateOf(false) }
 
     // Same save note the Lab Performance page shows for the dashboard.
     val fromShortcut by DeckInGameState.launchedFromShortcut.collectAsState()
@@ -330,6 +333,23 @@ internal fun LabPerformanceDashboardDialog(state: XServerDrawerState, onDismiss:
                 onReset = { state.onResetPerfKey?.accept("preferBigCores") },
             ) { setBig(it) }
             IgDivider()
+            // This game's core pick and Sync CPU topology: saved to the game, read at its next launch.
+            if (fromShortcut && gameCores.isNotEmpty()) {
+                IgRow(
+                    L("Game cores"),
+                    hint = com.winlator.star.ui.deck.settings.coresLabel(gameCores),
+                    note = L("Next launch"),
+                    scopes = listOf(SaveScope.GAME),
+                ) { IgButton(L("Change"), null, { pickGameCores = true }) }
+                IgDivider()
+                IgToggleRow(
+                    L("Sync CPU topology"),
+                    checked = gameTopology,
+                    note = L("Next launch"),
+                    scopes = listOf(SaveScope.GAME),
+                ) { on -> state.setGameSyncTopology(on); state.onGameSyncTopologyChange?.accept(on) }
+                IgDivider()
+            }
             // GPU pin: usable without root on Adreno (KGSL turbo), upgrades to sysfs on root.
             val gpuKey = PerfRootApplier.KEY_GPU_CLOCK_LOCK
             val gpuEnabled = granted || PerfGpuTurbo.isSupported
@@ -448,6 +468,13 @@ internal fun LabPerformanceDashboardDialog(state: XServerDrawerState, onDismiss:
     }
 
     // ── acknowledgement dialogs ──
+    if (pickGameCores) {
+        com.winlator.star.ui.simple.LabSheetDialog(title = L("Cores the game may use"), onDismiss = { pickGameCores = false }) {
+            com.winlator.star.ui.deck.settings.CoresControl(gameCores, enabled = true) { v ->
+                state.setGameCpuList(v); state.onGameCoresChange?.accept(v)
+            }
+        }
+    }
     pendingDanger?.let { pd ->
         LabDashDisclaimerDialog(
             title = pd.label,

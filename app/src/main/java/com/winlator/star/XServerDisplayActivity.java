@@ -2670,6 +2670,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
             applyPerfKeyLive(key, on);
             persistPerfToggle(key, on);
         };
+        // In-game Performance page: this game's core pick + Sync CPU topology, saved to its shortcut (next launch).
+        state.onGameCoresChange = v -> {
+            if (shortcut == null || v == null || v.isEmpty()) return;
+            shortcut.putExtra("cpuList", v);
+            shortcut.saveData();
+        };
+        state.onGameSyncTopologyChange = on -> {
+            if (shortcut == null) return;
+            shortcut.putExtra("syncCpuTopology", on ? "1" : "0");
+            shortcut.saveData();
+        };
         state.onResetPerfKey = key -> resetPerfKey(key);
         state.onResetAllPerf = this::resetAllPerfOverrides;
         state.onFreeMemory = () -> com.winlator.star.perf.PerfRootApplier.INSTANCE.freeMemoryNow();
@@ -3148,6 +3159,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if ("1".equals(topo) || "0".equals(topo)) syncTopology = "1".equals(topo);
         }
         wineCpuTopology = syncTopology ? cpuTopologyValue(taskAffinityMask) : "";
+        updateHudGameCores();
+        if (shortcut != null) {
+            XServerDrawerState.INSTANCE.setGameCpuList(shortcut.getExtra("cpuList", container.getCPUList(true)));
+            XServerDrawerState.INSTANCE.setGameSyncTopology(syncTopology);
+        }
 
         // Determine the class name for the startup workarounds
         String wmClass = shortcut != null ? shortcut.getExtra("wmClass", "") : "";
@@ -9494,6 +9510,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
             Log.w("XServerDisplayActivity", "game folder for the xinput check", t);
         }
         return dirs;
+    }
+
+    /** The HUD greys out the per-core rows of cores the game is not using; nothing is greyed when it uses them all. */
+    private void updateHudGameCores() {
+        if (fusionHud == null) return;
+        int all = (1 << Math.min(16, com.winlator.star.deviceinfo.CpuCores.INSTANCE.count())) - 1;
+        int mask = taskAffinityMask & 0xFFFF;
+        fusionHud.setGameCores(mask == 0 || (mask & all) == all ? 0 : mask);
     }
 
     /** "<count>:<core>,<core>,..." for WINE_CPU_TOPOLOGY from an affinity mask (bit n = core n); empty for no cores. */
@@ -16830,6 +16854,7 @@ return true;
                 }
                 // ...AND re-pin the ALREADY-RUNNING guest tree so the current game moves now.
                 reapplyBigCoresToRunningGuest(on);
+                updateHudGameCores();
                 // Keep the game pinned against later-spawned threads while Prefer Big Cores is ON: point the
                 // drift checker at the game exe + big mask so it resolves the real Linux pid and re-pins
                 // host-side on thread growth. OFF -> clear the target so the checker stops maintaining it.
@@ -18485,6 +18510,7 @@ return true;
         // session and on one whose spoof never got out, so the GPU row is what it always was.
         fusionHud.setGpuSpoofName(deliveredGpuSpoofName);
         fusionHud.setDisplayServer(hudDisplayServerLabel());
+        updateHudGameCores();
         fusionHud.setHdrState(hudHdrCode());
         // Mega stack-layer versions: Proton/Wine, the graphics-driver wrapper package, and DX wrapper.
         if (wineInfo != null) fusionHud.setWineVersion(wineInfo.toString());

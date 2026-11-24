@@ -99,6 +99,7 @@ class FusionHudView(
     private var showClockTime = true   // subtle corner/footer clock, available in EVERY size
     // Mega-only rows
     private var showPerCore = true
+    private var gameCoreMask = 0
     private var showSwap = true
     private var showNet = true
     private var showResolution = true
@@ -139,6 +140,7 @@ class FusionHudView(
     private val colGraph = 0xFF5EE08A.toInt()
     private val colValue = 0xFFF2F5F9.toInt()
     private val colDim = 0xFF9AA4B2.toInt()
+    private val colOff = 0xFF5C6370.toInt()   // a core the game is not using
     private val colLo = 0xFFE4E8EE.toInt()
     private val colDisp = 0xFF4DD0E1.toInt()   // display server (X11 / Wayland)
     private val colHdr = 0xFFFFD54F.toInt()    // HDR on screen
@@ -195,6 +197,8 @@ class FusionHudView(
      *  in place of the real model, marked so it can't be read as the chip that is really rendering. */
     fun setGpuSpoofName(s: String?) { gpuSpoofName = s ?: ""; post { rebuildAndInvalidate() } }
     fun setDisplayServer(s: String?) { displayServer = s ?: ""; post { rebuildAndInvalidate() } }
+    /** The cores the game may use (bit n = core n); 0 = all. Per-core rows of other cores are drawn greyed out. */
+    fun setGameCores(mask: Int) { gameCoreMask = mask; post { rebuildAndInvalidate() } }
     /** [FusionHdr] code; [FusionHdr.NONE] (the default) draws no HDR line anywhere. Any thread. */
     fun setHdrState(state: Int) {
         val v = if (state in FusionHdr.ON..FusionHdr.NOT_ON_THIS_SCREEN) state else FusionHdr.NONE
@@ -958,7 +962,10 @@ class FusionHudView(
                 v += numUnit(if (i < pct.size && pct[i] >= 0) pct[i].toString() else null, "%", rowPx, unitPx)
                 v += gap(unitPx)
                 v += numUnit(if (i < clk.size && clk[i] > 0) clk[i].toString() else null, "MHz", rowPx, unitPx)
-                left.add(HudRow(Span("C$i", colCpu, rowPx), v))
+                // Not one of the game's cores (core pick / Prefer big cores): same row, greyed out.
+                val off = gameCoreMask != 0 && (gameCoreMask shr i) and 1 == 0
+                if (off) left.add(HudRow(Span("C$i", colOff, rowPx), v.map { Span(it.text, colOff, it.sizePx) }))
+                else left.add(HudRow(Span("C$i", colCpu, rowPx), v))
             }
         }
 

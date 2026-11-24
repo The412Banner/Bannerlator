@@ -104,6 +104,10 @@ fun PerformanceDashboardDialog(state: XServerDrawerState, onDismiss: () -> Unit)
     val sustained by state.sustainedPerfMode.collectAsState()
     val priority by state.perfPriorityBoost.collectAsState()
     val bigCores by state.preferBigCores.collectAsState()
+    val gameCores by state.gameCpuList.collectAsState()
+    val gameTopology by state.gameSyncTopology.collectAsState()
+    val fromShortcut by com.winlator.star.ui.deck.DeckInGameState.launchedFromShortcut.collectAsState()
+    var pickGameCores by remember { mutableStateOf(false) }
 
     var pendingDanger by remember { mutableStateOf<PendingDanger?>(null) }
     var showGrantGate by remember { mutableStateOf(false) }
@@ -356,6 +360,23 @@ fun PerformanceDashboardDialog(state: XServerDrawerState, onDismiss: () -> Unit)
                             onReset = { state.onResetPerfKey?.accept("preferBigCores") },
                         ) { setBig(it) }
                         Divider()
+                        // This game's core pick and Sync CPU topology: saved to the game, read at its next launch.
+                        if (fromShortcut && gameCores.isNotEmpty()) {
+                            ActionRowLocal(
+                                "Game cores",
+                                com.winlator.star.ui.deck.settings.coresLabel(gameCores) + " · next launch",
+                                button = "Change",
+                            ) { pickGameCores = true }
+                            Divider()
+                            ToggleRowLocal(
+                                "Sync CPU topology",
+                                "Windows sees only the game's cores · next launch",
+                                checked = gameTopology, enabled = true, overridden = false,
+                                onInfo = { info = "Sync CPU topology" to "Shows the game only the cores it may use, so it starts the right number of threads. Saved to this game; applies the next time it starts." },
+                                onReset = {},
+                            ) { on -> state.setGameSyncTopology(on); state.onGameSyncTopologyChange?.accept(on) }
+                            Divider()
+                        }
                         // GPU pin: usable without root on Adreno (KGSL turbo), upgrades to sysfs on root.
                         val gpuKey = PerfRootApplier.KEY_GPU_CLOCK_LOCK
                         val gpuEnabled = granted || PerfGpuTurbo.isSupported
@@ -495,6 +516,18 @@ fun PerformanceDashboardDialog(state: XServerDrawerState, onDismiss: () -> Unit)
             confirmLabel = "Grant Root",
             onConfirm = { showGrantGate = false; scope.launch { RootManager.requestGrant() } },
             onDismiss = { showGrantGate = false },
+        )
+    }
+    if (pickGameCores) {
+        AlertDialog(
+            onDismissRequest = { pickGameCores = false },
+            confirmButton = { TextButton(onClick = { pickGameCores = false }) { Text("Done") } },
+            title = { Text("Cores the game may use") },
+            text = {
+                com.winlator.star.ui.deck.settings.CoresControl(gameCores, enabled = true) { v ->
+                    state.setGameCpuList(v); state.onGameCoresChange?.accept(v)
+                }
+            },
         )
     }
     info?.let { (t, b) -> PerfInfoDialog(t, b) { info = null } }
@@ -721,7 +754,7 @@ private fun RootToggle(
 }
 
 @Composable
-private fun ActionRowLocal(label: String, sub: String, onClick: () -> Unit) {
+private fun ActionRowLocal(label: String, sub: String, button: String = "Run", onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -734,7 +767,7 @@ private fun ActionRowLocal(label: String, sub: String, onClick: () -> Unit) {
         Box(
             Modifier.clip(RoundedCornerShape(9.dp)).background(cs.primary)
                 .padding(horizontal = 13.dp, vertical = 7.dp),
-        ) { Text("Run", color = cs.onPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
+        ) { Text(button, color = cs.onPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
     }
 }
 

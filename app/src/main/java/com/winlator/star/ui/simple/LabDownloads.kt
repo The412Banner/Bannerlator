@@ -27,7 +27,7 @@ import kotlinx.coroutines.flow.first
  * from, and reading a setting's list again after a download (the reloads Deck's download sheets trigger).
  */
 internal object LabDownloads {
-    private const val WINE = "windows.wineVersion"
+    const val WINE = "windows.wineVersion"
     private const val BOX64 = "performance.box64Version"
     private const val FEX = "performance.fexVersion"
     private const val D7VK = "graphics.dx.d7vkVersion"
@@ -52,11 +52,13 @@ internal object LabDownloads {
     }
 
     /**
-     * The component type whose full Lab download list [id] opens instead of the repository picker: Box64EC comes from the
-     * component catalog (the same list as Translator downloads), which the repository picker doesn't offer.
+     * The component types whose full Lab download list [id] opens instead of the repository picker: Box64EC comes from the
+     * component catalog (the same list as Translator downloads), which the repository picker doesn't offer; Wine / Proton
+     * opens the grouped layer list (LabLayerPicker.kt).
      */
-    fun catalogTypeFor(id: String): com.winlator.star.contents.ContentProfile.ContentType? = when (id) {
-        BOX64EC -> com.winlator.star.contents.ContentProfile.ContentType.CONTENT_TYPE_BOX64EC
+    fun catalogTypesFor(id: String): List<com.winlator.star.contents.ContentProfile.ContentType>? = when (id) {
+        BOX64EC -> listOf(com.winlator.star.contents.ContentProfile.ContentType.CONTENT_TYPE_BOX64EC)
+        WINE -> com.winlator.star.contents.LAYER_TYPES
         else -> null
     }
 

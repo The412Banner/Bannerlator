@@ -20,6 +20,7 @@ import com.winlator.star.contentdialog.DXVKConfigDialog
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.contents.WrapperManager
+import com.winlator.star.contents.toInstalledLayer
 import com.winlator.star.core.AppUtils
 import com.winlator.star.core.ControllerIdentity
 import com.winlator.star.core.DInputVibration
@@ -99,6 +100,9 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
 
     var wineVersionEntries by mutableStateOf(emptyList<String>()); private set
     var selectedWineVersion by mutableStateOf("")
+    /** The installed Wine / Proton layers for the grouped picker, and (entry, short label) in its order. */
+    var wineLayers by mutableStateOf(emptyList<com.winlator.star.container.LayerList.Installed>()); private set
+    var wineVersionChoices by mutableStateOf(emptyList<Pair<String, String>>()); private set
 
     // Whether the given wine/Proton layer has xrandr compiled in — i.e. can actually deliver the
     // in-game refresh unlock. The editor uses this to warn under the "In-game refresh rate" control
@@ -555,6 +559,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         for (p in contentsManager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_PROTON))
             wineList.add(ContentsManager.getEntryName(p))
         wineVersionEntries = wineList
+        loadWineLayers()
 
         // Bundled entries + user-imported wrappers (issue #132 Step 2). Built via the SHARED
         // WrapperManager.driverEntries helper so this list and the ShortcutsScreen one can never
@@ -1179,6 +1184,15 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         for (p in contentsManager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_PROTON))
             wineList.add(ContentsManager.getEntryName(p))
         wineVersionEntries = wineList
+        loadWineLayers()
+    }
+
+    private fun loadWineLayers() {
+        val layers = com.winlator.star.contents.LAYER_TYPES.flatMap { t -> contentsManager.getProfiles(t).orEmpty() }.mapNotNull { it.toInstalledLayer() }
+        wineLayers = layers
+        val choices = com.winlator.star.container.LayerList.installedChoices(layers, com.winlator.star.contents.cachedLayerCatalog())
+        // Entries the grouping doesn't know keep their own name, at the end.
+        wineVersionChoices = choices + wineVersionEntries.filter { e -> choices.none { it.first == e } }.map { it to it }
     }
 
     fun refreshBox64Versions() {

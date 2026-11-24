@@ -44,6 +44,12 @@ internal fun LabContentDownloadSheet(
     onContentChanged: () -> Unit,
     inUseKey: String? = null,
 ) {
+    // Wine / Proton: the grouped layer list (LabLayerPicker.kt).
+    if (contentTypes.isNotEmpty() && contentTypes.all { it == ContentProfile.ContentType.CONTENT_TYPE_WINE || it == ContentProfile.ContentType.CONTENT_TYPE_PROTON }) {
+        val wineOnly = contentTypes.all { it == ContentProfile.ContentType.CONTENT_TYPE_WINE }
+        LayerDownloadDialog(onDismiss, onContentChanged, if (wineOnly) com.winlator.star.container.LayerList.Tab.WINE else com.winlator.star.container.LayerList.Tab.PROTON)
+        return
+    }
     val context = LocalContext.current
     val cm = remember { ContentsManager(context) }
     var profiles by remember { mutableStateOf<List<ContentProfile>>(emptyList()) }

@@ -120,6 +120,7 @@ public class ContentsManager {
                     remoteProfile.verCode = object.getInt("verCode");
                     String versionName = object.optString("versionName", "");
                     remoteProfile.versionName = versionName.isEmpty() ? null : versionName;
+                    remoteProfile.recommended = object.optBoolean("recommended", false);
                     remoteProfiles.add(remoteProfile);
                 } catch (JSONException e) {
                     e.printStackTrace();

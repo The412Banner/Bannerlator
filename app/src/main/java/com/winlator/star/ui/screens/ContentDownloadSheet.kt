@@ -89,8 +89,16 @@ fun ContentDownloadSheet(
     onContentChanged: () -> Unit,
     inUseKey: String? = null,
 ) {
+    // Wine / Proton: the grouped layer list (ui/simple/LabLayerPicker.kt), in every style.
+    if (contentTypes.isNotEmpty() && contentTypes.all { it == ContentProfile.ContentType.CONTENT_TYPE_WINE || it == ContentProfile.ContentType.CONTENT_TYPE_PROTON }) {
+        val wineOnly = contentTypes.all { it == ContentProfile.ContentType.CONTENT_TYPE_WINE }
+        com.winlator.star.ui.simple.LayerDownloadDialog(onDismiss, onContentChanged, if (wineOnly) com.winlator.star.container.LayerList.Tab.WINE else com.winlator.star.container.LayerList.Tab.PROTON)
+        return
+    }
     val context = LocalContext.current
     val cm = remember { ContentsManager(context) }
+    // The landscape rail's Wine and Proton open the grouped layer list over the sheet.
+    var layerListTab by remember { mutableStateOf<com.winlator.star.container.LayerList.Tab?>(null) }
 
     // Landscape turns the sheet into a master-detail "WIN Components" browser: the left rail lists ALL
     // installable component categories (see RAIL_TYPES) and the passed contentTypes only decides which
@@ -322,6 +330,14 @@ fun ContentDownloadSheet(
     }
     val multiType = contentTypes.size > 1
 
+    layerListTab?.let { t ->
+        com.winlator.star.ui.simple.LayerDownloadDialog(
+            onDismiss = { layerListTab = null },
+            onContentChanged = { loadProfiles(cm, effectiveTypes) { profiles = it }; onContentChanged() },
+            startTab = t,
+        )
+    }
+
     if (isLandscape) {
         // A default ModalBottomSheet is too short in landscape to give the rail + detail pane room, so
         // the landscape layout is a full-height Dialog (same usePlatformDefaultWidth=false idiom used by
@@ -379,7 +395,13 @@ fun ContentDownloadSheet(
                                 gpuSelected = gpuDriversSelected,
                                 countFor = { t -> profiles.count { it.type == t } },
                                 gpuDriverCount = adrenoDriverCount,
-                                onSelectType = { selectedType = it; gpuDriversSelected = false },
+                                onSelectType = {
+                                    when (it) {
+                                        ContentProfile.ContentType.CONTENT_TYPE_WINE -> layerListTab = com.winlator.star.container.LayerList.Tab.WINE
+                                        ContentProfile.ContentType.CONTENT_TYPE_PROTON -> layerListTab = com.winlator.star.container.LayerList.Tab.PROTON
+                                        else -> { selectedType = it; gpuDriversSelected = false }
+                                    }
+                                },
                                 onSelectGpu = { gpuDriversSelected = true },
                             )
                             Box(Modifier.width(1.dp).fillMaxHeight().background(cs.outline))

@@ -841,6 +841,19 @@ internal fun SimpleClassicEditor(
 
     // ── Dialogs (the same ones the other Simple editor uses) ──
     pickerFor?.let { def ->
+        val vm = env.vm
+        if (def.id == LabDownloads.WINE && vm != null) {
+            // The installed Wine / Proton layers, grouped (LabLayerPicker.kt).
+            com.winlator.star.ui.simple.LayerInstalledDialog(
+                installed = vm.wineLayers,
+                current = source.value(def),
+                onPick = { v -> pickerFor = null; pick(def, v) },
+                onDismiss = { pickerFor = null },
+                onGetMore = { pickerFor = null; downloadFor = def },
+                onChanged = { vm.refreshWineVersions() },
+            )
+            return@let
+        }
         val c = def.control(env, values)
         SimplePicker(
             title = (lines.firstOrNull { it is RSet && it.def.id == def.id } as? RSet)?.label ?: def.label,
@@ -868,10 +881,10 @@ internal fun SimpleClassicEditor(
                 }
             }
         }
-        val catalogType = LabDownloads.catalogTypeFor(def.id)
+        val catalogTypes = LabDownloads.catalogTypesFor(def.id)
         if (types == null) downloadFor = null
-        else if (catalogType != null) com.winlator.star.ui.simple.LabContentDownloadSheet(
-            contentTypes = listOf(catalogType),
+        else if (catalogTypes != null) com.winlator.star.ui.simple.LabContentDownloadSheet(
+            contentTypes = catalogTypes,
             onDismiss = closeDownload,
             onContentChanged = { downloadScope.launch { runCatching { LabDownloads.refresh(def.id, env) } } },
             inUseKey = source.value(def).takeIf { it.isNotEmpty() },

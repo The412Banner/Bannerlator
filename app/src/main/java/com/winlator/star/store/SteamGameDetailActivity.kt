@@ -1605,6 +1605,10 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             exeFiles.sortWith { a, b ->
                 AmazonLaunchHelper.scoreExe(b, lowerTitle) - AmazonLaunchHelper.scoreExe(a, lowerTitle)
             }
+            // Steam's own launch exe first (its launch entries; also kept for the launch's arguments).
+            val ranked = SteamLaunchEntries.rankCandidates(this, g.appId, installDir, exeFiles).toList()
+            exeFiles.clear()
+            exeFiles.addAll(ranked)
             // Prefer the app's PUBLISHED portrait cover from PICS; the constructed URL is the
             // fallback for anything the library snapshot doesn't carry.
             val coverUrl = SteamLibraryArt.libraryCapsule(g.appId)

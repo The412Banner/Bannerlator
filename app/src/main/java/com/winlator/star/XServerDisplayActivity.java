@@ -16422,6 +16422,27 @@ return true;
         }
     }
 
+    /**
+     * The Steam launch entry's arguments for this launch's exe (see SteamLaunchEntries), for a Steam game BL
+     * starts itself; "" for SteamLite / Real Steam (Steam picks the entry there), the Windows Steam client,
+     * other stores and anything unresolved. Launch worker thread.
+     */
+    private String steamLaunchEntryArgs(String userArgs) {
+        try {
+            if (shortcut == null || realSteamPlan != null || windowsSteamSession || xboxLaunch != null) return "";
+            if ("RealSteam".equals(shortcut.getExtra("launchMode"))) return "";
+            String store = shortcut.getExtra("storeSource", "");
+            if (!store.isEmpty() && !"steam".equals(store)) return "";
+            SteamAppRef ref = resolveSteamAppRef();
+            if (ref == null) return "";
+            return com.winlator.star.store.SteamLaunchEntries.launchArguments(getApplicationContext(), ref.appId,
+                    ref.installDir, GoldbergPatcher.hostExeOf(shortcut), userArgs);
+        } catch (Throwable t) {
+            Log.w("BH_STEAM_LAUNCH", "launch entry arguments skipped", t);
+            return "";
+        }
+    }
+
     private String getWineStartCommand() {
         // Initialize overrideEnvVars if not already done
         EnvVars envVars = getOverrideEnvVars();
@@ -16473,6 +16494,11 @@ return true;
                     execArgs = filename.substring(spaceIndex + 1) + execArgs;
                     filename = filename.substring(0, spaceIndex);
                 }
+
+                // A Steam game started directly gets its Steam launch entry's arguments first (hl.exe -game cstrike).
+                String steamEntryArgs = steamLaunchEntryArgs(execArgs);
+                if (!steamEntryArgs.isEmpty())
+                    execArgs = " " + steamEntryArgs + (execArgs.isEmpty() || execArgs.startsWith(" ") ? execArgs : " " + execArgs);
 
                 // Goldberg ColdClient: run the loader that sits beside the game exe (resolved NOW, so an
                 // existing shortcut works and a stale loader shortcut is repaired). Same folder → /dir holds.

@@ -210,6 +210,12 @@ internal class DownloadActions(
             exeFiles.sortWith { a, b ->
                 AmazonLaunchHelper.scoreExe(b, lowerTitle) - AmazonLaunchHelper.scoreExe(a, lowerTitle)
             }
+            // Steam: Steam's own launch exe first (its launch entries; also kept for the launch's arguments).
+            if (appId > 0) {
+                val ranked = SteamLaunchEntries.rankCandidates(activity, appId, installDir, exeFiles).toList()
+                exeFiles.clear()
+                exeFiles.addAll(ranked)
+            }
             // An Epic shortcut carries the game's Epic data: the launch arguments an Epic game needs come from it.
             val epicDetail = if (entry.store == Store.EPIC) EpicLibrarySync.cachedDetail(activity, entry.id) else null
             val epic = if (entry.store == Store.EPIC) StarLaunchBridge.EpicMeta(entry.id, epicDetail?.namespace, epicDetail?.catalogItemId) else null

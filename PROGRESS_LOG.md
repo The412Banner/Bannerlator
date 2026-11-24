@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-23 23:30–24:00 EST — Upstream round 3: Steam launch entries, download-done notice, per-game in-game FG, SteamLite v10 (`feat/upstream-round-3`, BUILT, CI pending, NOT device-tested)
+## 2026-11-23 23:30–24:00 EST — Upstream round 3: Steam launch entries, download-done notice, per-game in-game FG, SteamLite v10 (`feat/upstream-round-3`, CI GREEN, APK STAGED, NOT device-tested)
 - Why: user approved "step 3" (11-23 ~23:20 EST): build the new BL items overnight on ONE branch, stage a test APK for the morning.
   Branch off origin/main 48b4bafb, worktree /root/src/Bannerlator-wt/upstream-round-3.
 - 1a3dbdd1 Steam launch entries (GameNative #2408 78f61ffe + #2427 40be44dc, Utkarsh Dalal, GPL-3.0): new store/SteamLaunchEntries.kt
@@ -27,7 +27,17 @@
 - GE-proton-11.0-14 (v17) check: no BL change needed. BL keeps no layer-name tables: ContainerLayerUpdater lines are by exact
   versionName (GE 11.0-9 -> 11.0-14 is a line move, not an "update", by design; DroidDeck-Proton lines grouped by label only);
   DirectAudio picks by "11.0-" + winepulse imports; no defaults/recommendations by name. 11.0-9 installs keep working.
-- CI: build-artifacts run 45329743141 dispatched 23:55 EST, headSha 57e1d48c asserted. RESUME: judge jobs, stage pubg APK, signer check.
+- CI GREEN 00:05 EST: build-artifacts run 45329743141, headSha 57e1d48c (== pushed), 4/4 jobs success (antutu, ludashi, pubg,
+  standard); non-success steps = skipped only (main-only cache saves + cached natives: libblsteam/Xbox/LSFG/JavaSteam; no Rust/native
+  change on this branch). pubg log: BUILD SUCCESSFUL, only old deprecation warnings (SteamGameDetailActivity Icons.Filled.Help).
+- STAGED 00:06 EST: `/sdcard/Download/Bannerlator-upstream-round-3-57e1d48c-pubg.apk` sha256 a0037a2f…effc (host == sdcard == device),
+  com.tencent.ig vc108 3.2.1, signer SHA-256 a40da80a… == installed (installed base.apk sha256 843b42af… == staged
+  Bannerlator-cpu-topology-2fd4cf96-pubg.apk, signer a40da80a…). New code in classes5.dex. NOT installed: awaits the user's yes.
+- Morning test (NOT done): (1) CS 1.6 (app 10) shortcut, launch mode Goldberg/raw, clear its Exec Arguments (FIT had "-game cstrike"
+  set by hand 11-23) -> CS opens, logcat BH_STEAM_LAUNCH "appId=10 exe=hl.exe entries=1 args='-game cstrike'"; with "-game cstrike"
+  typed back -> args='' (no double). (2) start a small store download, leave the app -> "Download complete" line in the shade, tap
+  opens Downloads. (3) game A from a shortcut: in-game FG change multiplier/flow, quit, start game B of the same container -> B
+  shows the container's values; relaunch A -> A's flow kept. (4) SteamLite v10 per STEAMLITE-V10-TEST.txt. Then logcat FATAL check.
 
 ## 2026-11-23 19:00–22:00 EST — Sync CPU topology + named core picker (`feat/cpu-topology`, DEVICE-PROVEN, MERGED main 0912536a)
 - Why: user wants Ludashi's "Sync CPU topology" (WINE_CPU_TOPOLOGY from the core pick) and a core picker that reads the device and

@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-24 13:10–15:10 EST — Upscaler refresh: lighter math, cursor after the upscale, CAS from AMD's file (`feat/upscaler-refresh`, 099c21fd INSTALLED FIT, NOT device-tested)
+## 2026-11-24 13:10–15:45 EST — Upscaler refresh: lighter math, cursor after the upscale, CAS from AMD's file (`feat/upscaler-refresh`, MERGED main 16595ed8, AIO-tested FIT)
 - Why: Discord question 11-24 (is NIS the limit). Research 11-24 (main 48b4bafb): no newer SPATIAL upscaler exists upstream (all new ones
   since mid-2025 = temporal: SGSR 2, Adreno Neural Fusion, Arm ASR/NSS, FSR 4); our SGSR (both variants, upstream d926f074 2025-10-16),
   FSR1, NIS 1.0.3 are current. Found: (1) all six upscaler shaders (sgsr, sgsr_quality, fsr_easu, fsr_rcas, nis, cas) are fp32 only,
@@ -90,6 +90,10 @@
   (15:16); per-run captures + stream merged. Results dir /sdcard/Download/perf-harness/results/upaio-1124 (run.log, *.png,
   *.csvhead, *.renderer.log, stream.log), table json scratchpad upaio.json, contact sheet scratchpad upaio-sheet.jpg.
   Cleanup done: prop "", temp shortcut removed, fan loop stopped (AYANEO back, pwm 53), Termux in front, peers told "done".
+- MERGED to main 15:45 EST on the user's word ("merge to main then try rewriting nis on a new branch"): backup
+  refs/backup/20261124/main-before-upscaler-refresh = f05120aa (local + remote); --no-ff merge 16595ed8 (parents f05120aa +
+  140e6911); merged tree == branch tree; code == tested build 099c21fd; author The412Banner, no trailer; main did not move and no
+  workflow was running before the push. No release. FIT keeps 099c21fd (same code as main).
 - Resume point (15:10 EST): FIT has 099c21fd (half set). Test: game with an upscaler (SGSR HQ / FSR / NIS) +/- CAS; logcat
   `rootsh 'logcat -d -s Winlator_Renderer' | grep -E "upscale (shaders|timing)"`; A/B = `rootsh 'setprop
   debug.bannerlator.upscale.shaders old'` + restart the game (back: `setprop ... new` or empty); mouse game for the cursor +

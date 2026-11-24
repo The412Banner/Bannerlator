@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-24 15:50–16:30 EST — NIS rewrite: luma prepass + gathers (`feat/nis-rewrite`, 8530c88e INSTALLED FIT + AIO-tested: only -12 %)
+## 2026-11-24 15:50–16:35 EST — NIS rewrite: prepass + gathers + coefficients in a uniform buffer (`feat/nis-rewrite`, 09f3d8b0 built, CI running)
 - Why: upaio-1124 (FIT, X11 Vulkan, dx11 cube) measured NIS at ~5.0 ms GPU per composited frame (old and half shaders alike) and
   AIO 2894 -> ~765 fps (-74 %). nis.frag is a single-pass fragment port of NVIDIA's LDS compute NVScaler: every output pixel
   fetches its 6x6 luma support (36 textureLod + 1 colour tap, getY on each) and recomputes 4 edge maps; at 1920x1080 that is
@@ -36,6 +36,21 @@
   desert, nebula2, planet, ...); every D3D11 scene window is a fixed 640x480 WS_OVERLAPPEDWINDOW (aio_run_d3d11_cube), no
   fullscreen flag -> the cube runs used only a third of the screen. Test now: SCENE=city, SCREEN=640x480 (scene fills the
   desktop, BL upscales 640x480 -> 1440x1080 fit), upscale-ab.sh gained SCENE/SCREEN. Peers root-bf / root-e0 told + acked.
+- 16:25 EST user "yes go ahead" (prove the cause, move the tables, rebuild, rerun the Cityscape test).
+  Device timing harness (scratchpad nischeck/nis_time.cpp, Android build vs /system/lib64 libvulkan, 30 runs, timestamps,
+  binaries in /sdcard/Download/perf-harness/nischeck): Adreno 750, median ms
+  1280x720->1920x1080: old 2.821 | prepass 0.028 | nis2 2.255 | nis3 half (UBO tables) 0.406 | nis3 fp32 0.684 | SGSR HQ 0.076
+  640x480->1440x1080:  old 2.162 | prepass 0.014 | nis2 1.744 | nis3 half 0.376 | nis3 fp32 0.581 | SGSR HQ 0.061
+  -> CONFIRMED: the per-pixel coefficient-table copies were the cost. nis3 output vs old: 59.8 dB (== nis2).
+- Built 09f3d8b0: nis3.frag (replaces nis2), nis_coef.h (tables from nis.frag, NVIDIA MIT notice), X11 createNisCoef /
+  nisPipeLayout / set 1 in postPass, Wayland coef_create / g_pl_nis / set 1 in pass() (vk_loader + 4 buffer functions),
+  fallback to nis.frag if the buffer fails. Syntax-only compile clean. CI build-artifacts 45492009810 (16:31 EST, headSha
+  09f3d8b0 == pushed).
+- 16:30 EST user: "feel free to build scenes for each upscaler like now or one for all to test then being toggled in the aio
+  graphics test program" -> helper agent started on The412Banner/AIO-Graphics-Test branch feat/upscaler-test-scene
+  (worktree /root/src/AIO-wt/upscaler-test-scene): D3D11 scene `--scene upscale` (static test chart: line fan, zone plate,
+  Siemens star, checkerboards, text, gradients, colour edges; --motion) + --width/--height/--fullscreen for D3D11 scenes;
+  CI build only, exe to /sdcard/Download/AIO-upscaletest/, no release.
 - INSTALLED 16:13 EST on the FIT (user yes 16:10; peers told): installed base.apk sha256 53c56150... == staged.
 - RESULTS nisaio-1124 (16:13-16:21 EST, X11 Vulkan, AIO --cube dx11 --scene city 20 s in a 640x480 desktop -> 1440x1080 fit,
   fan 255, 0 FATAL, scene fills the desktop, GPU 99 % busy): baseline (Linear) AIO 263.3 | NIS old 3.412 / 3.419 ms per frame,

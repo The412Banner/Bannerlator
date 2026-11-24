@@ -93,7 +93,9 @@
   a shortcut launch: "Game cores" (coresLabel summary + Change -> CoresControl picker) and "Sync CPU topology" toggle, both
   "Next launch", saved to the shortcut (cpuList / syncCpuTopology) via XServerDrawerState.onGameCoresChange /
   onGameSyncTopologyChange; starting values set after the launch core decision (shortcut exists there; reset() runs earlier).
-  CI 45306585039 running.
+  CI 45306585039 GREEN (headSha a2602717) 4/4, no failed steps. STAGED 20:5x EST (signer a40da80a): FIT + Elite
+  `/sdcard/Download/Bannerlator-cpu-topology-a2602717-pubg.apk` sha256 3dfd0156…, Duo `…-a2602717-standard.apk` 65a41528…
+  (host == device). Install awaits the user's yes.
 - NOT tested yet: the switch on in a real game (WINE_CPU_TOPOLOGY in the wine process env, Windows CPU count), FIT/Elite screens
   (user has them), Fold. Elite A/B after that.
 - Next: CI green -> stage standard (Duo) + pubg (FIT) APKs, ask before install, check pickers on FIT/Elite/Duo, check

@@ -94,7 +94,8 @@ internal object WindowsRows {
         SettingDef(
             id = "windows.wineVersion", category = "windows", group = "Wine", level = SettingLevel.ADVANCED,
             label = L("Wine / Proton version"), hint = L("The Wine layer this container runs. Download more below."), tech = L("Wine Version"),
-            control = { env, _ -> Control.Select((env.vm?.wineVersionEntries ?: emptyList()).map { Opt(it, it) }) },
+            // Proton groups, then Wine, with short names ("GE-Proton 11.0-14 · v17"); Lab opens the grouped picker.
+            control = { env, _ -> Control.Select((env.vm?.wineVersionChoices ?: emptyList()).map { (entry, label) -> Opt(entry, label) }) },
             vm = VmBinding(get = { _, vm -> vm.selectedWineVersion }, set = { _, vm, v -> vm.onWineVersionChanged(v) }),
             onDefaults = false, showInGame = false,
             visible = { env, _ -> env.scope == EditorScope.CONTAINER },

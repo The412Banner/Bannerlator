@@ -849,7 +849,19 @@ private fun TopLevelFields(
     // top-left PopupWindow. null = no dialog; otherwise the string res of the field's help text.
     var helpRes by remember { mutableStateOf<Int?>(null) }
     var showAudioSettings by remember { mutableStateOf(false) }
+    // The grouped Wine / Proton picker (ui/simple/LabLayerPicker.kt) the Wine Version field opens.
+    var showWinePicker by remember { mutableStateOf(false) }
     helpRes?.let { HelpDialog(it) { helpRes = null } }
+    if (showWinePicker) {
+        com.winlator.star.ui.simple.LayerInstalledDialog(
+            installed = viewModel.wineLayers,
+            current = viewModel.selectedWineVersion,
+            onPick = { showWinePicker = false; viewModel.onWineVersionChanged(it) },
+            onDismiss = { showWinePicker = false },
+            onGetMore = { showWinePicker = false; onShowWineDownloadSheet() },
+            onChanged = { viewModel.refreshWineVersions() },
+        )
+    }
 
     Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
 
@@ -914,13 +926,17 @@ private fun TopLevelFields(
             )
         } else {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                // The field shows the layer's short name; a tap opens the grouped picker instead of a drop-down.
                 LabeledDropdown(
                     label = stringResource(R.string.wine_version),
-                    options = viewModel.wineVersionEntries,
-                    selectedOption = viewModel.selectedWineVersion,
+                    options = emptyList(),
+                    selectedOption = viewModel.wineVersionChoices.firstOrNull { it.first == viewModel.selectedWineVersion }?.second
+                        ?: viewModel.selectedWineVersion,
                     enabled = viewModel.wineVersionEnabled,
-                    onSelect = { viewModel.onWineVersionChanged(it) },
-                    modifier = Modifier.weight(1f)
+                    onSelect = {},
+                    modifier = Modifier.weight(1f),
+                    expandedOverride = false,
+                    onExpandedChange = { open -> if (open) showWinePicker = true },
                 )
                 ContentInstallGear(onDownloadFile = onShowWineDownloadSheet)
                 IconButton(onClick = { helpRes = R.string.help_wine_version }) {

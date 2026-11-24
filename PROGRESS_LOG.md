@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-24 15:50–16:35 EST — NIS rewrite: prepass + gathers + coefficients in a uniform buffer (`feat/nis-rewrite`, 09f3d8b0 built, CI running)
+## 2026-11-24 15:50–16:45 EST — NIS rewrite: prepass + gathers + coefficients in a uniform buffer (`feat/nis-rewrite`, 09f3d8b0 staged, installing)
 - Why: upaio-1124 (FIT, X11 Vulkan, dx11 cube) measured NIS at ~5.0 ms GPU per composited frame (old and half shaders alike) and
   AIO 2894 -> ~765 fps (-74 %). nis.frag is a single-pass fragment port of NVIDIA's LDS compute NVScaler: every output pixel
   fetches its 6x6 luma support (36 textureLod + 1 colour tap, getY on each) and recomputes 4 edge maps; at 1920x1080 that is
@@ -46,11 +46,22 @@
   nisPipeLayout / set 1 in postPass, Wayland coef_create / g_pl_nis / set 1 in pass() (vk_loader + 4 buffer functions),
   fallback to nis.frag if the buffer fails. Syntax-only compile clean. CI build-artifacts 45492009810 (16:31 EST, headSha
   09f3d8b0 == pushed).
+- CI GREEN 16:36 EST: 45492009810, headSha 09f3d8b0, 4/4. aria2 download digest cfbee4fb... == GitHub; APK .so strings:
+  "coefficients in a uniform buffer" (X11), nis3_half (Wayland), fallback strings present; signer a40da80a.... STAGED 16:42 EST
+  /sdcard/Download/Bannerlator-nis-rewrite-09f3d8b0-pubg.apk sha256 89e50062e2415629... (host == /sdcard == device). Installing + city
+  test next (user approved "rebuild and rerun the Cityscape test" in the 16:25 "yes go ahead").
 - 16:30 EST user: "feel free to build scenes for each upscaler like now or one for all to test then being toggled in the aio
   graphics test program" -> helper agent started on The412Banner/AIO-Graphics-Test branch feat/upscaler-test-scene
   (worktree /root/src/AIO-wt/upscaler-test-scene): D3D11 scene `--scene upscale` (static test chart: line fan, zone plate,
   Siemens star, checkerboards, text, gradients, colour edges; --motion) + --width/--height/--fullscreen for D3D11 scenes;
   CI build only, exe to /sdcard/Download/AIO-upscaletest/, no release.
+- AIO facts (main, verified 16:40 EST): default UI = Dear ImGui shell, `--classic` = legacy Win32 sidebar (menu.c). ImGui shell
+  already has "Scaling Tests" (Combo Card, Zone Plate, Resolution Wedge, Lines & Diagonals, Checkerboard, Hard Edges, Banding
+  Test) and "Display Tests" -> HDR (hdr_scene.cpp); none of these in the classic menu, no CLI flags. Cursor test = separate
+  CursorTest.exe (tools/cursor-test, build-cursor-test.yml), in no menu. User 16:40 EST: "I'd like them all options and have
+  launch commands like the cube tests to launch easily for you, rolled into one set of 32/64 exe files and a new release to
+  use" -> helper re-scoped: CLI flags for scaling tests + HDR + cursor test, cursor test inside the main exe, same tests in
+  both UIs, no duplicate chart unless Combo Card lacks regions; release after device test, publish form = user's call.
 - INSTALLED 16:13 EST on the FIT (user yes 16:10; peers told): installed base.apk sha256 53c56150... == staged.
 - RESULTS nisaio-1124 (16:13-16:21 EST, X11 Vulkan, AIO --cube dx11 --scene city 20 s in a 640x480 desktop -> 1440x1080 fit,
   fan 255, 0 FATAL, scene fills the desktop, GPU 99 % busy): baseline (Linear) AIO 263.3 | NIS old 3.412 / 3.419 ms per frame,

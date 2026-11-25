@@ -52,6 +52,14 @@
   files/contents/Proton/11.0-12.8-arm64ec-17/lib/wine/aarch64-unix/winewayland.so (owner/perms/context kept), run Cursor Test
   tiles + a windowed AIO scene (edges/corner hover) with `input mouse swipe` (BL turns it into pointer motion, no buttons) +
   WINEDEBUG trace; drag-resize = user by hand. UNDO: copy the backup back.
+- SWAP TEST 19:31-19:36 EST (FIT, BL b5bbed8e + test winewayland.so c3b19f80 in DD 12.8 v17, results
+  /sdcard/Download/perf-harness/results/wlcursor2-1124): WORKS. Cursor Test tiles (input mouse swipe): trace shows a stream of
+  WAYLAND_SetCursor in the program (tile cursors 0x10086/88/8a, animation 0x1008e-96, hide 0x0), no explorer
+  SetCursor(desktop, NULL) any more; screenshots: 1 colour quadrants (R/G/B/Y correct), 2 white dot + soft shadow, 3 rainbow,
+  4 animated (green frame), 5 arrow, 6 no pointer. Windowed AIO cube ("ZZ AIO window", 640x480 at 0,0): right edge <->,
+  bottom edge up/down arrow, bottom-right corner diagonal, title bar + client arrow (screenshots edge-*.png). 0 crashes.
+  Not tested: drag-resize with a button held (input mouse swipe gives no buttons in BL) -> user by hand; test driver left in
+  place for that (UNDO = backup copy back).
 - Resume point: FIT = b5bbed8e (main 447b4afd + this fix). If the user reports it works: merge only on the user's word; delete the
   4 "AIO Cursor Test - ..." shortcuts after; then AIO 2.3.0-pre1 publish (AIO branch feat/upscaler-test-scene, see its log).
 - Test plan: Cursor Test shortcuts on the FIT ("AIO Cursor Test - Wayland", "- Wayland OLD 2.2.0"): colour quadrants, shadow,

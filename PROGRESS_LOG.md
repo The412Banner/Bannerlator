@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-24 20:35 EST — Bake AIO Graphics Test 2.3.0 into the container pattern (`feat/bake-aio-2.3.0`, CI building, NOT device-tested, not merged)
+## 2026-11-24 20:35 EST — Bake AIO Graphics Test 2.3.0 into the container pattern (`feat/bake-aio-2.3.0`, NOT device-tested, not merged)
 - Why: AIO 2.3.0 released 20:11 EST (stable, Latest; tag -> 68cdcf81; Upscaler Test chart, launch command per test, Cursor Test in
   the main exe). User 20:3x EST: "yes bake 2.3.0 into containers and remove the old test folders".
 - Checked first (main 447b4afd): container_pattern_common.tzst had AIO 2.2.0 in drive_c/AIO Graphics Test v2 (hashes == 2.2.0
@@ -16,8 +16,122 @@
 - FIT cleanup (user OK): deleted container 1 drive_c/AIO Graphics Test int + vkfix (10-20 v2.1.0-labelled Vulkan-fix test
   builds + their bench CSVs; no shortcut/menu references); backup /sdcard/Download/AIO-old-test-folders-20261124.tar (14 entries).
   Kept: AIO Graphics Test 2.2.0 (user's AIO.desktop + perf harness use it) and AIO Graphics Test v2 (baked).
+- 20:50 EST CI 45526748931 GREEN 4/4 (31ab40ec); pubg APK 7f35e7a2 staged on the Elite (its template == branch). Install asked.
+- ~22:00 EST main moved to 77785b3d (Wayland desktop cursor merged, 4c7f9775). Merged main into this branch so the device test
+  covers the exact tree that would go to main; only PROGRESS_LOG.md conflicted (both entries kept). Rebuild + re-stage.
 - Next: CI result -> stage APK -> device proof (needs the user's yes to install; the FIT has root-ae's Wayland cursor test build
   a915ce79, so the Elite may be the better test device) -> merge to main on the user's word. No release.
+
+## 2026-11-24 18:15–20:56 EST — Wayland desktop mode: program cursors (`fix/wayland-desktop-cursor`, MERGED main 4c7f9775, DEVICE-PROVEN FIT with the Wine half; Wine half NOT released)
+- Why: AIO Cursor Test (new 2.3.0-pre1 build AND the 2.2.0 CursorTest.exe) on the FIT: Wayland shows the same plain arrow on all
+  6 tiles (incl. the hidden one), X11 correct (user 18:3x EST: "it's the same on wayland old, works correctly on x11. we need to
+  make it work on Wayland please").
+- Cause (read in code): with a Windows virtual desktop (banner_desktop_v1) the compositor sends all pointer input + focus to the
+  desktop surface (pointer_input: target = g_desktop). Every Wine process is its own Wayland client; winewayland
+  (proton-wine v17 dlls/winewayland.drv/wayland_pointer.c wayland_set_cursor) only sends wl_pointer.set_cursor when
+  pointer->focused_hwnd == hwnd, i.e. for a window its own wl_pointer entered. The server forwards the cursor to the process that
+  owns the window under the pointer (server/queue.c update_desktop_cursor_window -> WM_WINE_SETCURSOR -> driver SetCursor), so the
+  program's driver gets the right call and drops it. App side (XServerDisplayActivity waylandSyncGuestCursor) only ever saw
+  serial 0 -> fallback arrow, never hidden. The compositor and app cursor paths themselves are complete.
+- Fix 1 (compositor only, no Wine rebuild, all layers): desktop mode also sends enter/leave to the window under the pointer
+  (toplevel_at, desktop z-order) on that program's own wl_pointer, cursor only (g_hover_win, hover_update/hover_leave); motion,
+  buttons and scroll still go to the desktop; pointer_focus's leave loop skips the hovered window; cleared on surface destroy;
+  windows of the desktop's own client are skipped (one focus per wl_pointer). Expected side effect: winewayland's enter handler
+  injects one motion at the same point (pointer_handle_enter -> pointer_handle_motion_internal).
+- Local check: syntax-only compile of compositor.c (Android target, bundled wayland headers): 0 errors, warning list identical to
+  main (169, all pre-existing unused-parameter).
+- CI GREEN 18:32 EST: build-artifacts 45510246840, headSha b5bbed8e, 4/4. pubg artifact digest OK; libbannerwayland.so b5e29326...
+  vs installed 09f3d8b0 build 1a32cde7... (only this change differs); signer a40da80a.... STAGED 18:34 EST
+  /sdcard/Download/Bannerlator-wayland-cursor-b5bbed8e-pubg.apk sha256 425e4c55... (host == device). Asking the user to install.
+- INSTALLED 18:39 EST on the FIT (user "yes install it"; BL main process only, no game; peers told + acked): installed base.apk
+  sha256 425e4c55... == staged. Cursor shortcuts still in container 1. User tests by hand next.
+- 18:45 EST user: "cursor just doesn't change" (fix b5bbed8e NOT working; one screenshot 18:40:16 without pointer). Server side
+  checked: set_cursor -> update_desktop_cursor_handle -> WM_WINE_SETCURSOR to desktop->cursor_win (window under the pointer),
+  so the program's driver SetCursor is called. Diagnosis run: "AIO Cursor Test - Wayland" shortcut got envVars
+  WINEDEBUG=+waylanddrv; I run it with `input mouse swipe` across the tiles and read wine_debug.log (pointer_handle_enter /
+  WAYLAND_SetCursor per process).
+- DIAGNOSIS 18:46-18:55 EST (WINEDEBUG=+waylanddrv, `input mouse swipe` over the 6 tiles, wine_debug.log in
+  Download/bannerlator/AIO Cursor Test - Wayland/): the compositor half WORKS - the Cursor Test process gets
+  `pointer_handle_enter hwnd=0x10098` and once `WAYLAND_SetCursor hwnd=0x10098 hcursor=0x10086` (right after the enter).
+  Then explorer (desktop owner) injects all 347 motions with hwnd = desktop 0x10020 (`pointer_handle_motion_internal` ->
+  `NtUserSendHardwareInput(hwnd, ...)`), and wineserver queue.c update_desktop_cursor_pos(desktop, msg->win, ...) keeps
+  msg->win (visible) as the cursor window -> cursor_win = desktop -> `00e0 WAYLAND_SetCursor hwnd=0x10020 hcursor=0x0`
+  (explorer hides it) and update_desktop_cursor_handle never forwards the program's later SetCursor (its input is not the
+  cursor window's). Delivery still works because find_hardware_message_window uses window_thread_from_point.
+  -> Missing half is in Wine: in desktop mode, input injected for the DESKTOP window should carry no hwnd (wineserver then
+  hit-tests with shallow_window_from_point, like real Windows); 4 NtUserSendHardwareInput sites in wayland_pointer.c, same in
+  all 5 v17 layers (10.0, 10.34-GE, 11.0-2, 11.12.8-DroidDeck, 11.14-GE). Compositor hover (b5bbed8e) still needed (winewayland
+  applies a cursor only for its focused window). Proposed to the user; waiting for go (Wine layer rebuilds).
+- 18:56 EST user "yes go ahead" (Wine half, DD 12.8 first + swap test). proton-wine branch
+  staging/proton_11.12.8-DroidDeck/wayland-cursor (worktree /root/src/proton-wine-wt-wayland-cursor, off .../v17 d9e61d24):
+  ad20651d = wayland_pointer.c pointer_input_hwnd(): desktop window + desktop mode -> NULL hwnd at the 4 NtUserSendHardwareInput
+  sites (motion, button, wheel, relative). CI "DroidDeck-Proton 11.0-12.8" 45513998126 (push, headSha ad20651d == pushed,
+  cold cache). Swap target on the FIT: files/contents/Proton/11.0-12.8-arm64ec-17/lib/wine/aarch64-unix/winewayland.so
+  (sha256 d3b0a2e0..., container 1 uses -17); back it up first.
+- 19:30 EST Wine CI 45513998126 GREEN (aarch64 + x86_64, headSha ad20651d). Artifact winewayland-arm64ec (digest d727d8e7 OK):
+  aarch64-unix/winewayland.so 169232 B sha256 c3b19f80... (installed v17 169120 B d3b0a2e0..., backup
+  /sdcard/Download/wine-layer-backup/11.0-12.8-arm64ec-17-winewayland.so.orig-20261124). SWAP TEST next on the FIT: replace
+  files/contents/Proton/11.0-12.8-arm64ec-17/lib/wine/aarch64-unix/winewayland.so (owner/perms/context kept), run Cursor Test
+  tiles + a windowed AIO scene (edges/corner hover) with `input mouse swipe` (BL turns it into pointer motion, no buttons) +
+  WINEDEBUG trace; drag-resize = user by hand. UNDO: copy the backup back.
+- SWAP TEST 19:31-19:36 EST (FIT, BL b5bbed8e + test winewayland.so c3b19f80 in DD 12.8 v17, results
+  /sdcard/Download/perf-harness/results/wlcursor2-1124): WORKS. Cursor Test tiles (input mouse swipe): trace shows a stream of
+  WAYLAND_SetCursor in the program (tile cursors 0x10086/88/8a, animation 0x1008e-96, hide 0x0), no explorer
+  SetCursor(desktop, NULL) any more; screenshots: 1 colour quadrants (R/G/B/Y correct), 2 white dot + soft shadow, 3 rainbow,
+  4 animated (green frame), 5 arrow, 6 no pointer. Windowed AIO cube ("ZZ AIO window", 640x480 at 0,0): right edge <->,
+  bottom edge up/down arrow, bottom-right corner diagonal, title bar + client arrow (screenshots edge-*.png). 0 crashes.
+  Not tested: drag-resize with a button held (input mouse swipe gives no buttons in BL) -> user by hand; test driver left in
+  place for that (UNDO = backup copy back).
+- 19:39 EST USER VIDEO (Movies/screen-20261124-193902.mp4): hidden tile -> arrow tile stays hidden until another tile.
+  CAUSE (BL compositor): winewayland destroys the cursor surface on hide; the next cursor gets a NEW surface whose image is
+  committed BEFORE wl_pointer.set_cursor (wayland_set_cursor: update_cursor_surface -> commit, then set_cursor); our commit
+  path dropped role-less buffers and set_cursor only waited for the next commit. 2nd bug: hotspot arrives in set_cursor
+  after the image commit -> every cursor drawn with the previous cursor's hotspot. FIX a915ce79 (compositor.c): keep the last
+  small shm image of a role-less surface (g_pre_px) and show it at set_cursor; un-hide/apply hotspot at set_cursor for the
+  surface already shown; NULL attach on the cursor surface hides. CI 45520187959 (headSha a915ce79 == pushed). Wine part
+  unchanged (test winewayland.so c3b19f80 stays).
+- 19:48 EST CI 45520187959 GREEN x4 (run 19:42-19:46 EST, headSha a915ce79); /sdcard/Download/Bannerlator-wayland-cursor2-a915ce79-pubg.apk
+  sha256 7f121d06... (host == device == installed) INSTALLED FIT on the user's "yes install it when done" (closed their paused
+  Cursor Test session). Retest hidden -> other tiles next (results wlcursor3-1124).
+- RETEST 19:49 EST (a915ce79 + Wine c3b19f80, results wlcursor3-1124/h6-*.png): hidden tile 6 -> tiles 5, 1, 2, 3, 4 each
+  shows its cursor AT ONCE (arrow, quadrants, white dot + shadow, rainbow, animated); trace = program SetCursor 0x0 -> next cursor.
+  Positions: rainbow (hotspot centre) centred on the pointer; the other cursors sit 1-1.6 % of the swipe length back along the
+  swipe direction (= pointer lag of the synthetic swipe, proportional to distance), so hotspots look right. 0 crashes (3 logcat
+  hits = xsu echo of my grep). Open: user hand test incl. drag-resize; other 4 Wine layers + release + merge = user word.
+- 19:5x EST USER: "works now, do the other 4 wine versions" (hand test passed). Found: local proton-wine refs were stale -
+  released v17 heads = 10.0 66e4bbe0, 10.34-GE b80955db, 11.0-2 0295677f (5cad2d70 + log), 11.0-3 ffdd0555 (6th layer, missed in
+  my list), 11.14-GE db1ea2c2, DD 12.8 c3bd0d3f (my test branch was on d9e61d24; winewayland.drv identical, only ntdll throttle
+  commits differ -> swap test valid). Fix cherry-picked onto each released head as staging/<b>/wayland-cursor (DD 12.8 branch
+  rewritten with --force-with-lease from ad20651d): 10.0 6e5e2086 (CI 45521876033), 10.34-GE 816a1353 (45521880229), 11.0-2
+  ba7633b4 (45521884641), 11.0-3 1fb12af3 (45521888464), 11.14-GE e3500a64 (45521892100), DD 12.8 f624367d (45521897755);
+  all headSha == pushed. No release until the user says.
+- 20:33 EST ALL 6 Wine CI GREEN (every leg; headSha == pushed): 10.0 6e5e2086, 10.34-GE 816a1353, 11.0-2 ba7633b4, 11.0-3
+  1fb12af3, 11.14-GE e3500a64, DD 12.8 f624367d. winewayland-arm64ec artifacts: DD 12.8 = c3b19f80 BYTE-IDENTICAL to the
+  swap-tested file; 11.14-GE 169216 B / 11.0-3 164856 B = installed v17 +112 B (same growth as DD); 10.0 == 10.34-GE (1c775f1d,
+  identical winewayland.drv sources); 11.0-2 640dd831. Only DD 12.8 device-proven; others compiled/CI-green, NOT device-tested.
+  Awaiting user: Wine release (v18?) + BL merge; temp shortcuts cleanup.
+- 20:45 EST USER: "parents updated right away" (asked first: v17 was NOT merged into any parent; parents were at v16 /
+  bases). Release jobs are `if: false` in all 6 workflows, nothing running. Backup refs refs/backup/20261124/<b>-before-v17-
+  wayland-cursor pushed (== old heads), then FAST-FORWARD (no force) of each parent to its staging/<b>/wayland-cursor head:
+  proton_10.0 cc815410->6e5e2086, proton_10.34-GE b76055cc->816a1353, proton_11.0-2 a190d333->ba7633b4, proton_11.0-3
+  6af7d353->1fb12af3, proton_11.12.8-DroidDeck 067c719d->f624367d, proton_11.14-GE 52e0d8cc->e3500a64 (all verified by
+  ls-remote). Parent push builds: 45528111361 / 45528121107 / 45528130051 / 45528138530 / 45528145478 / 45528154909 (same
+  commits as the green staging builds). (zsh lesson: "$P:refs" = :r modifier -> use "${P}:refs"; the backup check stopped it.)
+  Still open: v18 (versionCode bump + rebuild + release + catalog), BL merge, temp shortcuts.
+- 20:5x EST USER (to root-28): "yes merge it to main, a drag size test works, I get correct arrows" = drag-resize hand test
+  PASSED (correct resize arrows). Checked first: FIT installed base.apk sha256 7f121d06... == staged
+  Bannerlator-wayland-cursor2-a915ce79-pubg.apk, lastUpdateTime 19:48:20 (not replaced since). root-ae told + acked.
+- MERGED to main: backup refs/backup/20261124/main-before-wayland-desktop-cursor = 447b4afd (main had not moved), then
+  `git merge --no-ff` of a1d6ff33 -> main 4c7f9775; merged tree == branch tree, code == a915ce79 (only PROGRESS_LOG.md after it).
+  Main CI 45529326117 (headSha 4c7f9775) running. No release.
+- NOTE: the BL half alone does NOT fix the cursor with the released Wine v17 layers. It needs the Wine half
+  ("winewayland: In desktop mode, send desktop-window pointer input without a window"), on all 6 proton-wine parent
+  branches since 20:45 EST but NOT released (v18 = user word). Only the FIT's DD 12.8 v17 has it (swapped test
+  winewayland.so c3b19f80). New Wine + old BL 3.2.1 not tested. Open: v18 release, temp Cursor Test shortcuts cleanup.
+- Resume point: FIT = a915ce79 (BL) + test winewayland.so c3b19f80 (Wine ad20651d) in DD 12.8 v17. If the user reports it works: merge only on the user's word; delete the
+  4 "AIO Cursor Test - ..." shortcuts after; then AIO 2.3.0-pre1 publish (AIO branch feat/upscaler-test-scene, see its log).
+- Test plan: Cursor Test shortcuts on the FIT ("AIO Cursor Test - Wayland", "- Wayland OLD 2.2.0"): colour quadrants, shadow,
+  rainbow, animated, arrow, hidden; plus clicks/menus/drag still work, a mouse game hides the pointer when it should.
 
 ## 2026-11-24 15:50–16:55 EST — NIS rewrite: prepass + gathers + coefficients in a uniform buffer (`feat/nis-rewrite`, MERGED main 671feb8c, DEVICE-TESTED: NIS -80 %)
 - Why: upaio-1124 (FIT, X11 Vulkan, dx11 cube) measured NIS at ~5.0 ms GPU per composited frame (old and half shaders alike) and

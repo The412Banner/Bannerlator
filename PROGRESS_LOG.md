@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-24 — Bake AIO Graphics Test 2.3.1 into the container pattern (feat/bake-aio-2.3.1, CI running, NOT device-tested)
+- Why: user 22:2x EST "yes release 2.3.1 as latest and bake it in" (AIO 2.3.1 = 2.3.0 + D3D11 resize redraw, released
+  Latest, tag 2.3.1 -> 50ec41e4). Supersedes feat/bake-aio-2.3.0 (root-27's 2.3.0 bake, left untouched, root-27 told).
+- Built: 72ca53bf PATTERN_CONTENT_VERSION 8 -> 9 (existing containers re-get the pattern AIO; same bump as 31ab40ec);
+  bake-aio.yml run 45539505273 (aio_tag 2.3.1, with_cursortest, no drop_classic) -> 9421185d. Checked locally: template
+  drive_c/AIO Graphics Test v2/ exes == release (64 7f005809, 32 926b9fd2, CursorTest b0ee6280); 235 entries before/after.
+- Next: CI, stage APK, ASK install, device test (container 1 AIO v2 folder reports v2.3.1), merge on user go.
+
 ## 2026-11-24 — Wayland cursor with OLDER Wine layers: pointer vanished (MERGED main 1d2db982, device-proven)
 - Why: user asked whether the merged BL cursor fixes affect released v17 layers (no Wine half). Tested 22:0x EST on the FIT:
   BL 3602ac32 (= main code) + ORIGINAL v17 winewayland d3b0a2e0 + wineserver ed2866f6 in DD 12.8 v17 (results

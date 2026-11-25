@@ -71,7 +71,7 @@ enum class DownloadState { QUEUED, DOWNLOADING, PAUSED, INSTALLED, FAILED, CANCE
  *     no lookup indirection.
  *   - they are plain object references: cheap to copy, and — critically — NEVER
  *     persisted. Only INSTALLED rows hit prefs, and the library writer serializes
- *     only [name]/[store]/[installPath]/[cover], never these handles.
+ *     only [name]/[store]/[installPath]/[cover]/[found], never these handles.
  * The Steam engine hands back a `DownloadControl(cancel, pause)`; the producer simply
  * wires `cancel = control.cancel::run`, `pause = control.pause::run`.
  *
@@ -108,9 +108,18 @@ data class DownloadEntry(
      * per store at seed/produce time (Amazon: cached versionId carries an "_UPDATE_AVAILABLE"
      * suffix; Steam leaves it false for now — no Steam update detection exists yet). Transient:
      * NOT persisted to the durable library (the library writer serializes only name/store/
-     * installPath/cover) — it is re-derived on each seed, and a fresh install/update clears it.
+     * installPath/cover/found) — it is re-derived on each seed, and a fresh install/update clears it.
      */
     val updateAvailable: Boolean = false,
+    /**
+     * True when the game was NOT downloaded here but found installed in one of the user's Steam library folders (see
+     * [com.winlator.star.store.SteamLibraryFound]). The account may own it or not, so its card hides Details either way and it
+     * never offers an update. Its Uninstall removes only Bannerlator's card, record, import mark and DB row: the folder and its
+     * appmanifest belong to the other client and stay. Persisted with the durable library row (the 5th field, "1"/"0"), so a
+     * found card survives a restart — rows written by older builds lack the field and load as false. The found scan/seed still
+     * re-flags and re-checks it on each pass.
+     */
+    val found: Boolean = false,
     /**
      * 1-based position in the managed download queue while [state] is [DownloadState.QUEUED]
      * (1 = next to start); 0 for everything else (active / installed / terminal). Set and kept
@@ -127,6 +136,9 @@ data class DownloadEntry(
     /** Stable, store-qualified key: e.g. "STEAM:220". Unique across all stores. */
     val key: String get() = "$store:$id"
 
+    /** The amber "Update available" marker: the store has a newer build and this row is not a game merely found on disk. */
+    val showsUpdate: Boolean get() = updateAvailable && !found
+
     /** In one of the three active states (counts toward the ⬇ badge). */
     val isActive: Boolean
         get() = state == DownloadState.QUEUED ||
@@ -136,9 +148,10 @@ data class DownloadEntry(
 
 /**
  * Durable library row (a serialized INSTALLED [DownloadEntry]). Persisted to the
- * `bh_library`-style pref so installed games survive process death. Kept format-
- * compatible with BannerHub's LibraryEntry (name / store / installPath), with an
- * optional 4th [cover] field appended for stores whose art isn't derivable from id.
+ * `bh_library`-style pref so installed games survive process death. The durable
+ * row is name / store / installPath, with an optional 4th [cover] field and a 5th
+ * found marker appended; LibraryEntry itself carries the first four. Kept format-
+ * compatible with BannerHub's LibraryEntry (name / store / installPath).
  */
 data class LibraryEntry(
     val key: String,

@@ -18,6 +18,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  * no existing file is modified (the only file written is the app's own build stamp, and only when the
  * folder has none, so the update check has something to compare). Cheap by construction: the app id comes
  * from the manifest's file name, so only manifests that can matter are opened. Runs off the main thread.
+ *
+ * The games it marks installed reach Downloads through [SteamLibraryFound]'s records, not from this object.
  */
 object SteamLibraryImport {
     private const val TAG = "SteamLibraryImport"
@@ -29,24 +31,47 @@ object SteamLibraryImport {
 
     private const val IGNORE_PREFS = "steam_library_import_ignore"
     private const val IGNORE_KEY = "app_ids"
+    private const val REHIDDEN_KEY = "rehidden_app_ids"
     private const val IMPORTED_KEY = "imported_app_ids"
 
     /**
-     * Stops the import from marking [appId] installed again. Called when the user cancels and deletes a
-     * download of a game whose folder another Steam client owns: the folder and its manifest stay on disk, and
-     * without this the next Library visit would resurrect the game. Cleared by [clearIgnore] when the user
-     * installs it again on purpose. Never throws.
+     * Serializes the read-modify-write of the preference sets ([editSet]). [ignore] and [clearIgnore] hold it across their
+     * two edits too, so a game never stays ignored but not rehidden (or the other way round) when both run at once.
      */
-    @JvmStatic
-    fun ignore(ctx: Context, appId: Int) = editIgnored(ctx) { it.add(appId.toString()) }
-
-    /** Lets the import see [appId] again (a fresh install of it was started). Never throws. */
-    @JvmStatic
-    fun clearIgnore(ctx: Context, appId: Int) = editIgnored(ctx) { it.remove(appId.toString()) }
+    private val editLock = Any()
 
     /**
-     * True when [appId] was marked installed by this import — its files are another Steam client's, not a
-     * download made here — so uninstalling it must leave the folder and the appmanifest alone. Never throws.
+     * Stops the import and the found scan from marking [appId] installed again, and remembers it in the rehidden set. Called
+     * when the user removes the game with a keep-files uninstall, and when a download whose folder another Steam client owns
+     * is cancelled: the folder and its manifest stay on disk, and without this the next Library visit would resurrect the
+     * game. A game removed again while the show setting is on stays out of Downloads until the setting is switched off and
+     * on. Cleared by [clearIgnore] when the user installs it again on purpose. Never throws.
+     */
+    @JvmStatic
+    fun ignore(ctx: Context, appId: Int) {
+        synchronized(editLock) {
+            editIgnored(ctx) { it.add(appId.toString()) }
+            markRehidden(ctx, appId)
+        }
+    }
+
+    /**
+     * Clears the ignore on [appId], so the import and the found scan may record it again. Called only by a deliberate user
+     * install (the install button in the game page, or adopting a folder in [SteamFolderAdopt]), never by an update or
+     * verify: those must not bring back a game the user removed. Never throws.
+     */
+    @JvmStatic
+    fun clearIgnore(ctx: Context, appId: Int) {
+        synchronized(editLock) {
+            editIgnored(ctx) { it.remove(appId.toString()) }
+            editSet(ctx, REHIDDEN_KEY) { it.remove(appId.toString()) }
+        }
+    }
+
+    /**
+     * True when [appId]'s files came from elsewhere — this import marked it installed, or the user brought the folder
+     * ([SteamFolderAdopt]) — so this app never downloaded them. Uninstall uses it (through [SteamLibraryFound.keepsClientFiles])
+     * to tell a library game from one this app downloaded; a library game's folder and manifest are kept. Never throws.
      */
     @JvmStatic
     fun isImported(ctx: Context, appId: Int): Boolean = idSet(ctx, IMPORTED_KEY).contains(appId.toString())
@@ -59,14 +84,54 @@ object SteamLibraryImport {
     fun markImported(ctx: Context, appId: Int) = editSet(ctx, IMPORTED_KEY) { it.add(appId.toString()) }
 
     /**
+     * Drops [appId]'s import mark only — never adds it to the ignore/rehidden sets: for a move that made the folder this
+     * app's own ([MoveGameStorage]), so a later uninstall takes the normal path. Never throws.
+     */
+    @JvmStatic
+    fun clearImported(ctx: Context, appId: Int) = editSet(ctx, IMPORTED_KEY) { it.remove(appId.toString()) }
+
+    /**
      * Uninstall bookkeeping for an imported game: forgets that it was imported and keeps the import from
-     * marking it installed again (the folder stays on disk). The caller still marks it uninstalled. Never throws.
+     * marking it installed again, so a folder an uninstall left on disk does not come back as an installed
+     * game. The caller still marks it uninstalled. Never throws.
      */
     @JvmStatic
     fun releaseImported(ctx: Context, appId: Int) {
         editSet(ctx, IMPORTED_KEY) { it.remove(appId.toString()) }
         ignore(ctx, appId)
     }
+
+    /**
+     * True when the user removed this game from Bannerlator: uninstall keeps another client's files, so its folder and
+     * manifest stay on disk. The found scan skips it unless the show setting lists it; a game removed again while the
+     * setting is on stays hidden (in the rehidden set) until the setting is switched off and on. The import
+     * ([importInstalled]) and the normal seeder ([SteamLibrarySync.seedInstalled]) always skip it. Only a deliberate user
+     * install (the install button in the game page, [SteamFolderAdopt]) clears it, never an update or verify. Never throws.
+     */
+    fun isIgnored(ctx: Context, appId: Int): Boolean = ignoredIds(ctx).contains(appId.toString())
+
+    /**
+     * True when [appId]'s found card must stay out of Downloads: the user removed the game and either the show setting is off
+     * or the game was removed again while the setting was on. This only decides the Downloads card — the DB row and the import
+     * mark are never touched by the setting. Never throws.
+     */
+    @JvmStatic
+    fun isHiddenFromDownloads(ctx: Context, appId: Int): Boolean = try {
+        isIgnored(ctx, appId) && (!SteamPrefs.isShowUninstalledFoundEnabled(ctx) || isRehidden(ctx, appId))
+    } catch (t: Throwable) {
+        Log.w(TAG, "hidden-card check for $appId failed: ${t.message}")
+        false
+    }
+
+    /** True when [appId] was removed again while the show setting was on, so the setting alone does not list it. */
+    private fun isRehidden(ctx: Context, appId: Int): Boolean = idSet(ctx, REHIDDEN_KEY).contains(appId.toString())
+
+    private fun markRehidden(ctx: Context, appId: Int) =
+        editSet(ctx, REHIDDEN_KEY) { it.add(appId.toString()) }
+
+    /** Forgets which games were removed again while the show setting was on: the setting's next enable lists them again. */
+    @JvmStatic
+    fun clearRehidden(ctx: Context) = editSet(ctx, REHIDDEN_KEY) { it.clear() }
 
     private fun ignoredIds(ctx: Context): Set<String> = idSet(ctx, IGNORE_KEY)
 
@@ -80,15 +145,17 @@ object SteamLibraryImport {
     }
 
     private fun editSet(ctx: Context, key: String, change: (MutableSet<String>) -> Unit) {
-        try {
-            val sp = ctx.applicationContext.getSharedPreferences(IGNORE_PREFS, Context.MODE_PRIVATE)
-            // A StringSet returned by getStringSet must be copied before it is changed.
-            val set = HashSet(sp.getStringSet(key, emptySet()) ?: emptySet())
-            val before = set.size
-            change(set)
-            if (set.size != before) sp.edit().putStringSet(key, set).apply()
-        } catch (t: Throwable) {
-            Log.w(TAG, "import list update failed ($key): ${t.message}")
+        synchronized(editLock) {
+            try {
+                val sp = ctx.applicationContext.getSharedPreferences(IGNORE_PREFS, Context.MODE_PRIVATE)
+                // A StringSet returned by getStringSet must be copied before it is changed.
+                val set = HashSet(sp.getStringSet(key, emptySet()) ?: emptySet())
+                val before = set.size
+                change(set)
+                if (set.size != before) sp.edit().putStringSet(key, set).apply()
+            } catch (t: Throwable) {
+                Log.w(TAG, "import list update failed ($key): ${t.message}")
+            }
         }
     }
 
@@ -156,6 +223,9 @@ object SteamLibraryImport {
         }
         if (imported > 0) {
             try { SteamRepository.getInstance().invalidateGameCache() } catch (_: Throwable) {}
+            // The DB's installed set has changed: refresh Downloads from it now, rather than at the next process start. The imported
+            // games themselves stay out of Downloads — a game found in a library folder is [SteamLibraryFound]'s card.
+            SteamLibrarySync.seedInstalled(app)
             Log.i(TAG, "marked $imported game(s) found in the libraries as installed")
         }
         return imported

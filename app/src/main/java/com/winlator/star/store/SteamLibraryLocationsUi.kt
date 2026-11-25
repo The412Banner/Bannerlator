@@ -85,8 +85,8 @@ internal fun SteamLibraryManagerDialog(onDismiss: () -> Unit, onChanged: () -> U
                 when (r) {
                     is SteamLibraryLocations.AddResult.Added -> {
                         // Games another Steam client already installed in this folder's steamapps are
-                        // picked up right away (reads manifests + the games DB: disk work, so IO).
-                        val found = withContext(Dispatchers.IO) { SteamLibraryImport.importInstalled(ctx) }
+                        // picked up right away, owned or not (reads manifests + the games DB: disk work, so IO).
+                        val found = withContext(Dispatchers.IO) { SteamLibraryFound.afterLibraryAdded(ctx) }
                         val added = if (found > 0) ctx.getString(R.string.steam_lib_added_found, r.library.label, found)
                         else ctx.getString(R.string.steam_lib_added, r.library.label)
                         say(

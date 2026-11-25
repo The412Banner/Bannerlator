@@ -6,6 +6,8 @@ import com.winlator.star.R
 import com.winlator.star.container.ContainerManager
 import com.winlator.star.container.Shortcut
 import com.winlator.star.core.CopyGameToDriveC
+import com.winlator.star.store.download.DownloadRegistry
+import com.winlator.star.store.download.Store
 import java.io.File
 
 /**
@@ -314,6 +316,14 @@ object MoveGameStorage {
                 // the old copy. Never throws.
                 SteamInstallPaths.markOwned(plan.dest)
                 SteamAppManifest.relocate(ctx, plan.appId, plan.source, plan.dest, knownSize)
+                // Audit bug: the found scan may still hold an import mark and a record for the old library copy. Without
+                // clearing them, the next seedInstalled drops the imported card and an uninstall treats the moved files as
+                // another client's, keeping them. The folder is this app's own now.
+                SteamLibraryImport.clearImported(ctx, plan.appId)
+                SteamLibraryFound.forget(ctx, plan.appId)
+                DownloadRegistry.update("${Store.STEAM}:${plan.appId}") {
+                    it.copy(found = false, installPath = plan.dest.absolutePath)
+                }
                 // markInstalled (unlike markUninstalled) doesn't invalidate, and the library list
                 // caches install_dir — refresh it so the SD badge and paths repaint immediately.
                 runCatching { SteamRepository.getInstance().invalidateGameCache() }

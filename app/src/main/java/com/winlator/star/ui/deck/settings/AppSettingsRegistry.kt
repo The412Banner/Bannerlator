@@ -34,6 +34,8 @@ import com.winlator.star.perf.PerformanceSettings
 import com.winlator.star.perf.RootManager
 import com.winlator.star.sound.UiSoundPacks
 import com.winlator.star.store.SteamFriendsStore
+import com.winlator.star.store.SteamLibraryFound
+import com.winlator.star.store.SteamLibraryImport
 import com.winlator.star.store.SteamPrefs
 import com.winlator.star.ui.components.GlobalControllerPrefs
 import com.winlator.star.ui.deck.settings.SettingLevel.ADVANCED
@@ -57,7 +59,7 @@ internal object AppSettingsRegistry {
         SettingsCategory("app.general", T("General"), T("Start-up screen and updates."), Icons.Filled.Tune),
         SettingsCategory("app.appearance", T("Appearance"), T("Theme, accent colour, size and orientation."), Icons.Filled.Palette),
         SettingsCategory("app.sounds", T("Sounds"), T("Menu sounds and sound packs."), Icons.Filled.MusicNote),
-        SettingsCategory("app.library", T("Games & library"), T("Cover art and the default MIDI sound bank."), Icons.AutoMirrored.Filled.LibraryBooks),
+        SettingsCategory("app.library", T("Games & library"), T("Cover art, found games and the default MIDI sound bank."), Icons.AutoMirrored.Filled.LibraryBooks),
         SettingsCategory("app.performance", T("Performance"), T("Power defaults for every game and translator presets."), Icons.Filled.Speed),
         SettingsCategory("app.network", T("Downloads & network"), T("Store download engines, speed and Steam connection."), Icons.Filled.CloudDownload),
         SettingsCategory("app.steam", T("Steam friends"), T("Friends and chat, notifications and in-game presence."), Icons.Filled.Groups),
@@ -296,6 +298,21 @@ internal object AppSettingsRegistry {
                     if (name.isEmpty() || name == MidiManager.DEFAULT_SF2_FILE || File(MidiManager.getSoundFontDir(c), name).isFile) name else ""
                 },
                 set = { c, v -> prefs(c).edit().putString(MidiManager.PREF_DEFAULT_SOUND_FONT, v).apply() },
+            ),
+        ),
+        app(
+            "app.library.showUninstalledFound", "app.library", T("Found games"), T("Show games uninstalled from Bannerlator again"), ADVANCED,
+            hint = T("When on, a game you removed from Bannerlator but that is still installed by another Steam client appears in Downloads again. Removing one again hides it until you switch this off and on. Off by default."),
+            tech = "steam_show_uninstalled_found",
+            control = { Control.Toggle },
+            binding = AppBinding(
+                get = { c -> onOff(SteamPrefs.isShowUninstalledFoundEnabled(c)) },
+                set = { c, v ->
+                    // Enabling the setting starts a fresh round: games removed again while it was on show from now on.
+                    if (v == "1") SteamLibraryImport.clearRehidden(c)
+                    SteamPrefs.setShowUninstalledFoundEnabled(c, v == "1")
+                    SteamLibraryFound.scanAsync(c)
+                },
             ),
         ),
 

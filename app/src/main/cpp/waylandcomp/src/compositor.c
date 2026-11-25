@@ -570,6 +570,9 @@ static struct surface *g_pre_surface;
 /* Desktop mode: the program window under the pointer, entered on its own wl_pointer for the
  * cursor only (see hover_update). */
 static struct wl_resource *g_hover_win;
+/* Pointer buttons held (bit = button - BTN_LEFT). While one is down the hover window stays,
+ * like a Wayland implicit grab: a drag that leaves the window keeps its cursor. */
+static uint32_t g_ptr_buttons;
 
 static void cursor_publish_hidden(void) {
     pthread_mutex_lock(&g_cursor_lock);
@@ -3878,6 +3881,10 @@ static void pointer_input(double x, double y, int relative, uint32_t button, int
     double dx, dy;
 
     if (!g_synthetic_input) g_last_user_input_ns = now_ns();
+    if (button >= BTN_LEFT && button < BTN_LEFT + 32) {
+        if (pressed) g_ptr_buttons |= 1u << (button - BTN_LEFT);
+        else g_ptr_buttons &= ~(1u << (button - BTN_LEFT));
+    }
 
     if (relative) {
         dx = x; dy = y;
@@ -3922,7 +3929,7 @@ static void pointer_input(double x, double y, int relative, uint32_t button, int
     uint32_t t = now_ms();
 
     pointer_focus(target->resource, fx, fy);
-    if (target == g_desktop) hover_update(g_ptr_x, g_ptr_y);
+    if (target == g_desktop) { if (!g_ptr_buttons) hover_update(g_ptr_x, g_ptr_y); }
     else if (g_hover_win && g_hover_win != target->resource) hover_leave();
     if (!(k && k->is_lock))
         for_each_pointer_of(client, sp) wl_pointer_send_motion(sp->ptr, t, fx, fy);

@@ -560,6 +560,16 @@ static uint32_t g_cursor_px[CURSOR_MAX_PX];  /* guarded by g_cursor_lock: ARGB88
 static int g_cursor_w, g_cursor_h;           /* 0 = nothing to draw */
 static int g_cursor_hidden = 1;              /* the guest asked for no pointer */
 static int g_cursor_serial;                  /* bumped on every change; the app polls it */
+static struct surface *g_cursor_px_surface;  /* compositor thread only: surface g_cursor_px came from */
+/* winewayland creates a new cursor surface after a hide and commits its image BEFORE
+ * set_cursor gives it the cursor role; the last small wl_shm image of a role-less surface is kept
+ * here so set_cursor can show it at once (Wayland shows a cursor surface's current content). */
+static uint32_t g_pre_px[CURSOR_MAX_PX];     /* compositor thread only */
+static int g_pre_w, g_pre_h;
+static struct surface *g_pre_surface;
+/* Desktop mode: the program window under the pointer, entered on its own wl_pointer for the
+ * cursor only (see hover_update). */
+static struct wl_resource *g_hover_win;
 
 static void cursor_publish_hidden(void) {
     pthread_mutex_lock(&g_cursor_lock);
@@ -567,25 +577,32 @@ static void cursor_publish_hidden(void) {
     pthread_mutex_unlock(&g_cursor_lock);
 }
 
-/* Copy a committed cursor buffer out for the app. wl_shm only: Wine draws cursors in software. */
-static void cursor_publish_shm(struct wl_shm_buffer *shm, int hx, int hy) {
+/* Copy a wl_shm buffer of at most CURSOR_MAX_PX pixels into dst. Returns 0 if it does not fit. */
+static int cursor_copy_shm(struct wl_shm_buffer *shm, uint32_t *dst, int *ow, int *oh) {
     int32_t w = wl_shm_buffer_get_width(shm), h = wl_shm_buffer_get_height(shm);
     int32_t stride = wl_shm_buffer_get_stride(shm);
-    if (w <= 0 || h <= 0 || (int64_t)w * h > CURSOR_MAX_PX) return;
+    if (w <= 0 || h <= 0 || (int64_t)w * h > CURSOR_MAX_PX) return 0;
     /* libwayland only promises stride >= width; each row copied here is width * 4 bytes, so a
      * shorter stride would read past the end of the client's pool. */
-    if ((int64_t)stride < (int64_t)w * 4) return;
+    if ((int64_t)stride < (int64_t)w * 4) return 0;
     wl_shm_buffer_begin_access(shm);
     const unsigned char *src = (const unsigned char *)wl_shm_buffer_get_data(shm);
-    pthread_mutex_lock(&g_cursor_lock);
     for (int y = 0; y < h; y++)
-        memcpy(&g_cursor_px[y * w], src + (size_t)y * stride, (size_t)w * 4);
-    g_cursor_w = w; g_cursor_h = h;
-    g_cursor_hx = hx; g_cursor_hy = hy;
-    g_cursor_hidden = 0;
-    g_cursor_serial++;
-    pthread_mutex_unlock(&g_cursor_lock);
+        memcpy(&dst[y * w], src + (size_t)y * stride, (size_t)w * 4);
     wl_shm_buffer_end_access(shm);
+    *ow = w; *oh = h;
+    return 1;
+}
+
+/* Copy a committed cursor buffer out for the app. wl_shm only: Wine draws cursors in software. */
+static void cursor_publish_shm(struct surface *s, struct wl_shm_buffer *shm) {
+    pthread_mutex_lock(&g_cursor_lock);
+    if (cursor_copy_shm(shm, g_cursor_px, &g_cursor_w, &g_cursor_h)) {
+        g_cursor_px_surface = s;
+        g_cursor_hidden = 0;
+        g_cursor_serial++;
+    }
+    pthread_mutex_unlock(&g_cursor_lock);
 }
 
 /* Read by the app (UI thread). out = [serial, hidden, w, h, hotspotX, hotspotY, pixels...].
@@ -1416,10 +1433,14 @@ static void surface_commit(struct wl_client *c, struct wl_resource *r) {
         if (s->role == ROLE_CURSOR) {
             /* The guest's pointer image. Copied out for the app's overlay (see cursor_publish_shm)
              * rather than composited, so it survives the zero-copy and HDR layer paths. */
-            if (shm) cursor_publish_shm(shm, g_cursor_hx, g_cursor_hy);
+            if (shm) cursor_publish_shm(s, shm);
+            else if (!buffer) { g_cursor_px_surface = NULL; cursor_publish_hidden(); }  /* NULL attach = no image */
             if (buffer) wl_buffer_send_release(buffer);
         } else if (s->role == ROLE_NONE) {
-            /* Role-less surface: never drawn. */
+            /* Role-less surface: never drawn. A small wl_shm image is kept in case set_cursor makes
+             * it the cursor next (see g_pre_px). */
+            if (shm && cursor_copy_shm(shm, g_pre_px, &g_pre_w, &g_pre_h)) g_pre_surface = s;
+            else if (g_pre_surface == s) g_pre_surface = NULL;
             if (buffer) wl_buffer_send_release(buffer);
         } else if (db) {
             take_dmabuf(s, db, buffer);
@@ -1505,6 +1526,9 @@ static void surface_resource_destroy(struct wl_resource *r) {
     for (int i = 0; i < g_nkbs; i++) if (g_kbs[i].focus == r) g_kbs[i].focus = NULL;
     for (int i = 0; i < g_ntouches; i++) if (g_touches[i].focus == r) g_touches[i].focus = NULL;
     if (g_cursor_surface && g_cursor_surface->resource == r) { g_cursor_surface = NULL; cursor_publish_hidden(); }
+    if (g_pre_surface == s) g_pre_surface = NULL;
+    if (g_cursor_px_surface == s) g_cursor_px_surface = NULL;
+    if (g_hover_win == r) g_hover_win = NULL;
     for (int i = 0; i < MAX_FINGERS; i++)
         if (g_fingers[i].active && g_fingers[i].target && g_fingers[i].target->resource == r)
             g_fingers[i].active = 0;
@@ -3123,7 +3147,9 @@ static uint32_t now_ms(void) {
 
 /* wl_pointer.set_cursor: the client tells us its pointer image, or asks for none.
  * A NULL surface means "no cursor" - what a game does for mouse-look - and is the authoritative
- * signal the app never had before. The surface itself is snapshotted on its next commit. */
+ * signal the app never had before. The surface is snapshotted on each commit; content it already
+ * has is shown at once (winewayland commits a new cursor surface's image before this request, and
+ * sends the new hotspot here after committing the new image). */
 static void pointer_set_cursor(struct wl_client *c, struct wl_resource *r, uint32_t serial,
                                struct wl_resource *surface, int32_t hx, int32_t hy) {
     if (!surface) {
@@ -3137,8 +3163,22 @@ static void pointer_set_cursor(struct wl_client *c, struct wl_resource *r, uint3
     if (s->role != ROLE_NONE && s->role != ROLE_CURSOR) return;  /* already has another role */
     s->role = ROLE_CURSOR;
     g_cursor_surface = s;
+    pthread_mutex_lock(&g_cursor_lock);
+    const int hot_changed = g_cursor_hx != hx || g_cursor_hy != hy;
     g_cursor_hx = hx;
     g_cursor_hy = hy;
+    if (g_pre_surface == s) {
+        memcpy(g_cursor_px, g_pre_px, (size_t)g_pre_w * g_pre_h * 4);
+        g_cursor_w = g_pre_w; g_cursor_h = g_pre_h;
+        g_cursor_px_surface = s;
+        g_cursor_hidden = 0;
+        g_cursor_serial++;
+    } else if (g_cursor_px_surface == s && (g_cursor_hidden || hot_changed)) {
+        g_cursor_hidden = 0;
+        g_cursor_serial++;
+    }
+    pthread_mutex_unlock(&g_cursor_lock);
+    if (g_pre_surface == s) g_pre_surface = NULL;
 }
 static void pointer_release(struct wl_client *c, struct wl_resource *r) { wl_resource_destroy(r); }
 static const struct wl_pointer_interface pointer_impl = {
@@ -3251,7 +3291,7 @@ static struct surface *toplevel_at(double x, double y) {
 static void pointer_focus(struct wl_resource *target, wl_fixed_t fx, wl_fixed_t fy) {
     struct wl_client *client = wl_resource_get_client(target);
     for (int i = 0; i < g_nptrs; i++) {
-        if (!g_ptrs[i].focus || g_ptrs[i].focus == target) continue;
+        if (!g_ptrs[i].focus || g_ptrs[i].focus == target || g_ptrs[i].focus == g_hover_win) continue;
         wl_pointer_send_leave(g_ptrs[i].ptr, wl_display_next_serial(g_display), g_ptrs[i].focus);
         if (wl_resource_get_version(g_ptrs[i].ptr) >= WL_POINTER_FRAME_SINCE_VERSION)
             wl_pointer_send_frame(g_ptrs[i].ptr);
@@ -3266,6 +3306,49 @@ static void pointer_focus(struct wl_resource *target, wl_fixed_t fx, wl_fixed_t 
         entered = 1;
     }
     if (entered) constraints_focus_entered(target, client);
+}
+
+/* Desktop mode: pointer input goes to the desktop surface and Wine routes it to the window under
+ * the pointer, but winewayland only sends wl_pointer.set_cursor for a window its own wl_pointer has
+ * entered. Every Wine process is its own client, so a program's cursor (and its "no cursor") never
+ * reached us and the app kept its fallback arrow. The window under the pointer therefore also gets
+ * enter/leave on its own client's wl_pointer - for the cursor only: motion, buttons and scroll still
+ * go to the desktop. Windows of the desktop's own client are left out (one focus per wl_pointer). */
+static void hover_leave(void) {
+    if (!g_hover_win) return;
+    struct wl_client *client = wl_resource_get_client(g_hover_win);
+    struct seat_pointer *sp;
+    for_each_pointer_of(client, sp) {
+        if (sp->focus != g_hover_win) continue;
+        wl_pointer_send_leave(sp->ptr, wl_display_next_serial(g_display), g_hover_win);
+        if (wl_resource_get_version(sp->ptr) >= WL_POINTER_FRAME_SINCE_VERSION)
+            wl_pointer_send_frame(sp->ptr);
+        sp->focus = NULL;
+    }
+    g_hover_win = NULL;
+}
+
+static void hover_update(double x, double y) {
+    struct surface *s = g_desktop ? toplevel_at(x, y) : NULL;
+    struct wl_resource *res = s ? s->resource : NULL;
+    if (res && wl_resource_get_client(res) == wl_resource_get_client(g_desktop->resource)) res = NULL;
+    if (res == g_hover_win) return;
+    hover_leave();
+    if (!res) return;
+    struct wl_client *client = wl_resource_get_client(res);
+    struct seat_pointer *sp;
+    int sx = s->placed ? s->x : 0, sy = s->placed ? s->y : 0;
+    wl_fixed_t fx = wl_fixed_from_double(x - sx), fy = wl_fixed_from_double(y - sy);
+    int entered = 0;
+    for_each_pointer_of(client, sp) {
+        if (sp->focus) continue;   /* already focused elsewhere (a pointer constraint) */
+        sp->focus = res;
+        wl_pointer_send_enter(sp->ptr, wl_display_next_serial(g_display), res, fx, fy);
+        if (wl_resource_get_version(sp->ptr) >= WL_POINTER_FRAME_SINCE_VERSION)
+            wl_pointer_send_frame(sp->ptr);
+        entered = 1;
+    }
+    if (entered) g_hover_win = res;
 }
 
 /* The seat's modifiers in the keymap's real-modifier bits. Wine and gamescope work them out from
@@ -3839,6 +3922,8 @@ static void pointer_input(double x, double y, int relative, uint32_t button, int
     uint32_t t = now_ms();
 
     pointer_focus(target->resource, fx, fy);
+    if (target == g_desktop) hover_update(g_ptr_x, g_ptr_y);
+    else if (g_hover_win && g_hover_win != target->resource) hover_leave();
     if (!(k && k->is_lock))
         for_each_pointer_of(client, sp) wl_pointer_send_motion(sp->ptr, t, fx, fy);
     send_relative_motion(client, dx, dy);

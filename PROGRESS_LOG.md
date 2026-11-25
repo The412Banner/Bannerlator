@@ -1,6 +1,16 @@
 # Star-Compose — Progress Log
 
-## 2026-11-24 — 3.2.2 STABLE cut (release/3.2.2, in progress)
+## 2026-11-25 — 3.2.2 STABLE RELEASED + VERIFIED (main a0839915, Latest)
+- release.yml 45548732395 SUCCESS (notes, 4 builds, 4 patch jobs, release), published 00:11:31 EST. Tag 3.2.2 ->
+  a0839915 == main == built commit. "Bannerlator 3.2.2", not draft/prerelease, Latest. Assets: 4 APKs (~603.0 MB each)
+  + update.json. Manifest branch f29848b1: update.json + update-pre.json = 3.2.2 / vc109, 5 highlights, 32 patches;
+  Bannerlator-updates 3.2.2 = 32 assets. 3.2.1 -> 3.2.2 patch 115.8 MB on all 4 flavors (matches the notes). pubg APK
+  sha256 6320166d == update.json. Page body 21.1k chars, 0 TODO; credits present (StevenMXZ, DrarenThiralas, utkarshdalal +
+  proton-wine #119, kudyk, brunodev85, Sr.Ed_137, UNHolyBlunts, Babizi Games / HG99, devaspe, AMD, NVIDIA, Qualcomm);
+  og:description = title + intro + summary line (same as 3.2.1).
+- Open (user word): delete tmp/size-3.2.2 (71fe6de6) and release/3.2.2; root-e0's Valve 11.0-3 versionName catalog fix.
+
+## 2026-11-24 — 3.2.2 STABLE cut (release/3.2.2, done, see above)
 - 23:43 EST CUT (user: "wait for v18 then publish"): RC CI 45545753315 GREEN x4 (99f1d889); size scan run 45546945082:
   3.2.1 -> 3.2.2 patch 115.8 MB of 603.0 MB (pubg + standard, byte-exact; bigger than usual = container_pattern_common.tzst
   changed for AIO 2.3.1), notes size line 37236f1d; notes check "layout OK, 29 changes". Wine v18 verified first:

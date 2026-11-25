@@ -88,6 +88,14 @@
   swap-tested file; 11.14-GE 169216 B / 11.0-3 164856 B = installed v17 +112 B (same growth as DD); 10.0 == 10.34-GE (1c775f1d,
   identical winewayland.drv sources); 11.0-2 640dd831. Only DD 12.8 device-proven; others compiled/CI-green, NOT device-tested.
   Awaiting user: Wine release (v18?) + BL merge; temp shortcuts cleanup.
+- 20:45 EST USER: "parents updated right away" (asked first: v17 was NOT merged into any parent; parents were at v16 /
+  bases). Release jobs are `if: false` in all 6 workflows, nothing running. Backup refs refs/backup/20261124/<b>-before-v17-
+  wayland-cursor pushed (== old heads), then FAST-FORWARD (no force) of each parent to its staging/<b>/wayland-cursor head:
+  proton_10.0 cc815410->6e5e2086, proton_10.34-GE b76055cc->816a1353, proton_11.0-2 a190d333->ba7633b4, proton_11.0-3
+  6af7d353->1fb12af3, proton_11.12.8-DroidDeck 067c719d->f624367d, proton_11.14-GE 52e0d8cc->e3500a64 (all verified by
+  ls-remote). Parent push builds: 45528111361 / 45528121107 / 45528130051 / 45528138530 / 45528145478 / 45528154909 (same
+  commits as the green staging builds). (zsh lesson: "$P:refs" = :r modifier -> use "${P}:refs"; the backup check stopped it.)
+  Still open: v18 (versionCode bump + rebuild + release + catalog), BL merge, temp shortcuts.
 - Resume point: FIT = a915ce79 (BL) + test winewayland.so c3b19f80 (Wine ad20651d) in DD 12.8 v17. If the user reports it works: merge only on the user's word; delete the
   4 "AIO Cursor Test - ..." shortcuts after; then AIO 2.3.0-pre1 publish (AIO branch feat/upscaler-test-scene, see its log).
 - Test plan: Cursor Test shortcuts on the FIT ("AIO Cursor Test - Wayland", "- Wayland OLD 2.2.0"): colour quadrants, shadow,

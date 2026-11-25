@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-24 20:35 EST — Bake AIO Graphics Test 2.3.0 into the container pattern (`feat/bake-aio-2.3.0`, NOT device-tested, not merged)
+## 2026-11-24 20:35 EST — Bake AIO Graphics Test 2.3.0 into the container pattern (`feat/bake-aio-2.3.0`, SUPERSEDED by feat/bake-aio-2.3.1, not merged)
 - Why: AIO 2.3.0 released 20:11 EST (stable, Latest; tag -> 68cdcf81; Upscaler Test chart, launch command per test, Cursor Test in
   the main exe). User 20:3x EST: "yes bake 2.3.0 into containers and remove the old test folders".
 - Checked first (main 447b4afd): container_pattern_common.tzst had AIO 2.2.0 in drive_c/AIO Graphics Test v2 (hashes == 2.2.0
@@ -23,6 +23,10 @@
   Wine layers (the Elite runs released v17). ~22:30 EST root-ae merged the fix (1d2db982) -> merged main 9871bd46 into this
   branch again (only PROGRESS_LOG.md conflicted), rebuild. Expected on the Elite with released v17 (root-ae): pointer visible
   but one shape per window, no edge-drag resize (needs the unreleased Wine fixes) - not part of this test.
+- 22:4x EST SUPERSEDED: CI 45538724018 GREEN on 9ff17428 (not staged). The user asked root-ae to release AIO 2.3.1 (Latest
+  22:21 EST, tag 50ec41e4: 2.3.0 + DX11 resize redraw fix) and bake that in; root-ae baked it on feat/bake-aio-2.3.1 (off main
+  9871bd46, same version-9 bump; bake run 45539505273 green) and does the device test/merge there. This branch is parked, not
+  deleted; nothing was installed on the Elite.
 - Next: CI result -> stage APK -> device proof (needs the user's yes to install; the FIT has root-ae's Wayland cursor test build
   a915ce79, so the Elite may be the better test device) -> merge to main on the user's word. No release.
 

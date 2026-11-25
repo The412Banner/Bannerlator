@@ -46,6 +46,12 @@
   sites (motion, button, wheel, relative). CI "DroidDeck-Proton 11.0-12.8" 45513998126 (push, headSha ad20651d == pushed,
   cold cache). Swap target on the FIT: files/contents/Proton/11.0-12.8-arm64ec-17/lib/wine/aarch64-unix/winewayland.so
   (sha256 d3b0a2e0..., container 1 uses -17); back it up first.
+- 19:30 EST Wine CI 45513998126 GREEN (aarch64 + x86_64, headSha ad20651d). Artifact winewayland-arm64ec (digest d727d8e7 OK):
+  aarch64-unix/winewayland.so 169232 B sha256 c3b19f80... (installed v17 169120 B d3b0a2e0..., backup
+  /sdcard/Download/wine-layer-backup/11.0-12.8-arm64ec-17-winewayland.so.orig-20261124). SWAP TEST next on the FIT: replace
+  files/contents/Proton/11.0-12.8-arm64ec-17/lib/wine/aarch64-unix/winewayland.so (owner/perms/context kept), run Cursor Test
+  tiles + a windowed AIO scene (edges/corner hover) with `input mouse swipe` (BL turns it into pointer motion, no buttons) +
+  WINEDEBUG trace; drag-resize = user by hand. UNDO: copy the backup back.
 - Resume point: FIT = b5bbed8e (main 447b4afd + this fix). If the user reports it works: merge only on the user's word; delete the
   4 "AIO Cursor Test - ..." shortcuts after; then AIO 2.3.0-pre1 publish (AIO branch feat/upscaler-test-scene, see its log).
 - Test plan: Cursor Test shortcuts on the FIT ("AIO Cursor Test - Wayland", "- Wayland OLD 2.2.0"): colour quadrants, shadow,

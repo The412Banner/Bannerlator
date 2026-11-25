@@ -1,5 +1,20 @@
 # Star-Compose — Progress Log
 
+## 2026-11-24 — 3.2.2 STABLE cut (release/3.2.2, in progress)
+- Why: user 23:1x EST "cut a 3.2.2 stable, make sure credits are listed"; user 23:2x EST: layer family updates + Wine/Proton
+  list "work and proven". Main frozen 23:13 EST (root-ae, root-e0, root-bf acked; root-ae is releasing Wine v18 on the
+  user's order, winlator-contents only, not touched by release.yml).
+- Plan: release/3.2.2 off main 78dfb27a: 99f1d889 vc 108 -> 109 / versionName 3.2.2; 811a5492 docs/releases/3.2.2.md
+  (house layout, everything since 3.2.1 = 14 merges, Credits: StevenMXZ Ludashi commits, DrarenThiralas #750, utkarshdalal
+  GameNative #2408 #2427 #2458 #2401 #2457 #2473 + proton-wine #119, kudyk #2272, brunodev85 layouts, Discord layout makers
+  Sr.Ed_137 / UNHolyBlunts / Babizi Games HG99 / devaspe, AMD CAS, NVIDIA NIS, Qualcomm SGSR) + README (version row,
+  TOC, 3.2.2 section, credits rows). Not device-tried list in the notes: NIS/upscaler timing on Wayland, still-scene
+  picture, cursor after upscale, GOG status line, frontend return.
+- RC build CI 45545753315 (headSha 99f1d889 asserted). Next: size scan tmp/size-3.2.2 (3.2.1 -> RC), fill the size
+  line, notes check, backup refs/backup/20261124/main-before-3.2.2 = 78dfb27a, FF main, release.yml (tag 3.2.2,
+  make_prerelease false), verify tag == main == built, Latest, 4 APKs + update.json, manifest vc109, patches, og.
+- RESUME: `gh run list -R The412Banner/Bannerlator --workflow release.yml --limit 1`; DO NOT push to main while it runs.
+
 ## 2026-11-24 — Bake AIO Graphics Test 2.3.1 into the container pattern (MERGED main a409d2af, device-proven)
 - Why: user 22:2x EST "yes release 2.3.1 as latest and bake it in" (AIO 2.3.1 = 2.3.0 + D3D11 resize redraw, released
   Latest, tag 2.3.1 -> 50ec41e4). Supersedes feat/bake-aio-2.3.0 (root-27's 2.3.0 bake, left untouched, root-27 told).

@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-24 — Bake AIO Graphics Test 2.3.1 into the container pattern (feat/bake-aio-2.3.1, device-proven, not merged)
+## 2026-11-24 — Bake AIO Graphics Test 2.3.1 into the container pattern (MERGED main a409d2af, device-proven)
 - Why: user 22:2x EST "yes release 2.3.1 as latest and bake it in" (AIO 2.3.1 = 2.3.0 + D3D11 resize redraw, released
   Latest, tag 2.3.1 -> 50ec41e4). Supersedes feat/bake-aio-2.3.0 (root-27's 2.3.0 bake, left untouched, root-27 told).
 - Built: 72ca53bf PATTERN_CONTENT_VERSION 8 -> 9 (existing containers re-get the pattern AIO; same bump as 31ab40ec);
@@ -11,7 +11,11 @@
   the first launch (pattern v9 applied 22:34:58): 926b9fd2 / 7f005809 / b0ee6280 == AIO 2.3.1 release. Temp shortcut
   "ZZ AIO v2" (C:\AIO Graphics Test v2\AIO-Graphics-Test-64bit.exe --cube dx11 --scene spin) ran the baked exe
   (D3D11 cube ~3150 fps, Wayland), 0 crashes; shortcut deleted after. Results /sdcard/Download/perf-harness/results/bake231.
-- Next: merge to main on user go. root-27 deleted feat/bake-aio-2.3.0 on the user's word (backup
+- 22:4x EST USER: "yes merge it to main and delete the shortcuts". BL main 9871bd46 -> a409d2af (--no-ff merge of 86ccd263,
+  tree == branch, code == installed 8530d7da; backup refs/backup/20261124/main-before-bake-aio-2.3.1), main CI 45542065835.
+  Deleted FIT container 1 test shortcuts "ZZ AIO window" + "ZZ AIO cursortest" (both pointed at E:\Winlator\games\
+  AIO-upscaletest); the 4 "AIO Cursor Test - ..." shortcuts were already gone. Not released.
+ root-27 deleted feat/bake-aio-2.3.0 on the user's word (backup
   refs/backup/20261124/feat-bake-aio-2.3.0 = 750bb7c4).
 
 ## 2026-11-24 — Wayland cursor with OLDER Wine layers: pointer vanished (MERGED main 1d2db982, device-proven)

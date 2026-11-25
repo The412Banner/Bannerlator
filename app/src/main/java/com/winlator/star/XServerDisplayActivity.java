@@ -8898,7 +8898,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
     //          "8" = AIO Graphics Test 2.2.0 + CursorTest.exe in drive_c/AIO Graphics Test v2; the v1
     //                folder drive_c/AIO Graphics Test is dropped from the pattern and its exes are
     //                deleted from existing containers via removeClassicAio() (2026-10-21).
-    private static final String PATTERN_CONTENT_VERSION = "8";
+    //          "9" = AIO Graphics Test 2.3.0 (+ its CursorTest.exe) in drive_c/AIO Graphics Test v2
+    //                (2026-11-24).
+    private static final String PATTERN_CONTENT_VERSION = "9";
 
     private void setupWineSystemFiles() {
         String appVersion = String.valueOf(AppUtils.getVersionCode(this));

@@ -1,12 +1,18 @@
 # Star-Compose — Progress Log
 
-## 2026-11-24 — Bake AIO Graphics Test 2.3.1 into the container pattern (feat/bake-aio-2.3.1, CI running, NOT device-tested)
+## 2026-11-24 — Bake AIO Graphics Test 2.3.1 into the container pattern (feat/bake-aio-2.3.1, device-proven, not merged)
 - Why: user 22:2x EST "yes release 2.3.1 as latest and bake it in" (AIO 2.3.1 = 2.3.0 + D3D11 resize redraw, released
   Latest, tag 2.3.1 -> 50ec41e4). Supersedes feat/bake-aio-2.3.0 (root-27's 2.3.0 bake, left untouched, root-27 told).
 - Built: 72ca53bf PATTERN_CONTENT_VERSION 8 -> 9 (existing containers re-get the pattern AIO; same bump as 31ab40ec);
   bake-aio.yml run 45539505273 (aio_tag 2.3.1, with_cursortest, no drop_classic) -> 9421185d. Checked locally: template
   drive_c/AIO Graphics Test v2/ exes == release (64 7f005809, 32 926b9fd2, CursorTest b0ee6280); 235 entries before/after.
-- Next: CI, stage APK, ASK install, device test (container 1 AIO v2 folder reports v2.3.1), merge on user go.
+- 22:34 EST CI 45539733640 GREEN x4 (8530d7da); APK sha256 57dc3f3b (staged == installed) INSTALLED FIT on the user's yes.
+  Container 1 drive_c/AIO Graphics Test v2 before: 32 c978a52f / 64 5b516385 / CursorTest 56a6cac4 (11:52 build); after
+  the first launch (pattern v9 applied 22:34:58): 926b9fd2 / 7f005809 / b0ee6280 == AIO 2.3.1 release. Temp shortcut
+  "ZZ AIO v2" (C:\AIO Graphics Test v2\AIO-Graphics-Test-64bit.exe --cube dx11 --scene spin) ran the baked exe
+  (D3D11 cube ~3150 fps, Wayland), 0 crashes; shortcut deleted after. Results /sdcard/Download/perf-harness/results/bake231.
+- Next: merge to main on user go. root-27 deleted feat/bake-aio-2.3.0 on the user's word (backup
+  refs/backup/20261124/feat-bake-aio-2.3.0 = 750bb7c4).
 
 ## 2026-11-24 — Wayland cursor with OLDER Wine layers: pointer vanished (MERGED main 1d2db982, device-proven)
 - Why: user asked whether the merged BL cursor fixes affect released v17 layers (no Wine half). Tested 22:0x EST on the FIT:

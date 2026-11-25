@@ -68,7 +68,10 @@
   small shm image of a role-less surface (g_pre_px) and show it at set_cursor; un-hide/apply hotspot at set_cursor for the
   surface already shown; NULL attach on the cursor surface hides. CI 45520187959 (headSha a915ce79 == pushed). Wine part
   unchanged (test winewayland.so c3b19f80 stays).
-- Resume point: FIT = b5bbed8e (main 447b4afd + this fix). If the user reports it works: merge only on the user's word; delete the
+- 19:48 EST CI 45520187959 GREEN x4 (run 19:42-19:46 EST, headSha a915ce79); /sdcard/Download/Bannerlator-wayland-cursor2-a915ce79-pubg.apk
+  sha256 7f121d06... (host == device == installed) INSTALLED FIT on the user's "yes install it when done" (closed their paused
+  Cursor Test session). Retest hidden -> other tiles next (results wlcursor3-1124).
+- Resume point: FIT = a915ce79 (BL) + test winewayland.so c3b19f80 (Wine ad20651d) in DD 12.8 v17. If the user reports it works: merge only on the user's word; delete the
   4 "AIO Cursor Test - ..." shortcuts after; then AIO 2.3.0-pre1 publish (AIO branch feat/upscaler-test-scene, see its log).
 - Test plan: Cursor Test shortcuts on the FIT ("AIO Cursor Test - Wayland", "- Wayland OLD 2.2.0"): colour quadrants, shadow,
   rainbow, animated, arrow, hidden; plus clicks/menus/drag still work, a mouse game hides the pointer when it should.

@@ -108,6 +108,8 @@ class SteamForegroundService : Service() {
         // populated on first open. Both are idempotent; the DB is ready post-initialize.
         DownloadRegistry.init(this)
         SteamLibrarySync.seed(this)
+        // Games another client put in a library folder are found on disk: scanned off the main thread.
+        SteamLibraryFound.scanAsync(this)
 
         SteamRepository.getInstance().connect()
         // connect() may have short-circuited (already connected / already logged on) without a

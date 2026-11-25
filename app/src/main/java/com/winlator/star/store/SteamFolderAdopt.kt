@@ -3,6 +3,8 @@ package com.winlator.star.store
 import android.content.Context
 import android.util.Log
 import com.winlator.star.core.GameIdentifier
+import com.winlator.star.store.download.DownloadRegistry
+import com.winlator.star.store.download.Store
 import java.io.File
 
 /**
@@ -16,8 +18,8 @@ import java.io.File
  * marked installed when that finishes.
  *
  * The folder stays the user's: [SteamInstallPaths.ADOPTED_MARKER] in it makes "Cancel & delete download" keep its
- * files, and the import flag ([SteamLibraryImport.markImported]) makes uninstall keep the folder. Files the game's
- * manifest does not list are never touched.
+ * files, and uninstall keeps the folder too: the import mark (SteamLibraryImport.markImported) makes uninstall keep the
+ * folder. Files the game's manifest does not list are never touched.
  */
 object SteamFolderAdopt {
     private const val TAG = "SteamFolderAdopt"
@@ -142,6 +144,12 @@ object SteamFolderAdopt {
             // Marker first: from here on a cancel keeps the folder's files.
             File(folder, SteamInstallPaths.ADOPTED_MARKER).writeText("$appId\n")
             SteamLibraryImport.markImported(app, appId)
+            // The user chose to install this game from this folder: a deliberate install, so the removed-game ignore goes.
+            SteamLibraryImport.clearIgnore(app, appId)
+            // The folder is this app's install now: a card left from the found-library list must stop claiming the files are not
+            // ours, or its Uninstall would delete a folder this flow promises to keep.
+            SteamLibraryFound.forget(app, appId)
+            DownloadRegistry.update("${Store.STEAM}:$appId") { it.copy(found = false) }
             db.setInstallDir(appId, folder.absolutePath)
             SteamDepotDownloader.installApp(appId, app, verify = true)
             Log.i(TAG, "adopt $appId (${row.name}) at ${folder.path}: install queued")

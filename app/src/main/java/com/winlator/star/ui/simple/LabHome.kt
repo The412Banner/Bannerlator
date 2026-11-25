@@ -202,8 +202,8 @@ internal fun LabHome(
     }
     var menuFor by remember { mutableStateOf<Shortcut?>(null) }
     var selPath by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
-    // The game launched last: the big tile's game until another is picked. The row's first entry is not it when the
-    // Windows Steam client is listed (it is pinned first in every order).
+    // The game launched last: the big tile's game until another is picked. The row leads with the newest key, and a game
+    // added since was never played, so its first entry is not always it.
     val lastGame = remember(recent, stats) {
         recent.filter { (stats[it.file.path]?.lastPlayed ?: 0L) > 0L }.maxByOrNull { stats[it.file.path]?.lastPlayed ?: 0L } ?: recent.firstOrNull()
     }

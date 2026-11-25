@@ -621,20 +621,31 @@ fun SteamLibraryTab(
 
     fun uninstall(game: SteamGame) {
         uninstallingName = game.name
-        // Found in another Steam client's library: those files and that manifest are the client's.
-        val imported = SteamLibraryImport.isImported(ctx, game.appId)
+        // The shared keep rule (SteamLibraryFound.keepsClientFiles, the one every uninstall screen asks): a game another Steam client
+        // installed keeps its folder and appmanifest.
+        val imported = SteamLibraryFound.keepsClientFiles(ctx, game.appId, java.io.File(game.installDir))
         StoreUninstaller.runReporting(
             installDir = game.installDir,
             mark = {
                 if (imported) SteamLibraryImport.releaseImported(ctx, game.appId)
                 else SteamAppManifest.removeFor(game.installDir, game.appId)
                 runCatching { SteamRepository.getInstance().database.markUninstalled(game.appId) }
+                // The Downloads card goes with the DB row (as on the game page), or the durable library would keep it.
+                com.winlator.star.store.download.StoreDownloadHooks.markUninstalled(
+                    com.winlator.star.store.download.Store.STEAM, game.appId.toString())
+                // The found record goes too, so the scan cannot re-seed the card; when imported, releaseImported's ignore
+                // entry also keeps the import from marking it installed again.
+                SteamLibraryFound.forget(ctx, game.appId)
             },
-            // Another game (a demo / server sharing this installdir) still uses the folder: keep it.
-            keepFolder = { imported || SteamInstallPaths.folderSharedWithOtherGame(ctx.applicationContext, java.io.File(game.installDir), game.appId) },
+            // Another game (a demo / server sharing this installdir) still uses the folder, or it is not one this app created
+            // (no OWNED marker in a steamapps library): keep it.
+            keepFolder = {
+                imported || !SteamInstallPaths.mayDeleteWholeFolder(java.io.File(game.installDir)) ||
+                    SteamInstallPaths.folderSharedWithOtherGame(ctx.applicationContext, java.io.File(game.installDir), game.appId)
+            },
         ) { ok, kept ->
             uninstallingName = null
-            // The game's shortcuts go with it, as from the Download Manager.
+            // A deleted folder's shortcuts go with it; a kept/imported folder still holds its exes, so its shortcuts stay.
             StoreShortcutCleanup.remove(ctx, com.winlator.star.store.download.Store.STEAM, game.appId.toString(), game.installDir, shortcutRemovalFor(ok, kept, imported))
             if (ok) StorefrontLog.i(StorefrontLog.LIBRARY, "uninstalled app ${game.appId} (${game.name})" + if (imported) ", files kept (another client's library)" else "")
             else StorefrontLog.w(StorefrontLog.LIBRARY, "uninstall INCOMPLETE for app ${game.appId} (${game.name}) — files remain at ${game.installDir}")

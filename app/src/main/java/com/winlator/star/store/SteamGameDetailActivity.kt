@@ -494,6 +494,8 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                             installBtnText = "Starting…"
                             // installRoot = the chosen location's base: the SD card's steam_games folder, or
                             // a user library's <folder>/steamapps/common; null = internal default.
+                            // The user chose to install this game: library import may pick it up once it is done.
+                            SteamLibraryImport.clearIgnore(applicationContext, appId)
                             downloadHandle = SteamDepotDownloader.installApp(
                                 appId, applicationContext, lastSpeedTier, debugLog, installRoot)
                         },
@@ -1360,11 +1362,12 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             uninstallingName = g.name
             val installDir = g.installDir
 
-            // Then delete the game's files. Split out so the pre-uninstall save backup can run first
-            // and this proceeds regardless of whether that backup succeeded.
+            // Then remove the game (deleting its files, or keeping a library game's folder). Split out so the pre-uninstall save
+            // backup can run first and this proceeds regardless of whether that backup succeeded.
             val proceedUninstall = {
-                // Found in another Steam client's library: those files and that manifest are the client's.
-                val imported = SteamLibraryImport.isImported(this, appId)
+                // The shared keep rule (SteamLibraryFound.keepsClientFiles, the one every uninstall screen asks): a game another Steam
+                // client installed keeps its folder and appmanifest.
+                val imported = SteamLibraryFound.keepsClientFiles(this, appId, File(installDir))
                 StoreUninstaller.run(
                     installDir = installDir,
                     mark = {
@@ -1375,9 +1378,16 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                         SteamRepository.getInstance().database.markUninstalled(appId)
                         // The Downloads & Library list too, or it keeps showing the game as installed.
                         com.winlator.star.store.download.StoreDownloadHooks.markUninstalled(Store.STEAM, appId.toString())
+                        // The found record goes too, so the scan cannot re-seed the card; when imported, releaseImported's
+                        // ignore entry also keeps the import from marking it installed again.
+                        SteamLibraryFound.forget(this, appId)
                     },
-                    // Another game (a demo / server sharing this installdir) still uses the folder: keep it.
-                    keepFolder = { imported || SteamInstallPaths.folderSharedWithOtherGame(this, File(installDir), appId) },
+                    // Another game (a demo / server sharing this installdir) still uses the folder, or it is not one this app created
+                    // (no OWNED marker in a steamapps library): keep it.
+                    keepFolder = {
+                        imported || !SteamInstallPaths.mayDeleteWholeFolder(File(installDir)) ||
+                            SteamInstallPaths.folderSharedWithOtherGame(this, File(installDir), appId)
+                    },
                 ) { ok ->
                     uninstallingName = null
                     uninstallResult = when {
@@ -1390,7 +1400,7 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             }
 
             // Best-effort: snapshot this game's saves into the local Library (Container -> Library)
-            // BEFORE its files are deleted, so the Library is current at removal time (it lives on
+            // BEFORE its uninstall, so the Library is current at removal time (it lives on
             // external storage and already survives uninstall — this just makes it CURRENT). Collect
             // only — nothing is uploaded to the cloud. If the collect fails (e.g. never set up in a
             // container), log it and uninstall anyway — the backup must never block removal.

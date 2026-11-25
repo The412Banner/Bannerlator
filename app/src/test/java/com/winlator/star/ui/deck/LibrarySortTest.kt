@@ -18,6 +18,10 @@ class LibrarySortTest {
 
     private fun order(sort: LibrarySort) = sortGames(games, sort) { it.second }.map { it.first }
 
+    /** [games] plus the Windows Steam client, the pinned launcher. */
+    private fun gamesWithSteam() =
+        games + ("z-steam" to GameSortKey("z-steam", 0L, 0L, "Wine Z", "Windows Steam", pinned = true))
+
     @Test fun name_ignoresCase() {
         assertEquals(listOf("A-game", "b-game", "c-game", "d-game"), order(LibrarySort.NAME))
         assertEquals(listOf("d-game", "c-game", "b-game", "A-game"), order(LibrarySort.NAME_DESC))
@@ -40,11 +44,33 @@ class LibrarySortTest {
         assertEquals(listOf("A-game", "d-game", "b-game", "c-game"), order(LibrarySort.STORE))
     }
 
-    @Test fun pinned_firstInEveryOrder() {
-        val withSteam = games + ("z-steam" to GameSortKey("z-steam", 0L, 0L, "Wine Z", "Windows Steam", pinned = true))
-        for (sort in LibrarySort.entries) {
+    @Test fun pinned_firstInEveryOrderButRecent() {
+        val withSteam = gamesWithSteam()
+        for (sort in LibrarySort.entries - LibrarySort.RECENT) {
             assertEquals(sort.name, "z-steam", sortGames(withSteam, sort) { it.second }.first().first)
         }
+    }
+
+    @Test fun recent_lastPlayedBeatsPinned() {
+        // The Windows Steam client was never played, so it must not sit ahead of the last game actually played.
+        val withSteam = gamesWithSteam()
+        assertEquals("c-game", sortGames(withSteam, LibrarySort.RECENT) { it.second }.first().first)
+        assertEquals(listOf("c-game", "b-game", "d-game", "A-game", "z-steam"),
+            sortGames(withSteam, LibrarySort.RECENT) { it.second }.map { it.first })
+        // Once it is the most recently used entry, it does lead again.
+        val played = withSteam.map {
+            if (it.first == "z-steam") it.first to GameSortKey("z-steam", 40L, 0L, "Wine Z", "Windows Steam", pinned = true) else it
+        }
+        assertEquals("z-steam", sortGames(played, LibrarySort.RECENT) { it.second }.first().first)
+    }
+
+    @Test fun recent_newlyAddedSteamClientDoesNotLeadUntilPlayed() {
+        // Creating the client stamps addedAt, but only a launch may move it to the top of the recent order.
+        val added = recentKeyFor(pinned = true, lastPlayed = 0L, addedAt = 2_000L)
+        assertEquals(0L, added)
+        assertEquals(2_000L, recentKeyFor(pinned = false, lastPlayed = 0L, addedAt = 2_000L))
+        val withSteam = games + ("z-steam" to GameSortKey("z-steam", added, 0L, "Wine Z", "Windows Steam", pinned = true))
+        assertEquals("c-game", sortGames(withSteam, LibrarySort.RECENT) { it.second }.first().first)
     }
 
     @Test fun emptyList_staysEmpty() {

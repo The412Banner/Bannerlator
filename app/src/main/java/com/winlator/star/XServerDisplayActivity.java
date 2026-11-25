@@ -100,6 +100,7 @@ import com.winlator.star.core.StringUtils;
 import com.winlator.star.core.TarCompressorUtils;
 import com.winlator.star.core.DirectAudioSupport;
 import com.winlator.star.core.WineInfo;
+import com.winlator.star.core.WinePath;
 import com.winlator.star.core.WineRegistryEditor;
 import com.winlator.star.core.MediaDecoder;
 import com.winlator.star.core.WineRequestHandler;
@@ -6472,7 +6473,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
         if (appId <= 0) return;
         try {
-            File exe = com.winlator.star.core.WinePath.INSTANCE.resolveAndroidPath(container, shortcut.path);
+            File exe = WinePath.INSTANCE.resolveAndroidPath(container, shortcut.path);
             if (exe == null) return;
             com.winlator.star.store.steamscript.InstallScriptExecutor.applyLocalStagesForLaunch(
                     this, container, appId, exe.getAbsolutePath());
@@ -7162,8 +7163,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
      * (which now just feeds it the shortcut's signals — behaviour is byte-identical for that caller) so the
      * achievement hook can also resolve when {@code shortcut} is null, off a fallback identity rebuilt from
      * the launch intent / container. Genuine-Steam gate (storeSource=steam OR exec under steam_games/),
-     * then the tagged appId fast-path, else match the exec path's {@code steam_games/<folder>} against the
-     * installed-games DB. Returns null when not genuine-Steam or the appId/installDir can't be resolved.
+     * then the tagged appId fast-path. Only an untagged shortcut (no appId) falls back to matching the exec path
+     * against the installed-games DB: a tagged appId is never replaced by another game. Returns null when not
+     * genuine-Steam or the appId/installDir can't be resolved.
      * MUST be called off the main thread (queries Room).
      */
     private SteamAppRef resolveSteamAppRefFrom(String execPath, String storeSource, int taggedAppId) {
@@ -7182,10 +7184,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
         try {
             SteamDatabase db = SteamRepository.getInstance().getDatabase();
 
-            // (1) Tagged appId fast-path — the shortcut carried a real steamAppId.
+            // (1) Tagged appId fast-path - the shortcut carried a real steamAppId. Only an INSTALLED row whose folder
+            //     still exists may supply the path: an uninstalled / adopted-but-not-downloaded row can keep a stale
+            //     install_dir that must not send save sync into a folder it would then recreate.
             if (appId > 0) {
                 SteamDatabase.GameRow row = db.getGame(appId);
-                installDir = (row != null && row.installDir != null) ? row.installDir : "";
+                if (row != null && row.isInstalled && row.installDir != null && !row.installDir.isEmpty()
+                        && new File(row.installDir).isDirectory()) {
+                    installDir = row.installDir;
+                }
             }
 
             // Installed set — fetched once (lazily), reused by the DB-match fallbacks below.
@@ -7193,8 +7200,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
             // (2) Segment match: exec path's steam_games/<folder> vs an installed row's steam_games/<folder>
             //     (case-insensitive, slash-normalized so "Half-Life" can't false-match "Half-Life 2").
+            //     Untagged shortcuts only: a tagged appId is authoritative, so a leftover shortcut of an
+            //     uninstalled game can never be re-pointed at another installed game.
             String folder = steamGamesFolderOf(execPath);
-            if ((appId <= 0 || installDir.isEmpty()) && folder != null) {
+            if (appId <= 0 && folder != null) {
                 installed = db.getInstalledGames();
                 if (installed != null) {
                     for (SteamDatabase.GameRow r : installed) {
@@ -7211,7 +7220,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             //     steam_games/<folder> segment (untagged legacy shortcuts, backslash Z:\ paths, etc.): for
             //     each installed row, match if the normalized+lowercased exec path CONTAINS that row's
             //     normalized+lowercased install_dir, OR contains "/<install_dir basename>/" (the game folder).
-            if (appId <= 0 || installDir.isEmpty()) {
+            //     Untagged shortcuts only (see (2)).
+            if (appId <= 0) {
                 if (installed == null) installed = db.getInstalledGames();
                 String execNorm = pathNorm(execPath);
                 if (installed != null && !execNorm.isEmpty()) {
@@ -7231,9 +7241,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 }
             }
 
-            // (4) NEW last-ditch: genuine-Steam exec path but still unresolved and EXACTLY ONE steam game is
-            //     installed → it can only be that one.
-            if (legacyGate && (appId <= 0 || installDir.isEmpty())) {
+            // (4) NEW last-ditch: untagged genuine-Steam exec path still unresolved and EXACTLY ONE steam game is
+            //     installed → it can only be that one. A tagged appId is never replaced by it.
+            if (legacyGate && appId <= 0) {
                 if (installed == null) installed = db.getInstalledGames();
                 if (installed != null && installed.size() == 1) {
                     SteamDatabase.GameRow only = installed.get(0);
@@ -7245,6 +7255,30 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
         } catch (Throwable t) {
             Log.w("BH_SAVE_SYNC", "resolveSteamAppRef errored", t);
+        }
+        // A found/non-owned game has no steam_games row at all but does have a real folder on disk, so it
+        // can still be resolved from the shortcut's own exec path. An uninstalled (owned) game keeps its
+        // row (is_installed=0) and/or its folder is gone, so its leftover shortcut must never re-derive the
+        // deleted folder — save sync would then run and recreate part of the game folder with only save
+        // files in it. So: only fill an empty answer, never a DB one, and only for a folder that exists.
+        if (installDir.isEmpty() && appId > 0) {
+            try {
+                SteamDatabase db = SteamRepository.getInstance().getDatabase();
+                if (db.getGame(appId) == null) {
+                    String derived = SteamInstallPaths.installDirOf(execPath);
+                    if (derived != null && !derived.isEmpty()) {
+                        // A host path is already an Android path; a Windows one needs the container's drive map.
+                        File host = derived.startsWith("/")
+                                ? new File(derived)
+                                : (container != null
+                                        ? WinePath.INSTANCE.resolveAndroidPath(container, derived)
+                                        : null);
+                        if (host != null && host.isDirectory()) installDir = host.getAbsolutePath();
+                    }
+                }
+            } catch (Throwable t) {
+                installDir = "";
+            }
         }
         if (appId <= 0 || installDir.isEmpty()) {
             logResolveSteamAppRefFailure("unresolved appId/installDir", execPath, storeSource, taggedAppId);
@@ -9604,7 +9638,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private File gameExeFile() {
         try {
             if (shortcut == null || container == null || shortcut.path == null || shortcut.path.endsWith(".lnk")) return null;
-            File f = com.winlator.star.core.WinePath.INSTANCE.resolveAndroidPath(container, shortcut.path);
+            File f = WinePath.INSTANCE.resolveAndroidPath(container, shortcut.path);
             return f != null && f.isFile() ? f : null;
         } catch (Throwable t) {
             return null;
@@ -9617,7 +9651,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         java.util.List<File> dirs = new ArrayList<>();
         try {
             if (shortcut == null || container == null || shortcut.path == null || shortcut.path.endsWith(".lnk")) return dirs;
-            File dir = com.winlator.star.core.WinePath.INSTANCE.resolveAndroidPath(container, FileUtils.getDirname(shortcut.path));
+            File dir = WinePath.INSTANCE.resolveAndroidPath(container, FileUtils.getDirname(shortcut.path));
             if (dir != null && dir.isDirectory()) dirs.add(dir);
         } catch (Throwable t) {
             Log.w("XServerDisplayActivity", "game folder for the xinput check", t);
@@ -14407,7 +14441,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         String gameDir = null;
         try {
             if (shortcut != null && shortcut.path != null) {
-                File exe = com.winlator.star.core.WinePath.INSTANCE.resolveAndroidPath(container, shortcut.path);
+                File exe = WinePath.INSTANCE.resolveAndroidPath(container, shortcut.path);
                 if (exe != null && exe.getParentFile() != null) gameDir = exe.getParentFile().getAbsolutePath();
             }
         } catch (Exception e) {
@@ -14429,7 +14463,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         new Thread(() -> {
             String win;
             try {
-                win = com.winlator.star.core.WinePath.INSTANCE.resolveWindowsPath(c, path);
+                win = WinePath.INSTANCE.resolveWindowsPath(c, path);
                 linkMissingDrives(c);
             } catch (Exception e) {
                 Log.w("XServerDisplayActivity", "Run a program: no Windows path for " + path, e);

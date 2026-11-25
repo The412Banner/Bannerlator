@@ -154,7 +154,8 @@ class DownloadManagerActivity : ComponentActivity() {
     }
 
     /** Clear ✓: drop terminal FAILED/CANCELLED rows and wipe the installed library,
-     *  leaving active downloads untouched (BannerHub "clear finished" semantics). */
+     *  leaving active downloads untouched (BannerHub "clear finished" semantics). Games found
+     *  in a Steam library folder come back at once: their records outlive the library list. */
     private fun clearTerminalAndLibrary() {
         DownloadRegistry.entries.value.forEach { e ->
             if (e.state == DownloadState.FAILED || e.state == DownloadState.CANCELLED) {
@@ -162,6 +163,7 @@ class DownloadManagerActivity : ComponentActivity() {
             }
         }
         DownloadRegistry.clearLibrary()
+        SteamLibraryFound.seedAsync(this)
     }
 }
 
@@ -231,7 +233,8 @@ private fun Modifier.dmButton(look: DmLook, first: Boolean = false): Modifier =
 /** XMB cards only (inside a group item): the controller's way to open the game's page, as a tap on the card does. */
 @Composable
 private fun DetailsButton(entry: DownloadEntry, onOpen: (DownloadEntry) -> Unit, look: DmLook) {
-    if (LocalXmbGroup.current == null) return
+    // A game found in a Steam library folder has no store row to open (its card taps open nothing either).
+    if (LocalXmbGroup.current == null || entry.found) return
     OutlinedButton(
         onClick = { onOpen(entry) },
         shape = deckShape(8.dp),
@@ -262,6 +265,7 @@ private fun DownloadManagerScreen(
     onMoveToTop: (DownloadEntry) -> Unit,
 ) {
     val entries by DownloadRegistry.entries.collectAsStateWithLifecycle()
+    val keepSet = rememberClientFilesKept(entries)
 
     if (xmbHome) {
         // Deck XMB home: edge to edge under the camera with no system bars, the page in the Deck's even frame, two
@@ -300,7 +304,7 @@ private fun DownloadManagerScreen(
                                 if (sections.downloading.isNotEmpty()) {
                                     item(key = "hdr_downloading", span = { GridItemSpan(maxLineSpan) }) { SectionHeader("Downloading", look) }
                                     items(sections.downloading, key = { it.key }) { entry ->
-                                        DownloadCard(entry, onEntryClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss, look)
+                                        DownloadCard(entry, onEntryClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss, entry.key in keepSet, look)
                                     }
                                 }
                                 if (sections.queued.isNotEmpty()) {
@@ -314,7 +318,7 @@ private fun DownloadManagerScreen(
                                         item(key = "hdr_library", span = { GridItemSpan(maxLineSpan) }) { SectionHeader("Library", look) }
                                     }
                                     items(sections.rest, key = { it.key }) { entry ->
-                                        DownloadCard(entry, onEntryClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss, look)
+                                        DownloadCard(entry, onEntryClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss, entry.key in keepSet, look)
                                     }
                                 }
                             }
@@ -372,7 +376,7 @@ private fun DownloadManagerScreen(
                     if (sections.downloading.isNotEmpty()) {
                         item(key = "hdr_downloading") { SectionHeader("Downloading") }
                         items(sections.downloading, key = { it.key }) { entry ->
-                            DownloadCard(entry, onEntryClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss)
+                            DownloadCard(entry, onEntryClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss, entry.key in keepSet)
                         }
                     }
                     if (sections.queued.isNotEmpty()) {
@@ -392,7 +396,7 @@ private fun DownloadManagerScreen(
                     if (sections.rest.isNotEmpty()) {
                         if (sections.hasHeaders) item(key = "hdr_library") { SectionHeader("Library") }
                         items(sections.rest, key = { it.key }) { entry ->
-                            DownloadCard(entry, onEntryClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss)
+                            DownloadCard(entry, onEntryClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss, entry.key in keepSet)
                         }
                     }
                 }
@@ -448,12 +452,13 @@ private fun DownloadCard(
     onCancel: (DownloadEntry) -> Unit,
     onPauseResume: (DownloadEntry) -> Unit,
     onDismiss: (DownloadEntry) -> Unit,
+    keepFiles: Boolean,
     look: DmLook = CLASSIC_LOOK,
 ) {
     // XMB home: a glass panel that is one stop of the D-pad, its buttons reached with A.
     if (look.focus) {
         XmbDmCard(look, onOpen = { onClick(entry) }) {
-            DownloadCardBody(entry, onClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss, look)
+            DownloadCardBody(entry, onClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss, keepFiles, look)
         }
         return
     }
@@ -471,7 +476,7 @@ private fun DownloadCard(
         ),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
     ) {
-        DownloadCardBody(entry, onClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss, look)
+        DownloadCardBody(entry, onClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss, keepFiles, look)
     }
 }
 
@@ -485,6 +490,7 @@ private fun DownloadCardBody(
     onCancel: (DownloadEntry) -> Unit,
     onPauseResume: (DownloadEntry) -> Unit,
     onDismiss: (DownloadEntry) -> Unit,
+    keepFiles: Boolean,
     look: DmLook,
 ) {
     Row(
@@ -521,8 +527,9 @@ private fun DownloadCardBody(
                     // Amber "Update available" mirrors the store list's own language
                     // (AmazonGamesActivity "✓ Installed — Update Available"); up-to-date
                     // stays installed-green. Store-agnostic: any store that sets
-                    // entry.updateAvailable gets the same marker.
-                    if (entry.updateAvailable) {
+                    // entry.updateAvailable gets the same marker. A game found in a Steam
+                    // library folder is never updated from here.
+                    if (entry.showsUpdate) {
                         Text(
                             text = "● Installed — Update available",
                             style = MaterialTheme.typography.bodySmall,
@@ -552,7 +559,13 @@ private fun DownloadCardBody(
                             ),
                             modifier = Modifier.dmButton(look),
                             contentPadding = PaddingValues(horizontal = look.buttonPadH, vertical = 2.dp),
-                        ) { Text("Uninstall", style = MaterialTheme.typography.labelSmall) }
+                        ) {
+                            // A game another Steam client installed is only removed from Bannerlator: its files stay.
+                            Text(
+                                if (keepFiles) stringResource(R.string.dm_remove_library_card) else "Uninstall",
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
                     }
                 }
 

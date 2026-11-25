@@ -52,6 +52,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.winlator.star.R
 import com.winlator.star.store.DownloadActions
 import com.winlator.star.store.DownloadCoverArt
+import com.winlator.star.store.rememberClientFilesKept
 import com.winlator.star.store.download.DownloadEntry
 import com.winlator.star.store.download.DownloadRegistry
 import com.winlator.star.store.download.DownloadState
@@ -126,8 +127,9 @@ internal fun rememberXmbDownloadRing(): XmbDownloadRing? {
  * The D-pad: Left / Right between the two columns, Up / Down between the lines (across the headings; into a shorter line it lands on its
  * last card, and keeps the column for the next line), Up from the first line goes to the pill bar. A steps into a card's buttons, where
  * Left / Right move between them and A presses one; B steps back out (and, from a card, closes the page as the host does). X presses the card's main
- * button without stepping in (pause / resume, start next, add to games, dismiss). A press that cannot be undone (cancel a download,
- * uninstall a game) asks for a second one. Everything is tappable too; a tap on the card opens the game's page in its store.
+ * button without stepping in (pause / resume, start next, launch, dismiss). A press that cannot be undone (cancel a download,
+ * uninstall a game) asks for a second one. Everything is tappable too; a tap on the card opens the game's page in its store, but a
+ * found card has no store page, so a tap on it opens nothing.
  */
 @Composable
 internal fun XmbDownloadsPage(focus: XmbTabsPageFocus) {
@@ -138,6 +140,7 @@ internal fun XmbDownloadsPage(focus: XmbTabsPageFocus) {
     remember(context) { runCatching { DownloadActions.prepare(context) } }
 
     val entries by DownloadRegistry.entries.collectAsStateWithLifecycle()
+    val keepSet = rememberClientFilesKept(entries)
     val groups = remember(entries) { xmbDlGroups(entries) }
     val cards = remember(groups) { xmbDlCards(groups) }
     val keys = remember(cards) { cards.map { it.key } }
@@ -333,6 +336,7 @@ internal fun XmbDownloadsPage(focus: XmbTabsPageFocus) {
                                         entry = e,
                                         position = position,
                                         canMoveUp = position > 1,
+                                        keepFiles = e.key in keepSet,
                                         focused = here,
                                         inner = if (here) inner else -1,
                                         // Also shown to a finger (the bar holds the cursor then).
@@ -364,14 +368,20 @@ private fun XmbDlSection.labelRes(): Int = when (this) {
     XmbDlSection.INSTALLED -> R.string.xmb_dl_section_installed
 }
 
-private fun XmbDlAction.labelRes(armed: Boolean): Int = when (this) {
+private fun XmbDlAction.labelRes(armed: Boolean, keepFiles: Boolean): Int = when (this) {
     XmbDlAction.PAUSE -> R.string.xmb_dl_act_pause
     XmbDlAction.RESUME -> R.string.xmb_dl_act_resume
     XmbDlAction.CANCEL -> if (armed) R.string.xmb_dl_act_cancel_sure else R.string.xmb_dl_act_cancel
     XmbDlAction.DETAILS -> R.string.xmb_dl_act_details
     XmbDlAction.START_NEXT -> R.string.xmb_dl_act_start_next
     XmbDlAction.LAUNCH -> R.string.xmb_dl_act_launch
-    XmbDlAction.UNINSTALL -> if (armed) R.string.xmb_dl_act_uninstall_sure else R.string.xmb_dl_act_uninstall
+    XmbDlAction.UNINSTALL -> when {
+        // A game another Steam client installed is only removed from Bannerlator: its files stay, and the button says so.
+        keepFiles && armed -> R.string.xmb_dl_act_uninstall_kept
+        keepFiles -> R.string.dm_remove_library_card
+        armed -> R.string.xmb_dl_act_uninstall_sure
+        else -> R.string.xmb_dl_act_uninstall
+    }
     XmbDlAction.DISMISS -> R.string.xmb_dl_act_dismiss
 }
 
@@ -409,6 +419,7 @@ private fun XmbDlCard(
     entry: DownloadEntry,
     position: Int,
     canMoveUp: Boolean,
+    keepFiles: Boolean,
     focused: Boolean,
     inner: Int,
     armed: XmbDlAction?,
@@ -473,8 +484,8 @@ private fun XmbDlCard(
                     color = XMB_DL_DIM, fontSize = ss.sp(12f), maxLines = 1,
                 )
                 DownloadState.INSTALLED -> Text(
-                    stringResource(if (entry.updateAvailable) R.string.xmb_dl_status_update else R.string.xmb_dl_status_installed),
-                    color = if (entry.updateAvailable) XMB_DL_AMBER else XMB_DL_GREEN, fontSize = ss.sp(12f), maxLines = 1,
+                    stringResource(if (entry.showsUpdate) R.string.xmb_dl_status_update else R.string.xmb_dl_status_installed),
+                    color = if (entry.showsUpdate) XMB_DL_AMBER else XMB_DL_GREEN, fontSize = ss.sp(12f), maxLines = 1,
                 )
                 DownloadState.FAILED -> Text(
                     entry.error?.let { stringResource(R.string.xmb_dl_status_failed_why, it) } ?: stringResource(R.string.xmb_dl_status_failed),
@@ -499,6 +510,7 @@ private fun XmbDlCard(
                         focused = focused && inner == i,
                         filled = a == quick,
                         showX = focused && inner < 0 && a == quick,
+                        keepFiles = keepFiles,
                         ss = ss,
                         onClick = { onAction(a) },
                     )
@@ -537,6 +549,7 @@ private fun XmbDlButton(
     focused: Boolean,
     filled: Boolean,
     showX: Boolean,
+    keepFiles: Boolean,
     ss: ScreenScale,
     onClick: () -> Unit,
 ) {
@@ -557,7 +570,7 @@ private fun XmbDlButton(
             horizontalArrangement = Arrangement.spacedBy(ss.dp(6f)),
         ) {
             Text(
-                stringResource(action.labelRes(armed)),
+                stringResource(action.labelRes(armed, keepFiles)),
                 color = if (danger) XMB_DL_RED else Color.White,
                 fontSize = ss.sp(12f), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false),

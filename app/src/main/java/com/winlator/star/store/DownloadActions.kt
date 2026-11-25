@@ -14,9 +14,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.winlator.star.R
 import com.winlator.star.store.compose.AddResultDialog
@@ -28,6 +30,8 @@ import com.winlator.star.store.download.DownloadEntry
 import com.winlator.star.store.download.DownloadRegistry
 import com.winlator.star.store.download.Store
 import com.winlator.star.ui.screens.OutlinedAlertDialog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -50,7 +54,7 @@ internal class DownloadActions(
     private var showExePicker by mutableStateOf<ExePickerDataDm?>(null)
     private var addToShortcuts by mutableStateOf<AddToShortcutsRequest?>(null)
     private var addResult by mutableStateOf<AddShortcutResult?>(null)
-    // Non-null while an uninstall is deleting files → shows the blocking progress spinner.
+    // Non-null while an uninstall is running → shows the blocking progress spinner.
     private var uninstallingName by mutableStateOf<String?>(null)
     // Non-null briefly after an uninstall (or a launch problem) → themed auto-dismiss confirmation bar (not a Toast).
     var notice by mutableStateOf<String?>(null)
@@ -108,8 +112,10 @@ internal class DownloadActions(
         }
     }
 
-    /** Tap a card → open that game's detail in its store (works for downloading + installed). */
+    /** Tap a card → open that game's detail in its store (works for downloading + installed). A game found in a Steam library
+     * has no store row of its own — the found record is its card — so its card opens nothing. */
     fun openDetail(entry: DownloadEntry) {
+        if (entry.found) return
         when (entry.store) {
             Store.STEAM -> activity.startActivity(
                 Intent(activity, SteamGameDetailActivity::class.java)
@@ -244,10 +250,20 @@ internal class DownloadActions(
 
     /** Uninstall: mark uninstalled in the store DB and delete the install dir off the UI
      *  thread; once the delete is VERIFIED complete, drop the durable-library row (which also
-     *  removes it from the live registry), dismiss the spinner, and toast the real outcome. */
+     *  removes it from the live registry), dismiss the spinner, and report the real outcome.
+     *  A game this app never downloaded takes [uninstallForeign] instead: its files AND its
+     *  appmanifest belong to the library and are kept; only Bannerlator's record of it goes. */
     fun uninstall(entry: DownloadEntry) {
+        val steamId = if (entry.store == Store.STEAM) entry.id.toIntOrNull() else null
+        // The one keep rule ([clientFilesKept], the same one the card labels use): a game another Steam client installed keeps its
+        // folder and appmanifest. The folder keep rule below also covers an installed game whose folder has no OWNED marker.
+        if (steamId != null && clientFilesKept(activity, entry)) {
+            uninstallForeign(entry, steamId)
+            return
+        }
         uninstallingName = entry.name
-        // A Steam game found in another Steam client's library: those files and that manifest are the client's.
+        // Only a game this app downloaded gets here: the rule above sends every other game to uninstallForeign, so `imported` is false
+        // on this path. It stays so the branches below read the same decision.
         val imported = entry.store == Store.STEAM &&
             entry.id.toIntOrNull()?.let { SteamLibraryImport.isImported(activity, it) } == true
         StoreUninstaller.runReporting(
@@ -258,15 +274,20 @@ internal class DownloadActions(
                         if (imported) SteamLibraryImport.releaseImported(activity, it)
                         else SteamAppManifest.removeFor(entry.installPath, it)
                         SteamRepository.getInstance().database.markUninstalled(it)
+                        // The transient `found` flag is restored by the seeder; drop the record too in case this ran before it did.
+                        SteamLibraryFound.forget(activity, it)
                     }
                 }
             },
-            // A Steam game whose folder another game (a demo / server) also uses is kept.
+            // A folder another game (a demo / server) also uses is kept, and so is one this app did not create (not marked
+            // OWNED inside a steamapps library): it may be another Steam client's.
             keepFolder = {
-                val steamId = if (entry.store == Store.STEAM) entry.id.toIntOrNull() else null
+                val keepId = if (entry.store == Store.STEAM) entry.id.toIntOrNull() else null
                 val path = entry.installPath
-                imported || steamId != null && !path.isNullOrEmpty() &&
-                    SteamInstallPaths.folderSharedWithOtherGame(activity, File(path), steamId)
+                imported || !path.isNullOrEmpty() && (
+                    !SteamInstallPaths.mayDeleteWholeFolder(File(path)) ||
+                        keepId != null && SteamInstallPaths.folderSharedWithOtherGame(activity, File(path), keepId)
+                )
             },
         ) { ok, kept ->
             // Clear the durable-library row (also drops the live registry entry) AND the store's
@@ -281,10 +302,38 @@ internal class DownloadActions(
             uninstallingName = null
             notice = when {
                 imported -> activity.getString(R.string.steam_lib_uninstall_kept, entry.name)
+                // The folder is still there (another game uses it): the record is gone, the files are not.
+                ok && kept -> activity.getString(R.string.xmb_dl_uninstall_files_kept, entry.name)
                 ok -> "${entry.name} uninstalled"
                 else -> "Couldn't fully remove ${entry.name}"
             }
         }
+    }
+
+    /**
+     * Uninstall of a game this app did not download: only Bannerlator's record of it goes — the card, the found record, the imported
+     * mark (with its ignore, so the next scan/import cannot bring the game back), and the Steam DB row. Its folder, its
+     * `appmanifest_<id>.acf` and the shortcuts that run from it belong to the other Steam client and all stay, so that client still
+     * sees a healthy install and remains free to update or uninstall the game.
+     */
+    private fun uninstallForeign(entry: DownloadEntry, appId: Int) {
+        uninstallingName = entry.name
+        Thread {
+            // The imported mark goes and its ignore keeps the import from putting the card back; the Steam DB row of an owned game
+            // goes too. Nothing here touches the files or the manifest.
+            SteamLibraryImport.releaseImported(activity, appId)
+            // Drop the record before the worker ends: a scan that snapshotted it can still seed it once, but the ignore checks in
+            // scanLibraries/seed keep it gone after that.
+            SteamLibraryFound.forget(activity, appId)
+            runCatching { SteamRepository.getInstance().database.markUninstalled(appId) }
+            activity.runOnUiThread {
+                DownloadRegistry.removeLibraryEntry(entry.key)
+                // The folder and its exes stay, so the game's shortcuts still work: leave them, exactly as the Steam tab and the
+                // game page do for a kept/imported game.
+                uninstallingName = null
+                notice = activity.getString(R.string.steam_lib_uninstall_kept, entry.name)
+            }
+        }.start()
     }
 
     /**
@@ -378,8 +427,43 @@ internal class DownloadActions(
             GogLibrarySync.seed(context)
             EpicLibrarySync.seed(context)
             com.winlator.star.store.xbox.XboxDownloads.seed(context)
+            // Games installed in a Steam library folder by something else show in Downloads like a downloaded game (on a worker
+            // thread: the records' folders and manifests are checked on disk). A user opening the page asks for it: the throttle
+            // is skipped, so a game installed a moment ago is not hidden by a scan that ran just before it.
+            SteamLibraryFound.scanIfStaleAsync(context, force = true)
         }
     }
+}
+
+/** The folder the keep rule checks: a found record's (authoritative while a seed runs) else the row's own. */
+internal fun foundOrRowDir(ctx: Context, entry: DownloadEntry): File? {
+    val fromRecord = if (entry.found && entry.store == Store.STEAM) {
+        entry.id.toIntOrNull()?.let { SteamLibraryFound.record(ctx, it)?.installDir }
+    } else null
+    return (fromRecord?.takeIf { it.isNotEmpty() } ?: entry.installPath?.takeIf { it.isNotEmpty() })?.let(::File)
+}
+
+/**
+ * True when uninstalling this card keeps the files: its game is another Steam client's ([SteamLibraryFound.keepsClientFiles]), or a
+ * found card, whose record is the proof. The card labels and [DownloadActions.uninstall] both ask this, so they never disagree.
+ * Blocking (preference and DB reads): off the UI thread, see [rememberClientFilesKept].
+ */
+internal fun clientFilesKept(ctx: Context, entry: DownloadEntry): Boolean =
+    entry.store == Store.STEAM && entry.id.toIntOrNull()?.let { id ->
+        entry.found || SteamLibraryFound.keepsClientFiles(ctx, id, foundOrRowDir(ctx, entry))
+    } == true
+
+/**
+ * The keys of the [entries] whose files [clientFilesKept] keeps, for the uninstall labels. Computed on Dispatchers.IO (the reads are
+ * blocking) and redone when the list changes; empty until the first answer.
+ */
+@Composable
+internal fun rememberClientFilesKept(entries: List<DownloadEntry>): Set<String> {
+    val ctx = LocalContext.current.applicationContext
+    val kept by produceState(initialValue = emptySet<String>(), key1 = entries) {
+        value = withContext(Dispatchers.IO) { entries.filter { clientFilesKept(ctx, it) }.map { it.key }.toSet() }
+    }
+    return kept
 }
 
 private data class ExePickerDataDm(

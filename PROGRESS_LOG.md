@@ -71,6 +71,11 @@
 - 19:48 EST CI 45520187959 GREEN x4 (run 19:42-19:46 EST, headSha a915ce79); /sdcard/Download/Bannerlator-wayland-cursor2-a915ce79-pubg.apk
   sha256 7f121d06... (host == device == installed) INSTALLED FIT on the user's "yes install it when done" (closed their paused
   Cursor Test session). Retest hidden -> other tiles next (results wlcursor3-1124).
+- RETEST 19:49 EST (a915ce79 + Wine c3b19f80, results wlcursor3-1124/h6-*.png): hidden tile 6 -> tiles 5, 1, 2, 3, 4 each
+  shows its cursor AT ONCE (arrow, quadrants, white dot + shadow, rainbow, animated); trace = program SetCursor 0x0 -> next cursor.
+  Positions: rainbow (hotspot centre) centred on the pointer; the other cursors sit 1-1.6 % of the swipe length back along the
+  swipe direction (= pointer lag of the synthetic swipe, proportional to distance), so hotspots look right. 0 crashes (3 logcat
+  hits = xsu echo of my grep). Open: user hand test incl. drag-resize; other 4 Wine layers + release + merge = user word.
 - Resume point: FIT = a915ce79 (BL) + test winewayland.so c3b19f80 (Wine ad20651d) in DD 12.8 v17. If the user reports it works: merge only on the user's word; delete the
   4 "AIO Cursor Test - ..." shortcuts after; then AIO 2.3.0-pre1 publish (AIO branch feat/upscaler-test-scene, see its log).
 - Test plan: Cursor Test shortcuts on the FIT ("AIO Cursor Test - Wayland", "- Wayland OLD 2.2.0"): colour quadrants, shadow,

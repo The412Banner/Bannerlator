@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-24 18:15–18:40 EST — Wayland desktop mode: program cursors (`fix/wayland-desktop-cursor`, b5bbed8e INSTALLED FIT, user testing)
+## 2026-11-24 18:15–20:56 EST — Wayland desktop mode: program cursors (`fix/wayland-desktop-cursor`, MERGED main 4c7f9775, DEVICE-PROVEN FIT with the Wine half; Wine half NOT released)
 - Why: AIO Cursor Test (new 2.3.0-pre1 build AND the 2.2.0 CursorTest.exe) on the FIT: Wayland shows the same plain arrow on all
   6 tiles (incl. the hidden one), X11 correct (user 18:3x EST: "it's the same on wayland old, works correctly on x11. we need to
   make it work on Wayland please").
@@ -96,6 +96,16 @@
   ls-remote). Parent push builds: 45528111361 / 45528121107 / 45528130051 / 45528138530 / 45528145478 / 45528154909 (same
   commits as the green staging builds). (zsh lesson: "$P:refs" = :r modifier -> use "${P}:refs"; the backup check stopped it.)
   Still open: v18 (versionCode bump + rebuild + release + catalog), BL merge, temp shortcuts.
+- 20:5x EST USER (to root-28): "yes merge it to main, a drag size test works, I get correct arrows" = drag-resize hand test
+  PASSED (correct resize arrows). Checked first: FIT installed base.apk sha256 7f121d06... == staged
+  Bannerlator-wayland-cursor2-a915ce79-pubg.apk, lastUpdateTime 19:48:20 (not replaced since). root-ae told + acked.
+- MERGED to main: backup refs/backup/20261124/main-before-wayland-desktop-cursor = 447b4afd (main had not moved), then
+  `git merge --no-ff` of a1d6ff33 -> main 4c7f9775; merged tree == branch tree, code == a915ce79 (only PROGRESS_LOG.md after it).
+  Main CI 45529326117 (headSha 4c7f9775) running. No release.
+- NOTE: the BL half alone does NOT fix the cursor with the released Wine v17 layers. It needs the Wine half
+  ("winewayland: In desktop mode, send desktop-window pointer input without a window"), on all 6 proton-wine parent
+  branches since 20:45 EST but NOT released (v18 = user word). Only the FIT's DD 12.8 v17 has it (swapped test
+  winewayland.so c3b19f80). New Wine + old BL 3.2.1 not tested. Open: v18 release, temp Cursor Test shortcuts cleanup.
 - Resume point: FIT = a915ce79 (BL) + test winewayland.so c3b19f80 (Wine ad20651d) in DD 12.8 v17. If the user reports it works: merge only on the user's word; delete the
   4 "AIO Cursor Test - ..." shortcuts after; then AIO 2.3.0-pre1 publish (AIO branch feat/upscaler-test-scene, see its log).
 - Test plan: Cursor Test shortcuts on the FIT ("AIO Cursor Test - Wayland", "- Wayland OLD 2.2.0"): colour quadrants, shadow,

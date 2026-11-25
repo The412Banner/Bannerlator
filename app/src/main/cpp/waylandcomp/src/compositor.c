@@ -570,6 +570,18 @@ static struct surface *g_pre_surface;
 /* Desktop mode: the program window under the pointer, entered on its own wl_pointer for the
  * cursor only (see hover_update). */
 static struct wl_resource *g_hover_win;
+/* Pointer buttons held (bit = button - BTN_LEFT). While one is down the hover window stays,
+ * like a Wayland implicit grab: a drag that leaves the window keeps its cursor. */
+static uint32_t g_ptr_buttons;
+/* The desktop client's (explorer's) last set_cursor while a program window was hovered; applied
+ * when the hover ends. See pointer_set_cursor. */
+static struct { int pending; struct wl_resource *surface; int32_t hx, hy; } g_desk_cursor;
+static void cursor_set(struct wl_resource *surface, int32_t hx, int32_t hy);
+static void desk_cursor_replay(void) {
+    if (!g_desk_cursor.pending) return;
+    g_desk_cursor.pending = 0;
+    cursor_set(g_desk_cursor.surface, g_desk_cursor.hx, g_desk_cursor.hy);
+}
 
 static void cursor_publish_hidden(void) {
     pthread_mutex_lock(&g_cursor_lock);
@@ -1529,6 +1541,7 @@ static void surface_resource_destroy(struct wl_resource *r) {
     if (g_pre_surface == s) g_pre_surface = NULL;
     if (g_cursor_px_surface == s) g_cursor_px_surface = NULL;
     if (g_hover_win == r) g_hover_win = NULL;
+    if (g_desk_cursor.pending && g_desk_cursor.surface == r) g_desk_cursor.pending = 0;
     for (int i = 0; i < MAX_FINGERS; i++)
         if (g_fingers[i].active && g_fingers[i].target && g_fingers[i].target->resource == r)
             g_fingers[i].active = 0;
@@ -3150,8 +3163,7 @@ static uint32_t now_ms(void) {
  * signal the app never had before. The surface is snapshotted on each commit; content it already
  * has is shown at once (winewayland commits a new cursor surface's image before this request, and
  * sends the new hotspot here after committing the new image). */
-static void pointer_set_cursor(struct wl_client *c, struct wl_resource *r, uint32_t serial,
-                               struct wl_resource *surface, int32_t hx, int32_t hy) {
+static void cursor_set(struct wl_resource *surface, int32_t hx, int32_t hy) {
     if (!surface) {
         if (g_cursor_surface) g_cursor_surface->role = ROLE_NONE;
         g_cursor_surface = NULL;
@@ -3179,6 +3191,24 @@ static void pointer_set_cursor(struct wl_client *c, struct wl_resource *r, uint3
     }
     pthread_mutex_unlock(&g_cursor_lock);
     if (g_pre_surface == s) g_pre_surface = NULL;
+}
+
+/* Desktop mode: while a program window is hovered (hover_update) its client owns the cursor.
+ * Wine without the winewayland/wineserver desktop-cursor fixes keeps the desktop process
+ * (explorer) as the cursor owner, and it sends its own - often empty - cursor right after the
+ * program's, which hid the pointer. Its request is kept and applied when the hover ends. */
+static void pointer_set_cursor(struct wl_client *c, struct wl_resource *r, uint32_t serial,
+                               struct wl_resource *surface, int32_t hx, int32_t hy) {
+    if (g_desktop && g_hover_win && c == wl_resource_get_client(g_desktop->resource) &&
+        c != wl_resource_get_client(g_hover_win)) {
+        g_desk_cursor.pending = 1;
+        g_desk_cursor.surface = surface;
+        g_desk_cursor.hx = hx;
+        g_desk_cursor.hy = hy;
+        return;
+    }
+    if (g_desktop && c == wl_resource_get_client(g_desktop->resource)) g_desk_cursor.pending = 0;
+    cursor_set(surface, hx, hy);
 }
 static void pointer_release(struct wl_client *c, struct wl_resource *r) { wl_resource_destroy(r); }
 static const struct wl_pointer_interface pointer_impl = {
@@ -3334,7 +3364,7 @@ static void hover_update(double x, double y) {
     if (res && wl_resource_get_client(res) == wl_resource_get_client(g_desktop->resource)) res = NULL;
     if (res == g_hover_win) return;
     hover_leave();
-    if (!res) return;
+    if (!res) { desk_cursor_replay(); return; }
     struct wl_client *client = wl_resource_get_client(res);
     struct seat_pointer *sp;
     int sx = s->placed ? s->x : 0, sy = s->placed ? s->y : 0;
@@ -3349,6 +3379,7 @@ static void hover_update(double x, double y) {
         entered = 1;
     }
     if (entered) g_hover_win = res;
+    else desk_cursor_replay();
 }
 
 /* The seat's modifiers in the keymap's real-modifier bits. Wine and gamescope work them out from
@@ -3878,6 +3909,10 @@ static void pointer_input(double x, double y, int relative, uint32_t button, int
     double dx, dy;
 
     if (!g_synthetic_input) g_last_user_input_ns = now_ns();
+    if (button >= BTN_LEFT && button < BTN_LEFT + 32) {
+        if (pressed) g_ptr_buttons |= 1u << (button - BTN_LEFT);
+        else g_ptr_buttons &= ~(1u << (button - BTN_LEFT));
+    }
 
     if (relative) {
         dx = x; dy = y;
@@ -3922,7 +3957,7 @@ static void pointer_input(double x, double y, int relative, uint32_t button, int
     uint32_t t = now_ms();
 
     pointer_focus(target->resource, fx, fy);
-    if (target == g_desktop) hover_update(g_ptr_x, g_ptr_y);
+    if (target == g_desktop) { if (!g_ptr_buttons) hover_update(g_ptr_x, g_ptr_y); }
     else if (g_hover_win && g_hover_win != target->resource) hover_leave();
     if (!(k && k->is_lock))
         for_each_pointer_of(client, sp) wl_pointer_send_motion(sp->ptr, t, fx, fy);

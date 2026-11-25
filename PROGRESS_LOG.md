@@ -19,8 +19,79 @@
 - 20:50 EST CI 45526748931 GREEN 4/4 (31ab40ec); pubg APK 7f35e7a2 staged on the Elite (its template == branch). Install asked.
 - ~22:00 EST main moved to 77785b3d (Wayland desktop cursor merged, 4c7f9775). Merged main into this branch so the device test
   covers the exact tree that would go to main; only PROGRESS_LOG.md conflicted (both entries kept). Rebuild + re-stage.
+- 22:15 EST CI 45536353257 GREEN on deb5b877, NOT staged: root-ae reported main 4c7f9775 hides the Wayland pointer with older
+  Wine layers (the Elite runs released v17). ~22:30 EST root-ae merged the fix (1d2db982) -> merged main 9871bd46 into this
+  branch again (only PROGRESS_LOG.md conflicted), rebuild. Expected on the Elite with released v17 (root-ae): pointer visible
+  but one shape per window, no edge-drag resize (needs the unreleased Wine fixes) - not part of this test.
 - Next: CI result -> stage APK -> device proof (needs the user's yes to install; the FIT has root-ae's Wayland cursor test build
   a915ce79, so the Elite may be the better test device) -> merge to main on the user's word. No release.
+
+## 2026-11-24 — Wayland cursor with OLDER Wine layers: pointer vanished (MERGED main 1d2db982, device-proven)
+- Why: user asked whether the merged BL cursor fixes affect released v17 layers (no Wine half). Tested 22:0x EST on the FIT:
+  BL 3602ac32 (= main code) + ORIGINAL v17 winewayland d3b0a2e0 + wineserver ed2866f6 in DD 12.8 v17 (results
+  wlcursor11-1124): NO pointer on any Cursor Test tile (old BL showed its fallback arrow). REGRESSION from the hover change
+  (main 4c7f9775): the hovered program now sends its real cursor, then explorer (still owner on old Wine) sends its empty
+  cursor and the overlay obeys it; before, no image ever arrived (serial 0 -> fallback arrow). Not released.
+- Fix 29ed42de: while a program window is hovered, the desktop client's set_cursor is kept (g_desk_cursor) and applied
+  when the hover ends (no program window under the pointer); pointer_set_cursor split into cursor_set. With fixed Wine the
+  desktop client does not send cursors while a program owns the pointer -> no change. CI 45537323630.
+- FIT restored to the fixed test files after the test (wineserver e7bea2eb, winewayland c3b19f80).
+- 22:08 EST CI 45537323630 GREEN x4 (22:03-22:07 EST); APK sha256 861fb9cd (host == device == installed) INSTALLED FIT on
+  the user's "yes install it when done". Tests (wl-test.sh, results wlcursor12-orig / wlcursor12-fixed):
+  ORIGINAL v17 Wine (wineserver ed2866f6 + winewayland d3b0a2e0): pointer VISIBLE on all tiles again, fixed to the program
+  cursor at hover entry (quadrants on every tile) = expected limit without the Wine half; window edge drag does NOT resize
+  (size loop starts - WAYLAND_SysCommand SC_SIZE|WMSZ_RIGHT - then ClipCursor(NULL) right away = loop ended at once; with
+  the fixed winewayland it resizes, also with the old wineserver (user drag 20:58) -> old winewayland's desktop-hwnd input;
+  not proven against old BL). FIXED Wine (e7bea2eb + c3b19f80): 6 tiles + hidden->arrow OK, drag 0 cursor switches / 0
+  hover churn, live resize, normal after release, 0 crashes. FIT left with the FIXED files.
+- 22:2x EST USER: "yes merge it to main". BL main 5ea6cb7e -> 1d2db982 (--no-ff merge of 63cba920, tree == branch, code ==
+  installed 29ed42de; backup refs/backup/20261124/main-before-wayland-cursor-old-wine), main CI 45538623482. Regression on
+  main closed. Not released.
+
+## 2026-11-24 — Wayland drag: cursor flicker + resize stripes (MERGED main c9a9f49a, device-proven)
+- Why: user 21:05 EST "resize arrow flickers and the window looks goofy" (screenshot 20:58:56, Wayland session); window
+  snaps right after release (user). User go 21:08 "take the fit, fix both".
+- Repro on the FIT (test-only uinput mouse /data/local/tmp/umouse, real BTN_LEFT; results
+  /sdcard/Download/perf-harness/results/wlcursor4-1124/g*.png): right-edge drag -> WAYLAND_SetCursor alternates program
+  0x60096 (sizing) / explorer 0x10022 (arrow) + hover enter/leave churn = flicker; during the drag HUD 0.0 fps + blue
+  stripes in the new area (AIO blocked in the modal size loop, class hbrBackground NULL); after release correct size.
+- Fixes: (1) Wine follow-up "tag desktop pointer input with the capture window" (NtUserGetGUIThreadInfo(0).hwndCapture,
+  shared memory) on staging/<b>/wayland-cursor: 10.0 01a71f9f (CI 45531490605), 10.34-GE 137f5ab6 (45531494191), 11.0-2
+  50df8249 (45531499268), 11.0-3 b6fbb0e0 (45531502800), 11.14-GE dde84cb4 (45531507192), DD 12.8 9d6c0c47 (45531510331).
+  (2) BL 3602ac32: hover window kept while a pointer button is held (g_ptr_buttons), CI 45531666994. (3) AIO
+  fix/resize-redraw 5c332930: D3D11 frame function shared by loop + WM_ENTERSIZEMOVE timer, black class brush; compiles
+  with CI flags; CI 45531899038.
+- 21:25 swap test (Wine winewayland follow-up 9d6c0c47 + AIO 5c332930): flicker reduced, not gone (4 owner switches):
+  wineserver update_cursor_pos -> set_cursor_pos after every window move/resize queues a window-less mouse move, and
+  update_desktop_cursor_pos then picks the window under the pointer even during a capture. REPLACED the winewayland
+  follow-up (staging branches rewritten with --force-with-lease) by a SERVER fix "server: Keep the cursor with the window
+  holding the mouse capture." (update_desktop_cursor_pos uses desktop->foreground_input's capture window when the message
+  has no visible window): DD 12.8 24ddfcf8 (CI 45533126366 green, 21:27-21:36 EST), 10.0 23ad8a82, 10.34-GE f0976beb,
+  11.0-2 7a240c6f (green), 11.0-3 686e4156 (green), 11.14-GE 486c9577 (green).
+- 21:39-21:45 EST DEVICE TEST (FIT DD 12.8 v17: bin/wineserver = 24ddfcf8 build e7bea2eb, winewayland.so = c3b19f80;
+  backups /sdcard/Download/wine-layer-backup/11.0-12.8-arm64ec-17-wineserver.orig-20261124 (ed2866f6) + winewayland orig;
+  AIO test exe 5c332930): test mouse steers onto the right edge by Wine's traced position ("g 638 240"), holds BTN_LEFT,
+  drags right. 3 runs: 0 WAYLAND_SetCursor calls between press and release (was dozens), sizing arrow visible in every
+  in-hold screenshot even ahead of the edge; window grows live, cube redrawn at the new size at ~100 fps (timer), no
+  stripes; after release ~2500 fps at +1.5/+3/+5/+8 s (one earlier run showed 0.0 fps at +1.5 s once, not reproduced in
+  2 later runs). Results wlcursor6/7/8-1124. Remaining: hover enter/leave churn (21 per drag) = BL 3602ac32 (staged, not
+  installed - ask).
+- 21:52 EST BL 3602ac32 INSTALLED FIT on the user's "yes install it" (sha256 16c01a61 staged == installed). Drag test
+  (wlcursor9-1124): 0 WAYLAND_SetCursor AND 0 pointer enter/leave between press and release, sizing arrow in every
+  in-hold shot, live resize, ~2500 fps after release, 0 crashes. Regression (wlcursor10-1124, temp shortcut
+  "ZZ AIO cursortest" = --cursortest): 6 tiles correct, hidden 6 -> arrow 5 immediate. The 4 "AIO Cursor Test - ..."
+  shortcuts were deleted by someone else before 21:53 (not me). All 6 Wine server-fix builds GREEN (10.0 23ad8a82,
+  10.34-GE f0976beb, 11.0-2 7a240c6f, 11.0-3 686e4156, 11.14-GE 486c9577, DD 12.8 24ddfcf8). Awaiting user go: BL merge,
+  proton-wine parents FF to the server commit, AIO fix/resize-redraw merge (+ 2.3.1?).
+- 21:57 EST USER: "merge all to main and update the parent branches". BL main 77785b3d -> c9a9f49a (--no-ff merge of
+  6bd09aa3, tree == branch, code == installed 3602ac32; backup refs/backup/20261124/main-before-wayland-drag-cursor), main CI
+  45536420465. AIO main a48da4bd -> 7197b132 (merge of fix/resize-redraw 5c332930; backup main-before-resize-redraw), build
+  45536472395, no release. proton-wine parents fast-forwarded to the server fix (backups refs/backup/20261124/<b>-before-
+  server-cursor-capture): 10.0 23ad8a82, 10.34-GE f0976beb, 11.0-2 7a240c6f, 11.0-3 686e4156, DD 12.8 24ddfcf8, 11.14-GE
+  486c9577; parent builds 45536519658..45536557719. Not released: Wine v18, BL release, AIO 2.3.1 = user word.
+- Next: swap Wine winewayland.so (DD 12.8 v17 on FIT) + AIO exe into the AIO-upscaletest test folder, drag test; BL APK
+  install = ASK first. Parents FF + v18 after device proof.
+- Resume point: FIT = BL 3602ac32 + DD 12.8 v17 test winewayland c3b19f80 + test wineserver e7bea2eb; BL idle.
 
 ## 2026-11-24 18:15–20:56 EST — Wayland desktop mode: program cursors (`fix/wayland-desktop-cursor`, MERGED main 4c7f9775, DEVICE-PROVEN FIT with the Wine half; Wine half NOT released)
 - Why: AIO Cursor Test (new 2.3.0-pre1 build AND the 2.2.0 CursorTest.exe) on the FIT: Wayland shows the same plain arrow on all

@@ -1,5 +1,22 @@
 # Star-Compose — Progress Log
 
+## 2026-11-24 — Wayland drag: cursor flicker + resize stripes (fix/wayland-drag-cursor, CI running)
+- Why: user 21:05 EST "resize arrow flickers and the window looks goofy" (screenshot 20:58:56, Wayland session); window
+  snaps right after release (user). User go 21:08 "take the fit, fix both".
+- Repro on the FIT (test-only uinput mouse /data/local/tmp/umouse, real BTN_LEFT; results
+  /sdcard/Download/perf-harness/results/wlcursor4-1124/g*.png): right-edge drag -> WAYLAND_SetCursor alternates program
+  0x60096 (sizing) / explorer 0x10022 (arrow) + hover enter/leave churn = flicker; during the drag HUD 0.0 fps + blue
+  stripes in the new area (AIO blocked in the modal size loop, class hbrBackground NULL); after release correct size.
+- Fixes: (1) Wine follow-up "tag desktop pointer input with the capture window" (NtUserGetGUIThreadInfo(0).hwndCapture,
+  shared memory) on staging/<b>/wayland-cursor: 10.0 01a71f9f (CI 45531490605), 10.34-GE 137f5ab6 (45531494191), 11.0-2
+  50df8249 (45531499268), 11.0-3 b6fbb0e0 (45531502800), 11.14-GE dde84cb4 (45531507192), DD 12.8 9d6c0c47 (45531510331).
+  (2) BL 3602ac32: hover window kept while a pointer button is held (g_ptr_buttons), CI 45531666994. (3) AIO
+  fix/resize-redraw 5c332930: D3D11 frame function shared by loop + WM_ENTERSIZEMOVE timer, black class brush; compiles
+  with CI flags; CI 45531899038.
+- Next: swap Wine winewayland.so (DD 12.8 v17 on FIT) + AIO exe into the AIO-upscaletest test folder, drag test; BL APK
+  install = ASK first. Parents FF + v18 after device proof.
+- Resume point: FIT = BL main-equivalent a915ce79 + test winewayland.so c3b19f80 (DD 12.8 v17); BL idle.
+
 ## 2026-11-24 18:15–20:56 EST — Wayland desktop mode: program cursors (`fix/wayland-desktop-cursor`, MERGED main 4c7f9775, DEVICE-PROVEN FIT with the Wine half; Wine half NOT released)
 - Why: AIO Cursor Test (new 2.3.0-pre1 build AND the 2.2.0 CursorTest.exe) on the FIT: Wayland shows the same plain arrow on all
   6 tiles (incl. the hidden one), X11 correct (user 18:3x EST: "it's the same on wayland old, works correctly on x11. we need to

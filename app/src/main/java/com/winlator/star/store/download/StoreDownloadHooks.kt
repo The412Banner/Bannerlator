@@ -226,10 +226,10 @@ object StoreDownloadHooks {
     }
 
     /**
-     * Uninstall: drop the INSTALLED library row (and its durable-pref entry) so the Library
-     * section clears immediately — same effect as Steam's uninstall clearing its library entry.
+     * Uninstall: drop the card at once — an INSTALLED library row (and its durable-pref entry), a FAILED one, or a CANCELLED
+     * one — so the Library section clears immediately. A live download under the same key (QUEUED/DOWNLOADING/PAUSED) is spared.
      */
     fun markUninstalled(store: Store, id: String) {
-        DownloadRegistry.removeLibraryEntry(key(store, id))
+        DownloadRegistry.removeTerminal(key(store, id))
     }
 }

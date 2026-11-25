@@ -192,9 +192,38 @@ object DownloadRegistry {
     // -------------------------------------------------------------------------
     // Durable library (bh_library-style pref)
     // -------------------------------------------------------------------------
-    // Value format, LIB_SEP('\n')-joined: name \n store \n installPath [\n cover].
-    // Cover is an optional 4th field (Steam covers are derivable from appId, so it's
-    // only meaningful for Epic/GOG/Amazon url-based art); parsed defensively.
+    // Value format, LIB_SEP('\n')-joined: name \n store \n installPath \n cover \n found.
+    // Cover is an empty string when the store has no art of its own (Steam covers are derivable from
+    // appId); the 5th field is "1" for a found game (SteamLibraryFound's card), "0" otherwise.
+    // Rows written by older builds have 3 or 4 fields: an absent cover loads as null and an absent
+    // found field as false.
+
+    /** One durable-library row, in the value format above. */
+    internal fun encodeLibraryEntry(entry: DownloadEntry): String = buildString {
+        append(entry.name).append(LIB_SEP)
+        append(entry.store.name).append(LIB_SEP)
+        append(entry.installPath ?: "").append(LIB_SEP)
+        append(entry.cover ?: "").append(LIB_SEP)
+        append(if (entry.found) "1" else "0")
+    }
+
+    /** The entry [key] names, or null when its store is unknown. Legacy 3/4-field rows load with no cover (null), found false. */
+    internal fun decodeLibraryEntry(key: String, raw: String): DownloadEntry? {
+        val parts = raw.split(LIB_SEP, limit = 5)
+        val store = runCatching { Store.valueOf(parts.getOrElse(1) { "" }) }.getOrNull()
+            ?: return null
+        val id = key.substringAfter(':', "")
+        return DownloadEntry(
+            store = store,
+            id = id,
+            name = parts.getOrElse(0) { "" },
+            cover = parts.getOrNull(3)?.takeIf { it.isNotEmpty() },
+            state = DownloadState.INSTALLED,
+            pct = 100,
+            installPath = parts.getOrElse(2) { "" },
+            found = parts.getOrNull(4) == "1",
+        )
+    }
 
     /** Remove one installed game from the durable library and the live registry. */
     fun removeLibraryEntry(key: String) {
@@ -204,6 +233,12 @@ object DownloadRegistry {
         _entries.update { map ->
             if (map[key]?.state == DownloadState.INSTALLED) map - key else map
         }
+    }
+
+    /** Remove a FINISHED card (INSTALLED, FAILED or CANCELLED) from the live registry and the durable library. A live download under the same key (QUEUED/DOWNLOADING/PAUSED) is left alone. */
+    fun removeTerminal(key: String) {
+        if (::libPrefs.isInitialized) libPrefs.edit().remove(key).apply()
+        _entries.update { map -> if (map[key]?.isActive == true) map else map - key }
     }
 
     /** Wipe the entire durable library and its INSTALLED rows. */
@@ -216,32 +251,12 @@ object DownloadRegistry {
     private fun writeThrough(entry: DownloadEntry) {
         if (!::libPrefs.isInitialized) return
         if (entry.state != DownloadState.INSTALLED) return
-        val val0 = buildString {
-            append(entry.name).append(LIB_SEP)
-            append(entry.store.name).append(LIB_SEP)
-            append(entry.installPath ?: "")
-            entry.cover?.let { append(LIB_SEP).append(it) }
-        }
-        libPrefs.edit().putString(entry.key, val0).apply()
+        libPrefs.edit().putString(entry.key, encodeLibraryEntry(entry)).apply()
     }
 
     private fun loadLibrary(): List<DownloadEntry> {
         if (!::libPrefs.isInitialized) return emptyList()
-        return libPrefs.all.mapNotNull { (key, raw) ->
-            val parts = (raw?.toString() ?: "").split(LIB_SEP, limit = 4)
-            val store = runCatching { Store.valueOf(parts.getOrElse(1) { "" }) }.getOrNull()
-                ?: return@mapNotNull null
-            val id = key.substringAfter(':', "")
-            DownloadEntry(
-                store = store,
-                id = id,
-                name = parts.getOrElse(0) { "" },
-                cover = parts.getOrNull(3),
-                state = DownloadState.INSTALLED,
-                pct = 100,
-                installPath = parts.getOrElse(2) { "" },
-            )
-        }
+        return libPrefs.all.mapNotNull { (key, raw) -> decodeLibraryEntry(key, raw?.toString() ?: "") }
     }
 
     private fun DownloadEntry.toLibraryEntry() =

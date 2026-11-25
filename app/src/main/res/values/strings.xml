@@ -1040,7 +1040,7 @@
     <string name="steam_launch_mismatch_switching">Switching…</string>
     <string name="steam_launch_mismatch_launch_anyway">Launch anyway</string>
     <string name="steam_launch_no_owner_title">No account owns this game</string>
-    <string name="steam_launch_no_owner_body">None of your saved Steam accounts lists this game as owned. If it\'s yours (installed earlier, family shared or free), launch it anyway; otherwise add the account that owns it.</string>
+    <string name="steam_launch_no_owner_body">None of your saved Steam accounts lists this game as owned. If it\'s yours (installed earlier, family shared or free), launch it anyway; otherwise add the account that owns it. Your choice is remembered for this game.</string>
     <!-- /Steam: launch with a different account than the one the game belongs to -->
     <string name="fexcore_env_var_help__volatilemetadata"><![CDATA[
         64-bit Windows programs can carry volatile metadata: the compiler marking exactly which
@@ -2754,6 +2754,8 @@ trying for speed, <b>notemplates</b> if you get driver crashes.
     <!-- Steam library locations: extra install folders (store/SteamLibraryLocations). -->
     <string name="steam_lib_title">Steam library locations</string>
     <string name="steam_lib_uninstall_kept">%1$s removed from Bannerlator. Its files belong to another Steam client and were kept.</string>
+    <!-- Download Manager: the button of a game found in another Steam client's library (only removed from Bannerlator, files stay). -->
+    <string name="dm_remove_library_card">Remove</string>
     <string name="steam_lib_settings_subtitle">Games folders on shared storage or an SD card, set up as regular Steam libraries (a steamapps folder), so other Steam clients and emulators can use the same games. You choose the location each time you install a game.</string>
     <string name="steam_lib_intro">Games install to the app\'s own storage by default. Add a \"Games\" folder on shared storage or an SD card and the app creates (or reuses) a regular Steam steamapps folder inside it — games go to steamapps/common with their appmanifest files, the same layout every Steam client uses, so other launchers and emulators can open them without a re-download. An existing steamapps folder is built upon, never reset, and games already installed in it are picked up. Removing a location only forgets it — no files are ever deleted.</string>
     <string name="steam_lib_manage">Manage locations</string>

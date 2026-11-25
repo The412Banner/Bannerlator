@@ -21,9 +21,10 @@ class XmbDownloadsLogicTest {
         queuePosition: Int = 0,
         updateAvailable: Boolean = false,
         supportsPause: Boolean = true,
+        found: Boolean = false,
     ) = DownloadEntry(
         store = store, id = id, name = name, state = state, queuePosition = queuePosition,
-        updateAvailable = updateAvailable, supportsPause = supportsPause,
+        updateAvailable = updateAvailable, supportsPause = supportsPause, found = found,
     )
 
     private fun names(g: XmbDlGroup) = g.entries.map { it.id }
@@ -226,6 +227,18 @@ class XmbDownloadsLogicTest {
         val e = entry("i", DownloadState.INSTALLED)
         assertEquals(listOf(XmbDlAction.LAUNCH, XmbDlAction.DETAILS, XmbDlAction.UNINSTALL), xmbDlActions(e, false))
         assertEquals(XmbDlAction.LAUNCH, xmbDlQuickAction(e, false))
+    }
+
+    @Test fun actions_foundInALibraryHasNoDetails() {
+        val e = entry("i", DownloadState.INSTALLED, found = true)
+        assertEquals(listOf(XmbDlAction.LAUNCH, XmbDlAction.UNINSTALL), xmbDlActions(e, false))
+        assertEquals(XmbDlAction.LAUNCH, xmbDlQuickAction(e, false))
+    }
+
+    @Test fun groups_foundInALibraryIsAnInstalledCard() {
+        val g = xmbDlGroups(listOf(entry("i", DownloadState.INSTALLED, found = true))).single()
+        assertEquals(XmbDlSection.INSTALLED, g.section)
+        assertEquals(listOf("i"), names(g))
     }
 
     @Test fun actions_stoppedCanBeOpenedOrDismissed_xDismisses() {

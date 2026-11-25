@@ -21,6 +21,18 @@ object StoreLibraryReconcile {
         val amazon = app.getSharedPreferences("bh_amazon_prefs", Context.MODE_PRIVATE)
         var dropped = 0
         for (row in rows) {
+            // A found row is the found scan's: its record keeps a game on an unmounted library and drops it once the folder or
+            // manifest has gone, while the DB can call an owned game uninstalled with its folder still holding the files. A
+            // persisted found row with no record was already dropped or forgotten by the scan, so drop the stale card here too
+            // (including after a restart). Older 4-field rows load found=false and fall through as before.
+            if (row.store == Store.STEAM) {
+                val appId = row.id.toIntOrNull()
+                if (appId != null && SteamLibraryFound.record(app, appId) != null) continue
+                if (row.found) {
+                    if (!DownloadRegistry.isActive(row.key)) DownloadRegistry.removeTerminal(row.key)
+                    continue
+                }
+            }
             val installed = try {
                 when (row.store) {
                     Store.STEAM -> row.id.toIntOrNull()?.let { SteamDatabase.getInstance(app).getGame(it)?.isInstalled } ?: true

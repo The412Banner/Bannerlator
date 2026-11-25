@@ -97,6 +97,26 @@ object SteamInstallPaths {
     }
 
     /**
+     * The game's install dir taken straight from a raw Windows or host [rawPath]: everything up to and
+     * including the game folder, separators and casing as given. `E:\Games\steamapps\common\DARK SOULS III`
+     * for `E:\Games\steamapps\common\DARK SOULS III\Game\DarkSoulsIII.exe`, and the same for a legacy
+     * `steam_games/<folder>` path. Uses the same root detection as [afterInstallRoot], so `steamapps` only
+     * counts as a whole segment. Null when the path has no root or nothing follows it.
+     */
+    @JvmStatic
+    fun installDirOf(rawPath: String?): String? {
+        val path = rawPath ?: return null
+        // Replacing one char with one char keeps every index the same, so a cut found in `norm` lands on the
+        // same character in `path` — the original separators survive.
+        val norm = path.replace('\\', '/')
+        val after = afterInstallRoot(norm) ?: return null
+        val slash = after.indexOf('/')
+        val folder = (if (slash >= 0) after.substring(0, slash) else after).trim()
+        if (folder.isEmpty()) return null
+        return path.substring(0, norm.length - after.length + (if (slash >= 0) slash else after.length))
+    }
+
+    /**
      * Whether an installed game's recorded [installDir] is the game folder [folder] of an exec path:
      * the install root and the folder as ADJACENT whole segments (case-insensitive, separators
      * normalised), so "Half-Life" can never match "Half-Life 2".

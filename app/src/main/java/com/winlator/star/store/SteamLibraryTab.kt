@@ -101,7 +101,7 @@ import com.winlator.star.ui.deck.deckShape
  * Two view modes, both preserved from the original screen:
  *  - `grid` — the storefront's capsule card (art + name + Download/Play), 2 columns in portrait and
  *    as many as fit in landscape via [GridCells.Adaptive].
- *  - `list` — the detailed row (developer / genres / size / Metacritic / Launch + Uninstall).
+ *  - `list` — the detailed row (developer / genres / size / Metacritic / Launch + Remove/Uninstall).
  */
 
 /**
@@ -621,25 +621,39 @@ fun SteamLibraryTab(
 
     fun uninstall(game: SteamGame) {
         uninstallingName = game.name
-        // Found in another Steam client's library: those files and that manifest are the client's.
-        val imported = SteamLibraryImport.isImported(ctx, game.appId)
+        // The shared keep rule (SteamLibraryFound.keepsClientFiles, the one every uninstall screen asks): a game another Steam client
+        // installed keeps its folder and appmanifest.
+        val imported = SteamLibraryFound.keepsClientFiles(ctx, game.appId, java.io.File(game.installDir))
         StoreUninstaller.runReporting(
             installDir = game.installDir,
             mark = {
                 if (imported) SteamLibraryImport.releaseImported(ctx, game.appId)
                 else SteamAppManifest.removeFor(game.installDir, game.appId)
                 runCatching { SteamRepository.getInstance().database.markUninstalled(game.appId) }
+                // The Downloads card goes with the DB row (as on the game page), or the durable library would keep it.
+                com.winlator.star.store.download.StoreDownloadHooks.markUninstalled(
+                    com.winlator.star.store.download.Store.STEAM, game.appId.toString())
+                // The found record goes too, so the scan cannot re-seed the card; when imported, releaseImported's ignore
+                // entry also keeps the import from marking it installed again.
+                SteamLibraryFound.forget(ctx, game.appId)
             },
-            // Another game (a demo / server sharing this installdir) still uses the folder: keep it.
-            keepFolder = { imported || SteamInstallPaths.folderSharedWithOtherGame(ctx.applicationContext, java.io.File(game.installDir), game.appId) },
+            // Another game (a demo / server sharing this installdir) still uses the folder, or it is not one this app created
+            // (no OWNED marker in a steamapps library): keep it.
+            keepFolder = {
+                imported || !SteamInstallPaths.mayDeleteWholeFolder(java.io.File(game.installDir)) ||
+                    SteamInstallPaths.folderSharedWithOtherGame(ctx.applicationContext, java.io.File(game.installDir), game.appId)
+            },
         ) { ok, kept ->
             uninstallingName = null
-            // The game's shortcuts go with it, as from the Download Manager.
+            // A deleted folder's shortcuts go with it; a kept/imported folder still holds its exes, so its shortcuts stay.
             StoreShortcutCleanup.remove(ctx, com.winlator.star.store.download.Store.STEAM, game.appId.toString(), game.installDir, shortcutRemovalFor(ok, kept, imported))
             if (ok) StorefrontLog.i(StorefrontLog.LIBRARY, "uninstalled app ${game.appId} (${game.name})" + if (imported) ", files kept (another client's library)" else "")
             else StorefrontLog.w(StorefrontLog.LIBRARY, "uninstall INCOMPLETE for app ${game.appId} (${game.name}) — files remain at ${game.installDir}")
             onMessage(when {
                 imported -> ctx.getString(R.string.steam_lib_uninstall_kept, game.name)
+                // The folder was kept for safety (a library container, another game, or a folder this app did not
+                // create): the record is gone, the files are not.
+                ok && kept -> ctx.getString(R.string.xmb_dl_uninstall_files_kept, game.name)
                 ok -> "${game.name} uninstalled"
                 else -> "Couldn't fully remove ${game.name}"
             })
@@ -1083,7 +1097,7 @@ private fun LibraryCapsuleCard(
 
 /**
  * The detailed list row — the original [SteamGamesActivity] `GameListItem`, moved. Kept because it
- * is the only surface carrying developer / genres / size / Metacritic and the Uninstall action.
+ * is the only surface carrying developer / genres / size / Metacritic and the Remove/Uninstall action.
  */
 @Composable
 private fun LibraryDetailRow(
@@ -1112,7 +1126,7 @@ private fun LibraryDetailRow(
 
 /**
  * XMB home: the detailed row as a glass panel. An installed game has buttons, so the whole row is ONE stop of the D-pad
- * (the highlight glides row to row); A enters its Details / Launch / Uninstall buttons and B comes back to the row. A game
+ * (the highlight glides row to row); A enters its Details / Launch / Remove/Uninstall buttons and B comes back to the row. A game
  * without buttons is a plain row: highlighted whole, A opens it. Taps open it either way.
  */
 @Composable
@@ -1148,6 +1162,9 @@ private fun LibraryDetailBody(
     onLaunch: () -> Unit,
     onUninstall: () -> Unit,
 ) {
+        // A game another Steam client installed is only removed from Bannerlator: its files stay.
+        val keepFiles = game.isInstalled &&
+            SteamLibraryFound.keepsClientFiles(LocalContext.current, game.appId, java.io.File(game.installDir))
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().padding(12.dp),
@@ -1213,7 +1230,12 @@ private fun LibraryDetailBody(
                             ),
                             modifier = Modifier.height(32.dp).steamFocusRing(deckShape(8.dp)).xmbInner(),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
-                        ) { Text("Uninstall", style = MaterialTheme.typography.labelSmall) }
+                        ) {
+                            Text(
+                                if (keepFiles) stringResource(R.string.dm_remove_library_card) else "Uninstall",
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
                     }
                 }
             }

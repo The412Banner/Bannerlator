@@ -1,279 +1,279 @@
 {
-  "versionCode": 108,
-  "versionName": "3.2.1",
-  "notes": "Bannerlator 3.2.1: network drives in the file manager; Add to Games by copying from a drive; NAS streaming (experimental, work in progress); Lab is a full equal of Classic with a start-page choice and device details; DroidDeck drivers; XMB art pickers (MGamer404); Wayland and store fixes.",
+  "versionCode": 109,
+  "versionName": "3.2.2",
+  "notes": "Bannerlator 3.2.2: faster upscalers (NIS -80 %), frame-gen engine switch in-game and per-game frame-gen settings, Wine / Proton list with family updates, Sync CPU topology and named core pickers, idle-thread throttle switches, Wayland desktop cursors, community control profiles, Xbox Cloud Gaming audio over HDMI/USB/Bluetooth, store fixes.",
   "highlights": [
     {
-      "title": "Network drives",
-      "text": "Find the shared drives on your network, add SMB, SFTP, WebDAV or FTP drives, browse them and copy both ways."
+      "title": "Faster upscalers",
+      "text": "FSR, CAS and SGSR HQ + CAS about a third cheaper; NIS 80 % cheaper with the same picture."
     },
     {
-      "title": "Add to Games",
-      "text": "Copy a game folder from a drive and add it in one step; the game's program is picked for you."
+      "title": "Frame gen in-game",
+      "text": "Switch between Off, LSFG Native, Win-FG Native and WFG while the game runs; changes stay with that game."
     },
     {
-      "title": "NAS streaming (experimental)",
-      "text": "Play a game straight from network storage without copying it first. Still a work in progress."
+      "title": "Wine / Proton list",
+      "text": "Proton and Wine tabs, family groups, one row per layer, and updates inside each Proton family."
     },
     {
-      "title": "Lab",
-      "text": "Every Classic option in Lab, a start page of your choice, device details, outlined Library cards."
+      "title": "Cores",
+      "text": "Sync CPU topology, and core pickers, HUD and Task Manager that name each core."
     },
     {
-      "title": "XMB",
-      "text": "Pick a game's wide cover and background, and a Home that follows the Interface scale (by MGamer404)."
+      "title": "Community profiles",
+      "text": "Winlator's original layouts and the layouts shared in our Discord."
     }
   ],
-  "publishedAt": "2026-11-15",
+  "publishedAt": "2026-11-25",
   "minSupported": 1,
   "apk": {
-    "com.winlator.banner": "Bannerlator-3.2.1-standard.apk",
-    "com.ludashi.benchmark": "Bannerlator-3.2.1-ludashi.apk",
-    "com.tencent.ig": "Bannerlator-3.2.1-pubg.apk",
-    "com.antutu.ABenchMark": "Bannerlator-3.2.1-antutu.apk"
+    "com.winlator.banner": "Bannerlator-3.2.2-standard.apk",
+    "com.ludashi.benchmark": "Bannerlator-3.2.2-ludashi.apk",
+    "com.tencent.ig": "Bannerlator-3.2.2-pubg.apk",
+    "com.antutu.ABenchMark": "Bannerlator-3.2.2-antutu.apk"
   },
   "apkUrl": {
-    "com.winlator.banner": "https://github.com/The412Banner/Bannerlator/releases/download/3.2.1/Bannerlator-3.2.1-standard.apk",
-    "com.ludashi.benchmark": "https://github.com/The412Banner/Bannerlator/releases/download/3.2.1/Bannerlator-3.2.1-ludashi.apk",
-    "com.tencent.ig": "https://github.com/The412Banner/Bannerlator/releases/download/3.2.1/Bannerlator-3.2.1-pubg.apk",
-    "com.antutu.ABenchMark": "https://github.com/The412Banner/Bannerlator/releases/download/3.2.1/Bannerlator-3.2.1-antutu.apk"
+    "com.winlator.banner": "https://github.com/The412Banner/Bannerlator/releases/download/3.2.2/Bannerlator-3.2.2-standard.apk",
+    "com.ludashi.benchmark": "https://github.com/The412Banner/Bannerlator/releases/download/3.2.2/Bannerlator-3.2.2-ludashi.apk",
+    "com.tencent.ig": "https://github.com/The412Banner/Bannerlator/releases/download/3.2.2/Bannerlator-3.2.2-pubg.apk",
+    "com.antutu.ABenchMark": "https://github.com/The412Banner/Bannerlator/releases/download/3.2.2/Bannerlator-3.2.2-antutu.apk"
   },
   "size": {
-    "com.winlator.banner": 602758332,
-    "com.ludashi.benchmark": 602758540,
-    "com.tencent.ig": 602758271,
-    "com.antutu.ABenchMark": 602758443
+    "com.winlator.banner": 602995437,
+    "com.ludashi.benchmark": 602995368,
+    "com.tencent.ig": 602995393,
+    "com.antutu.ABenchMark": 602995440
   },
   "apkSha256": {
-    "com.winlator.banner": "107acc3e3a4348511853e15c6cf33f812be3b254b0a99f6a183080127e77a305",
-    "com.ludashi.benchmark": "74ec84b15c14f982f9574b62da9cf3be2903eb9bf8bc6ad7496eded7454e885c",
-    "com.tencent.ig": "0a03b993f1425c851b02d7996f6bccad3cb44772d49ef4b6afcca2971f73fe0b",
-    "com.antutu.ABenchMark": "44cae189a58bd52a85cbbc713b7f67240e8479db14dcd666dc631d224fb04f52"
+    "com.winlator.banner": "5d2008b47d9823ada7050691fdee4c6811fdf91c7bbe775368da7f154ef76e5c",
+    "com.ludashi.benchmark": "fdc3acdcff453dbee60686c73a05ed31429eae8ba4150e146710a51b466acb50",
+    "com.tencent.ig": "6320166d97855fe525b2508e74d77b5318fafb1ee4fc67edc28c11fe77e961b7",
+    "com.antutu.ABenchMark": "e541ce2abcff546d5fd823f350e31b604314f714e8b01c8aacd7b80b40918f98"
   },
   "patches": {
+    "44cae189a58bd52a85cbbc713b7f67240e8479db14dcd666dc631d224fb04f52": {
+      "file": "Bannerlator-3.2.2-antutu-from-3.2.1.bldp",
+      "from": "3.2.1",
+      "size": 115813729,
+      "sha256": "6dafb504572c10832497a9a3014ddbfb7cd52c55b661c824c9a39b4e2a5e9378",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-antutu-from-3.2.1.bldp"
+    },
     "3a8082d8e43c644391f5febcc281c79b8deaa6601ffdea412059e93030559aa4": {
-      "file": "Bannerlator-3.2.1-antutu-from-3.2.0.bldp",
+      "file": "Bannerlator-3.2.2-antutu-from-3.2.0.bldp",
       "from": "3.2.0",
-      "size": 17727857,
-      "sha256": "37ab8b356edab5092ccc3fa05403dd118732e089d3556bdeb242d97a56bedbc5",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-antutu-from-3.2.0.bldp"
+      "size": 115837023,
+      "sha256": "55fdbeb0cdee828d01d8c77dc63edcab33f188352329eae84f4af2ea391cbb7d",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-antutu-from-3.2.0.bldp"
     },
     "6be689928a2d471d9199ebd279768349533086d74398ed37fa873c1180581a06": {
-      "file": "Bannerlator-3.2.1-antutu-from-3.1.9-pre2.bldp",
+      "file": "Bannerlator-3.2.2-antutu-from-3.1.9-pre2.bldp",
       "from": "3.1.9-pre2",
-      "size": 52913185,
-      "sha256": "c051f09fcf8983f3ae8722509526dfadbcb0ea1e996d365a5d4173ea5c5b8c48",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-antutu-from-3.1.9-pre2.bldp"
+      "size": 137129567,
+      "sha256": "25418fc4caa05a53ddd603a2aaea0d36a14c8556ed07b403df3225a71dbffa3e",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-antutu-from-3.1.9-pre2.bldp"
     },
     "8f68c5ecd315f706eac57a2fc9d56ebd00d45dae7bd63bd52a3f17bbfe652c67": {
-      "file": "Bannerlator-3.2.1-antutu-from-3.1.9-pre1.bldp",
+      "file": "Bannerlator-3.2.2-antutu-from-3.1.9-pre1.bldp",
       "from": "3.1.9-pre1",
-      "size": 60917081,
-      "sha256": "1b6eb0887bf8407c5b16f810714f5e62d88ec7141fbf0dc53819a08348efe91b",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-antutu-from-3.1.9-pre1.bldp"
+      "size": 145127447,
+      "sha256": "4c865911f32d763459ceab10999742af2abffa70699baa59f010e43dae84e003",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-antutu-from-3.1.9-pre1.bldp"
     },
     "973639d3f1cf7cd94b9bff5e347edb27d5dc4139446cd4f575c955387487950f": {
-      "file": "Bannerlator-3.2.1-antutu-from-3.1.8-mali-pre1.bldp",
+      "file": "Bannerlator-3.2.2-antutu-from-3.1.8-mali-pre1.bldp",
       "from": "3.1.8-mali-pre1",
-      "size": 67173375,
-      "sha256": "8c5f4f17f9b428f10ea962691ddafda652bf9715a51fa82994a07c0929b1cb7b",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-antutu-from-3.1.8-mali-pre1.bldp"
+      "size": 151411281,
+      "sha256": "174ae2aadd8d602c8de10801521bd1ab9928dd8b7936b321e54799d512ef2147",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-antutu-from-3.1.8-mali-pre1.bldp"
     },
     "5aba12c30b6d317775d5774f2ef17aabcd9c4b22a98b5ad04ab441060ebbd190": {
-      "file": "Bannerlator-3.2.1-antutu-from-3.1.8.bldp",
+      "file": "Bannerlator-3.2.2-antutu-from-3.1.8.bldp",
       "from": "3.1.8",
-      "size": 94496551,
-      "sha256": "f0fc3cfaa7f3668b47eb3f80f36c0e713453ffa54f91cfd37a163fdc8ccdd3b5",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-antutu-from-3.1.8.bldp"
+      "size": 178733169,
+      "sha256": "4290e9f6212b7f9a626f4ba57adcfb08398c396541f8c612dc21a3e4ff00c844",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-antutu-from-3.1.8.bldp"
     },
     "a20059a89d1d15f514108faabc7f915773e4d22549c628d1fd43429c1d77fbf6": {
-      "file": "Bannerlator-3.2.1-antutu-from-3.1.7.bldp",
+      "file": "Bannerlator-3.2.2-antutu-from-3.1.7.bldp",
       "from": "3.1.7",
-      "size": 94496551,
-      "sha256": "b2ca08ea98cdd46533a80a60bc6ed33c81bf003aa5c9b51c215ff70a3268f6de",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-antutu-from-3.1.7.bldp"
+      "size": 178733169,
+      "sha256": "7463f8fb3c9afae2dc07f8d0426b0514ff100a0ba0f366df910b7fc335a0dfc3",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-antutu-from-3.1.7.bldp"
     },
     "c0d7fb0bc9988d28737c24e7827ffc514d0f1390c2e28ffd55ed9a975005ccc9": {
-      "file": "Bannerlator-3.2.1-antutu-from-3.1.7-pre4.bldp",
+      "file": "Bannerlator-3.2.2-antutu-from-3.1.7-pre4.bldp",
       "from": "3.1.7-pre4",
-      "size": 99845391,
-      "sha256": "f879095f9d4d4240c0933012918e384f06c249fe6f28c7c708ce23ce90cfd622",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-antutu-from-3.1.7-pre4.bldp"
+      "size": 184089293,
+      "sha256": "c0a1a0a9497a60ada2cf5d00b65f3995c02586da9f6cffeaac9b08cefde03d85",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-antutu-from-3.1.7-pre4.bldp"
     },
-    "f8ed89bae0dd9dcbe10a074cb7ab4413d896079ec94cbeb8555c76a563dc392e": {
-      "file": "Bannerlator-3.2.1-antutu-from-3.1.7-pre3.bldp",
-      "from": "3.1.7-pre3",
-      "size": 185897739,
-      "sha256": "ea2701df49c637f8d48edbc8d2c151334fa6482cd6c7b492d7870175a840ae4f",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-antutu-from-3.1.7-pre3.bldp"
+    "74ec84b15c14f982f9574b62da9cf3be2903eb9bf8bc6ad7496eded7454e885c": {
+      "file": "Bannerlator-3.2.2-ludashi-from-3.2.1.bldp",
+      "from": "3.2.1",
+      "size": 115822629,
+      "sha256": "210787178e31526235b5f90b0dfe43af30aa33d65cef399e3380a0564fc4ffca",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-ludashi-from-3.2.1.bldp"
     },
     "955affa47d9c3fb7dab3dd8ca7e5c60db6924771a02eb44497dfe21c4b77dfd4": {
-      "file": "Bannerlator-3.2.1-ludashi-from-3.2.0.bldp",
+      "file": "Bannerlator-3.2.2-ludashi-from-3.2.0.bldp",
       "from": "3.2.0",
-      "size": 17732785,
-      "sha256": "441365b18932707b79ee0efeaeade2d26a4cbfc9453129dba3fb9b80f62ecfbd",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-ludashi-from-3.2.0.bldp"
+      "size": 115834019,
+      "sha256": "29c7f045d837e88d1e1a22ea30d1b5c04f719fa614afe2649c06e49f188625c3",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-ludashi-from-3.2.0.bldp"
     },
     "b2d246b7b7a6ac3dc6f24cdce97f2a38f264217518608273999f8143abdd56af": {
-      "file": "Bannerlator-3.2.1-ludashi-from-3.1.9-pre2.bldp",
+      "file": "Bannerlator-3.2.2-ludashi-from-3.1.9-pre2.bldp",
       "from": "3.1.9-pre2",
-      "size": 52907757,
-      "sha256": "1039ff166410f9d1234766cc759100a5fd50bbdc27a3a54a3490e13256688c9c",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-ludashi-from-3.1.9-pre2.bldp"
+      "size": 137138747,
+      "sha256": "a2c90bc79ccd469b3626accec59e9965f0af6ad250a1451546f71bc1e3219a78",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-ludashi-from-3.1.9-pre2.bldp"
     },
     "a85d399c37c9bd371280d6d1d73703f7e3b3d051596b41ce4891b2eb57662a5b": {
-      "file": "Bannerlator-3.2.1-ludashi-from-3.1.9-pre1.bldp",
+      "file": "Bannerlator-3.2.2-ludashi-from-3.1.9-pre1.bldp",
       "from": "3.1.9-pre1",
-      "size": 60898309,
-      "sha256": "adc6d7b332acd78a0882739b5dcba41905353910615de9f116d22ea3ec45e730",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-ludashi-from-3.1.9-pre1.bldp"
+      "size": 145133307,
+      "sha256": "95c31f21c6911cae5fbebb6202cf358935bd3c68541e757417d182d77be72718",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-ludashi-from-3.1.9-pre1.bldp"
     },
     "d73a951cc89997f7025283780eacb4b454ff078121ba4ca55bcae11c9fdd8a27": {
-      "file": "Bannerlator-3.2.1-ludashi-from-3.1.8-mali-pre1.bldp",
+      "file": "Bannerlator-3.2.2-ludashi-from-3.1.8-mali-pre1.bldp",
       "from": "3.1.8-mali-pre1",
-      "size": 67171059,
-      "sha256": "99be039de3f63e589d8a9602a310f44cec7d9c1c3976a86cae1094de3b81f0d1",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-ludashi-from-3.1.8-mali-pre1.bldp"
+      "size": 151402685,
+      "sha256": "86da86034d8fc265d6107d9fe4a5e16df3f4f73c65420b7ab5c7fdc3c1eedbd5",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-ludashi-from-3.1.8-mali-pre1.bldp"
     },
     "cb929b0fafb5b9076f432f769a8c15be6dfe3d6841620ab0d4e7d8b7143683dc": {
-      "file": "Bannerlator-3.2.1-ludashi-from-3.1.8.bldp",
+      "file": "Bannerlator-3.2.2-ludashi-from-3.1.8.bldp",
       "from": "3.1.8",
-      "size": 94499127,
-      "sha256": "5c8890de97aa57f5adbe64573d617db009846ae3430c7c55093733a1883f2d76",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-ludashi-from-3.1.8.bldp"
+      "size": 178730901,
+      "sha256": "104eb4523b60039e0eca3ffd32ab45ff1d2da6163609d519f65b17a03b3f3618",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-ludashi-from-3.1.8.bldp"
     },
     "1d82581437fc0582ab48e831488de37d4acf17e17e87189fb748d499dd95dd6e": {
-      "file": "Bannerlator-3.2.1-ludashi-from-3.1.7.bldp",
+      "file": "Bannerlator-3.2.2-ludashi-from-3.1.7.bldp",
       "from": "3.1.7",
-      "size": 94499127,
-      "sha256": "cf68fdba5d475e4e201a6830fdc59f2bc5a6d00471e063c23f906d13701605f1",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-ludashi-from-3.1.7.bldp"
+      "size": 178730901,
+      "sha256": "b7397d77c3c4f2e55fb750368dc695f6a09db29a24b812bb6df006b62dd86818",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-ludashi-from-3.1.7.bldp"
     },
     "9e7849665383fdfcb81ec5d1aa2e5b9f89bf6e3681e77ae6de110f153d17a24d": {
-      "file": "Bannerlator-3.2.1-ludashi-from-3.1.7-pre4.bldp",
+      "file": "Bannerlator-3.2.2-ludashi-from-3.1.7-pre4.bldp",
       "from": "3.1.7-pre4",
-      "size": 99858279,
-      "sha256": "45b5ea43afb2f7c8f84dee6879933c8ff863b0dccd384a1ba85b1ddaca8e6e99",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-ludashi-from-3.1.7-pre4.bldp"
+      "size": 184073321,
+      "sha256": "4ee860b4566807ca14b0f50bce66b399c52906b6e090ced131d6b760cc397435",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-ludashi-from-3.1.7-pre4.bldp"
     },
-    "22a7bee9ce842f281bbfe031aa25886fdc83707320a0a965b1c095b1a4d067b2": {
-      "file": "Bannerlator-3.2.1-ludashi-from-3.1.7-pre3.bldp",
-      "from": "3.1.7-pre3",
-      "size": 185883167,
-      "sha256": "8dbf4df40ba45db717aa2a405314f46fcc177423777faba30d1397e5f40881fa",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-ludashi-from-3.1.7-pre3.bldp"
+    "0a03b993f1425c851b02d7996f6bccad3cb44772d49ef4b6afcca2971f73fe0b": {
+      "file": "Bannerlator-3.2.2-pubg-from-3.2.1.bldp",
+      "from": "3.2.1",
+      "size": 115813801,
+      "sha256": "4450b246a086b74f2c371dd69ebe396e728a39165089a4e77b3175000c2318bb",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-pubg-from-3.2.1.bldp"
     },
     "c87050aaa352c4cbc374373c2bdb3235d7edb47b1729e771ec620eff59b8515e": {
-      "file": "Bannerlator-3.2.1-pubg-from-3.2.0.bldp",
+      "file": "Bannerlator-3.2.2-pubg-from-3.2.0.bldp",
       "from": "3.2.0",
-      "size": 17728093,
-      "sha256": "a3359bc579cc45e0774ec07c8012e4b54660db70f9ae06bc2acac3da562e0640",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-pubg-from-3.2.0.bldp"
+      "size": 115855191,
+      "sha256": "dd603088b141adc02b6fc0d53097c0c670678b98731c20b6ff35f0c8ea572d48",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-pubg-from-3.2.0.bldp"
     },
     "22c8ebb24c5cf45e1a60fb29f7f23f4556b35df98d7d4e8e2d7de461f58b207b": {
-      "file": "Bannerlator-3.2.1-pubg-from-3.1.9-pre2.bldp",
+      "file": "Bannerlator-3.2.2-pubg-from-3.1.9-pre2.bldp",
       "from": "3.1.9-pre2",
-      "size": 52913077,
-      "sha256": "a529b86d970e55569a8770da3ce929e27fa561b635ed08c7b35eefdb3f3b35b6",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-pubg-from-3.1.9-pre2.bldp"
+      "size": 137134363,
+      "sha256": "1b92402f61c9d486095ed5b9a9aa8761ad9970a78b589792eb46d88dbf339105",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-pubg-from-3.1.9-pre2.bldp"
     },
     "638799a4b664a9692bc8732dc8923924567175c61506a43b35b7ea4589272e4c": {
-      "file": "Bannerlator-3.2.1-pubg-from-3.1.9-pre1.bldp",
+      "file": "Bannerlator-3.2.2-pubg-from-3.1.9-pre1.bldp",
       "from": "3.1.9-pre1",
-      "size": 60921437,
-      "sha256": "1b6aa6626c090c506733d563e3f6a247d5e146a8092c4b5184ab26fe6021acd3",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-pubg-from-3.1.9-pre1.bldp"
+      "size": 145136459,
+      "sha256": "0857e4bb1e99d76dc42615cb7df0987131df646082aff427de942ae654da770b",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-pubg-from-3.1.9-pre1.bldp"
     },
     "69525bb43bc307c7d6f09b0857dc5e267cfd02436ce2ed7eb0b2eda83255df85": {
-      "file": "Bannerlator-3.2.1-pubg-from-3.1.8-mali-pre1.bldp",
+      "file": "Bannerlator-3.2.2-pubg-from-3.1.8-mali-pre1.bldp",
       "from": "3.1.8-mali-pre1",
-      "size": 67177191,
-      "sha256": "960e8e4f21d422eb6751421a392741d5e8fbb1f220c838ab80685ed05fbb6a6f",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-pubg-from-3.1.8-mali-pre1.bldp"
+      "size": 151415177,
+      "sha256": "b032308a06d86f7954a247ea14aaba1eaed1075a7f75c983511f5b66dded26f8",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-pubg-from-3.1.8-mali-pre1.bldp"
     },
     "ba743ed113a9159f33e96beaac568ae0e5684c6e21978a2984f0bc486c1834e1": {
-      "file": "Bannerlator-3.2.1-pubg-from-3.1.8.bldp",
+      "file": "Bannerlator-3.2.2-pubg-from-3.1.8.bldp",
       "from": "3.1.8",
-      "size": 94487087,
-      "sha256": "d42fed212cdee2e738d72436e555b81019827c5a24d6b880e8aeec7e8bf70ba6",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-pubg-from-3.1.8.bldp"
+      "size": 178709113,
+      "sha256": "97f28ab885f218823ad3adc2d8d03173ef74357d32cb8993f2f5346a87d2d0c6",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-pubg-from-3.1.8.bldp"
     },
     "564c6a7932234cc54bc83a44f6f0bc8c13ec5790d10e2f5fd8239631d72c14f9": {
-      "file": "Bannerlator-3.2.1-pubg-from-3.1.7.bldp",
+      "file": "Bannerlator-3.2.2-pubg-from-3.1.7.bldp",
       "from": "3.1.7",
-      "size": 94487087,
-      "sha256": "6957e7c7124b8a3cf3e001414d13e495ccf51d60c4af18adcb82a0c2d8b3dcdc",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-pubg-from-3.1.7.bldp"
+      "size": 178709113,
+      "sha256": "680a3dc398aa78d939e027709d6ac49fd857114c608f88b55508147c70e3c925",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-pubg-from-3.1.7.bldp"
     },
     "06c86caeae29c3af1a3838f9265691fa5cab859cb36a25622e8ace8a2ec0cb5f": {
-      "file": "Bannerlator-3.2.1-pubg-from-3.1.7-pre4.bldp",
+      "file": "Bannerlator-3.2.2-pubg-from-3.1.7-pre4.bldp",
       "from": "3.1.7-pre4",
-      "size": 99861247,
-      "sha256": "8c6494fef8dd39c0a9867b0e4f0841c3de1cbe6a5df365a019dc2c47295bfbdc",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-pubg-from-3.1.7-pre4.bldp"
+      "size": 184062121,
+      "sha256": "3a2cc750cf49790ba2896b4ee4f1f081be7b2153461a078ce3f2398f726f1cf2",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-pubg-from-3.1.7-pre4.bldp"
     },
-    "703e6d9247791d968f3134cdda983e3d5898c1e6fb05360e14ad283695696260": {
-      "file": "Bannerlator-3.2.1-pubg-from-3.1.7-pre3.bldp",
-      "from": "3.1.7-pre3",
-      "size": 185907027,
-      "sha256": "807f015e0bd6adfd10779e0229d0b0e621d759614286b08857660f6354d34b85",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-pubg-from-3.1.7-pre3.bldp"
+    "107acc3e3a4348511853e15c6cf33f812be3b254b0a99f6a183080127e77a305": {
+      "file": "Bannerlator-3.2.2-standard-from-3.2.1.bldp",
+      "from": "3.2.1",
+      "size": 115812121,
+      "sha256": "0cf74e1e79e089b85fc7370f7339c4f8bf9cc6c75e6b77542294d2a0e663eb75",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-standard-from-3.2.1.bldp"
     },
     "31f5ddcdaf9de1ec4699259a703e76d9661b5fea95f180b6ab808989544a1eef": {
-      "file": "Bannerlator-3.2.1-standard-from-3.2.0.bldp",
+      "file": "Bannerlator-3.2.2-standard-from-3.2.0.bldp",
       "from": "3.2.0",
-      "size": 17727709,
-      "sha256": "1434da7a70d4ed6738eb8d6106be69625d422d72fd1ace895d0f1b5d976bf52e",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-standard-from-3.2.0.bldp"
+      "size": 115838379,
+      "sha256": "4c84cc4a35ea85698efefe91830507696fe01441a16bccbf331612861c4590ba",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-standard-from-3.2.0.bldp"
     },
     "ddb9a6568c19ac1e7f907b54e098d30cfe60795d4de415de17a7594013722e43": {
-      "file": "Bannerlator-3.2.1-standard-from-3.1.9-pre2.bldp",
+      "file": "Bannerlator-3.2.2-standard-from-3.1.9-pre2.bldp",
       "from": "3.1.9-pre2",
-      "size": 52907113,
-      "sha256": "4397f2cbb2ab6f92e4bd39397470e6a19bb37a36ff8582dc86883e751a119791",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-standard-from-3.1.9-pre2.bldp"
+      "size": 137137811,
+      "sha256": "66f52b49e8e00e0e0b55905d42a5ef17a931f4ae97df00333ee2baca4269bb7f",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-standard-from-3.1.9-pre2.bldp"
     },
     "3c644b6ea5c7d069deafa936ced19c9f13031c1aeb7336d50df7fd4739049414": {
-      "file": "Bannerlator-3.2.1-standard-from-3.1.9-pre1.bldp",
+      "file": "Bannerlator-3.2.2-standard-from-3.1.9-pre1.bldp",
       "from": "3.1.9-pre1",
-      "size": 60900745,
-      "sha256": "c29be96e5f15251fa9e21bb1756530a8220f4278646579cb298cd4d50735cb38",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-standard-from-3.1.9-pre1.bldp"
+      "size": 145126475,
+      "sha256": "169252ed9be70b8322c29dff4740fe4cac672d688a949c97e0e075b9aa4b0a21",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-standard-from-3.1.9-pre1.bldp"
     },
     "c6c8210a8f565270d666fa4b788cad266921a731566234d7a69ab73751c665f4": {
-      "file": "Bannerlator-3.2.1-standard-from-3.1.8-mali-pre1.bldp",
+      "file": "Bannerlator-3.2.2-standard-from-3.1.8-mali-pre1.bldp",
       "from": "3.1.8-mali-pre1",
-      "size": 67172203,
-      "sha256": "8297919367d14887365a2dc29a2ad36f9c2f036bb1df4eca754185f9da7a6450",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-standard-from-3.1.8-mali-pre1.bldp"
+      "size": 151397221,
+      "sha256": "77678be0f76e4ad42622475bd2456833d272e1ff989881b2c6f2431c79086350",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-standard-from-3.1.8-mali-pre1.bldp"
     },
     "b9cdde6d5e404d4c7720f46a534e25542a62ea1428530063f53b6f4bb7606353": {
-      "file": "Bannerlator-3.2.1-standard-from-3.1.8.bldp",
+      "file": "Bannerlator-3.2.2-standard-from-3.1.8.bldp",
       "from": "3.1.8",
-      "size": 94492303,
-      "sha256": "b21258561dad215282b4e43c71222abdbef50157819f528baceb241ab3e7d950",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-standard-from-3.1.8.bldp"
+      "size": 178720181,
+      "sha256": "5fe7a809aa651b5b6e5200955bec12b45e84c2817f9ed1080cba5ab232e130be",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-standard-from-3.1.8.bldp"
     },
     "fdc3aaeca17da54e2d47257420f2d77dc1dfc97fab4284b67586097fad7f2f14": {
-      "file": "Bannerlator-3.2.1-standard-from-3.1.7.bldp",
+      "file": "Bannerlator-3.2.2-standard-from-3.1.7.bldp",
       "from": "3.1.7",
-      "size": 94492303,
-      "sha256": "3edd3cdb2932eea86b1d93ae2babb24922f7cf149172ddaf1d91a3536068098b",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-standard-from-3.1.7.bldp"
+      "size": 178720181,
+      "sha256": "e3847fd1154b24579cb4ee70ef31f8923ec9ef6c0ecf050fd986574706e9d740",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-standard-from-3.1.7.bldp"
     },
     "531a02567d07c964541ec50dfc09d85a9e86bec0ac4690e98b4e2fd33ed31641": {
-      "file": "Bannerlator-3.2.1-standard-from-3.1.7-pre4.bldp",
+      "file": "Bannerlator-3.2.2-standard-from-3.1.7-pre4.bldp",
       "from": "3.1.7-pre4",
-      "size": 99844691,
-      "sha256": "5d51bcf54b8e06e0dab038a490bda01a34187461a520749d66b34c8d54f3732e",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-standard-from-3.1.7-pre4.bldp"
-    },
-    "44c700ee1d4a631e02514f105b174936912eef0555449fb223b34d605da598fd": {
-      "file": "Bannerlator-3.2.1-standard-from-3.1.7-pre3.bldp",
-      "from": "3.1.7-pre3",
-      "size": 185899547,
-      "sha256": "f3262f67ea79c0b4b26e7a7fae4e94faf93addb5c89a396aabe8e34b5a9989dc",
-      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.1/Bannerlator-3.2.1-standard-from-3.1.7-pre3.bldp"
+      "size": 184065029,
+      "sha256": "63376d070514fadf447116dcfadc36ed71832bb68868500e5c4729ce9a505fdc",
+      "url": "https://github.com/The412Banner/Bannerlator-updates/releases/download/3.2.2/Bannerlator-3.2.2-standard-from-3.1.7-pre4.bldp"
     }
   }
 }

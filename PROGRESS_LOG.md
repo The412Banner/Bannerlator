@@ -83,6 +83,11 @@
   rewritten with --force-with-lease from ad20651d): 10.0 6e5e2086 (CI 45521876033), 10.34-GE 816a1353 (45521880229), 11.0-2
   ba7633b4 (45521884641), 11.0-3 1fb12af3 (45521888464), 11.14-GE e3500a64 (45521892100), DD 12.8 f624367d (45521897755);
   all headSha == pushed. No release until the user says.
+- 20:33 EST ALL 6 Wine CI GREEN (every leg; headSha == pushed): 10.0 6e5e2086, 10.34-GE 816a1353, 11.0-2 ba7633b4, 11.0-3
+  1fb12af3, 11.14-GE e3500a64, DD 12.8 f624367d. winewayland-arm64ec artifacts: DD 12.8 = c3b19f80 BYTE-IDENTICAL to the
+  swap-tested file; 11.14-GE 169216 B / 11.0-3 164856 B = installed v17 +112 B (same growth as DD); 10.0 == 10.34-GE (1c775f1d,
+  identical winewayland.drv sources); 11.0-2 640dd831. Only DD 12.8 device-proven; others compiled/CI-green, NOT device-tested.
+  Awaiting user: Wine release (v18?) + BL merge; temp shortcuts cleanup.
 - Resume point: FIT = a915ce79 (BL) + test winewayland.so c3b19f80 (Wine ad20651d) in DD 12.8 v17. If the user reports it works: merge only on the user's word; delete the
   4 "AIO Cursor Test - ..." shortcuts after; then AIO 2.3.0-pre1 publish (AIO branch feat/upscaler-test-scene, see its log).
 - Test plan: Cursor Test shortcuts on the FIT ("AIO Cursor Test - Wayland", "- Wayland OLD 2.2.0"): colour quadrants, shadow,

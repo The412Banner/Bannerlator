@@ -76,6 +76,13 @@
   Positions: rainbow (hotspot centre) centred on the pointer; the other cursors sit 1-1.6 % of the swipe length back along the
   swipe direction (= pointer lag of the synthetic swipe, proportional to distance), so hotspots look right. 0 crashes (3 logcat
   hits = xsu echo of my grep). Open: user hand test incl. drag-resize; other 4 Wine layers + release + merge = user word.
+- 19:5x EST USER: "works now, do the other 4 wine versions" (hand test passed). Found: local proton-wine refs were stale -
+  released v17 heads = 10.0 66e4bbe0, 10.34-GE b80955db, 11.0-2 0295677f (5cad2d70 + log), 11.0-3 ffdd0555 (6th layer, missed in
+  my list), 11.14-GE db1ea2c2, DD 12.8 c3bd0d3f (my test branch was on d9e61d24; winewayland.drv identical, only ntdll throttle
+  commits differ -> swap test valid). Fix cherry-picked onto each released head as staging/<b>/wayland-cursor (DD 12.8 branch
+  rewritten with --force-with-lease from ad20651d): 10.0 6e5e2086 (CI 45521876033), 10.34-GE 816a1353 (45521880229), 11.0-2
+  ba7633b4 (45521884641), 11.0-3 1fb12af3 (45521888464), 11.14-GE e3500a64 (45521892100), DD 12.8 f624367d (45521897755);
+  all headSha == pushed. No release until the user says.
 - Resume point: FIT = a915ce79 (BL) + test winewayland.so c3b19f80 (Wine ad20651d) in DD 12.8 v17. If the user reports it works: merge only on the user's word; delete the
   4 "AIO Cursor Test - ..." shortcuts after; then AIO 2.3.0-pre1 publish (AIO branch feat/upscaler-test-scene, see its log).
 - Test plan: Cursor Test shortcuts on the FIT ("AIO Cursor Test - Wayland", "- Wayland OLD 2.2.0"): colour quadrants, shadow,

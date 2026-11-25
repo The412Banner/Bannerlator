@@ -1,6 +1,12 @@
 # Star-Compose — Progress Log
 
 ## 2026-11-24 — 3.2.2 STABLE cut (release/3.2.2, in progress)
+- 23:43 EST CUT (user: "wait for v18 then publish"): RC CI 45545753315 GREEN x4 (99f1d889); size scan run 45546945082:
+  3.2.1 -> 3.2.2 patch 115.8 MB of 603.0 MB (pubg + standard, byte-exact; bigger than usual = container_pattern_common.tzst
+  changed for AIO 2.3.1), notes size line 37236f1d; notes check "layout OK, 29 changes". Wine v18 verified first:
+  proton-wine build-bionic-layers-20261124-v18 Latest, winlator-contents main 49819252 = 10 v18 rows, 0 v17, 10/10 URLs
+  HTTP 200 (root-ae confirmed). Backup refs/backup/20261124/main-before-3.2.2 = 78dfb27a; main FF -> this commit;
+  release.yml tag 3.2.2, title "Bannerlator 3.2.2", number 3.2.2, make_prerelease false.
 - Why: user 23:1x EST "cut a 3.2.2 stable, make sure credits are listed"; user 23:2x EST: layer family updates + Wine/Proton
   list "work and proven". Main frozen 23:13 EST (root-ae, root-e0, root-bf acked; root-ae is releasing Wine v18 on the
   user's order, winlator-contents only, not touched by release.yml).

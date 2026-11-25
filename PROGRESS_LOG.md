@@ -1,5 +1,24 @@
 # Star-Compose — Progress Log
 
+## 2026-11-24 20:35 EST — Bake AIO Graphics Test 2.3.0 into the container pattern (`feat/bake-aio-2.3.0`, CI building, NOT device-tested, not merged)
+- Why: AIO 2.3.0 released 20:11 EST (stable, Latest; tag -> 68cdcf81; Upscaler Test chart, launch command per test, Cursor Test in
+  the main exe). User 20:3x EST: "yes bake 2.3.0 into containers and remove the old test folders".
+- Checked first (main 447b4afd): container_pattern_common.tzst had AIO 2.2.0 in drive_c/AIO Graphics Test v2 (hashes == 2.2.0
+  release: 64 5b516385, 32 c978a52f, CursorTest 56a6cac4), baked 10-21 (358ec448), PATTERN_CONTENT_VERSION "8".
+- bake-aio.yml run 45526501338 GREEN (aio_tag 2.3.0, with_cursortest, no drop_classic) -> commit b1792fd0 on the branch.
+  Checked locally: template exes == 2.3.0 release (64 31e43ea3, 32 498d9a8c, CursorTest 8e076d80); 235 entries before/after;
+  every other entry identical (names, sizes, dates, owners).
+- 31ab40ec: PATTERN_CONTENT_VERSION 8 -> 9 so existing containers re-extract the pattern on the next launch even on test builds
+  (frozen versionCode); a release's new versionCode triggers it anyway (setupWineSystemFiles appVersion check). Extraction
+  overwrites files (TarCompressorUtils FileOutputStream). Start menu (wine_startmenu.json) unchanged: it is rebuilt every
+  launch and already points at C:/AIO Graphics Test v2/, so its entries open 2.3.0.
+- CI build-artifacts 45526748931 dispatched (headSha 31ab40ec == pushed).
+- FIT cleanup (user OK): deleted container 1 drive_c/AIO Graphics Test int + vkfix (10-20 v2.1.0-labelled Vulkan-fix test
+  builds + their bench CSVs; no shortcut/menu references); backup /sdcard/Download/AIO-old-test-folders-20261124.tar (14 entries).
+  Kept: AIO Graphics Test 2.2.0 (user's AIO.desktop + perf harness use it) and AIO Graphics Test v2 (baked).
+- Next: CI result -> stage APK -> device proof (needs the user's yes to install; the FIT has root-ae's Wayland cursor test build
+  a915ce79, so the Elite may be the better test device) -> merge to main on the user's word. No release.
+
 ## 2026-11-24 15:50–16:55 EST — NIS rewrite: prepass + gathers + coefficients in a uniform buffer (`feat/nis-rewrite`, MERGED main 671feb8c, DEVICE-TESTED: NIS -80 %)
 - Why: upaio-1124 (FIT, X11 Vulkan, dx11 cube) measured NIS at ~5.0 ms GPU per composited frame (old and half shaders alike) and
   AIO 2894 -> ~765 fps (-74 %). nis.frag is a single-pass fragment port of NVIDIA's LDS compute NVScaler: every output pixel

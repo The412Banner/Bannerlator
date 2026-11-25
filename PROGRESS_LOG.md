@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-24 — Wayland cursor with OLDER Wine layers: pointer vanished (fix/wayland-cursor-old-wine, CI running)
+## 2026-11-24 — Wayland cursor with OLDER Wine layers: pointer vanished (fix/wayland-cursor-old-wine, device-proven)
 - Why: user asked whether the merged BL cursor fixes affect released v17 layers (no Wine half). Tested 22:0x EST on the FIT:
   BL 3602ac32 (= main code) + ORIGINAL v17 winewayland d3b0a2e0 + wineserver ed2866f6 in DD 12.8 v17 (results
   wlcursor11-1124): NO pointer on any Cursor Test tile (old BL showed its fallback arrow). REGRESSION from the hover change
@@ -10,7 +10,15 @@
   when the hover ends (no program window under the pointer); pointer_set_cursor split into cursor_set. With fixed Wine the
   desktop client does not send cursors while a program owns the pointer -> no change. CI 45537323630.
 - FIT restored to the fixed test files after the test (wineserver e7bea2eb, winewayland c3b19f80).
-- Next: stage APK, ASK install, test old v17 files (tiles + drag) AND fixed files (tiles + drag), then merge on user go.
+- 22:08 EST CI 45537323630 GREEN x4 (22:03-22:07 EST); APK sha256 861fb9cd (host == device == installed) INSTALLED FIT on
+  the user's "yes install it when done". Tests (wl-test.sh, results wlcursor12-orig / wlcursor12-fixed):
+  ORIGINAL v17 Wine (wineserver ed2866f6 + winewayland d3b0a2e0): pointer VISIBLE on all tiles again, fixed to the program
+  cursor at hover entry (quadrants on every tile) = expected limit without the Wine half; window edge drag does NOT resize
+  (size loop starts - WAYLAND_SysCommand SC_SIZE|WMSZ_RIGHT - then ClipCursor(NULL) right away = loop ended at once; with
+  the fixed winewayland it resizes, also with the old wineserver (user drag 20:58) -> old winewayland's desktop-hwnd input;
+  not proven against old BL). FIXED Wine (e7bea2eb + c3b19f80): 6 tiles + hidden->arrow OK, drag 0 cursor switches / 0
+  hover churn, live resize, normal after release, 0 crashes. FIT left with the FIXED files.
+- Next: merge fix/wayland-cursor-old-wine to main (user go), tell root-27.
 
 ## 2026-11-24 — Wayland drag: cursor flicker + resize stripes (MERGED main c9a9f49a, device-proven)
 - Why: user 21:05 EST "resize arrow flickers and the window looks goofy" (screenshot 20:58:56, Wayland session); window

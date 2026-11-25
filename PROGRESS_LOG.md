@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-24 — Wayland drag: cursor flicker + resize stripes (fix/wayland-drag-cursor, CI running)
+## 2026-11-24 — Wayland drag: cursor flicker + resize stripes (MERGED main c9a9f49a, device-proven)
 - Why: user 21:05 EST "resize arrow flickers and the window looks goofy" (screenshot 20:58:56, Wayland session); window
   snaps right after release (user). User go 21:08 "take the fit, fix both".
 - Repro on the FIT (test-only uinput mouse /data/local/tmp/umouse, real BTN_LEFT; results
@@ -35,6 +35,12 @@
   shortcuts were deleted by someone else before 21:53 (not me). All 6 Wine server-fix builds GREEN (10.0 23ad8a82,
   10.34-GE f0976beb, 11.0-2 7a240c6f, 11.0-3 686e4156, 11.14-GE 486c9577, DD 12.8 24ddfcf8). Awaiting user go: BL merge,
   proton-wine parents FF to the server commit, AIO fix/resize-redraw merge (+ 2.3.1?).
+- 21:57 EST USER: "merge all to main and update the parent branches". BL main 77785b3d -> c9a9f49a (--no-ff merge of
+  6bd09aa3, tree == branch, code == installed 3602ac32; backup refs/backup/20261124/main-before-wayland-drag-cursor), main CI
+  45536420465. AIO main a48da4bd -> 7197b132 (merge of fix/resize-redraw 5c332930; backup main-before-resize-redraw), build
+  45536472395, no release. proton-wine parents fast-forwarded to the server fix (backups refs/backup/20261124/<b>-before-
+  server-cursor-capture): 10.0 23ad8a82, 10.34-GE f0976beb, 11.0-2 7a240c6f, 11.0-3 686e4156, DD 12.8 24ddfcf8, 11.14-GE
+  486c9577; parent builds 45536519658..45536557719. Not released: Wine v18, BL release, AIO 2.3.1 = user word.
 - Next: swap Wine winewayland.so (DD 12.8 v17 on FIT) + AIO exe into the AIO-upscaletest test folder, drag test; BL APK
   install = ASK first. Parents FF + v18 after device proof.
 - Resume point: FIT = BL 3602ac32 + DD 12.8 v17 test winewayland c3b19f80 + test wineserver e7bea2eb; BL idle.

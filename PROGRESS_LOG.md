@@ -13,6 +13,21 @@
   (2) BL 3602ac32: hover window kept while a pointer button is held (g_ptr_buttons), CI 45531666994. (3) AIO
   fix/resize-redraw 5c332930: D3D11 frame function shared by loop + WM_ENTERSIZEMOVE timer, black class brush; compiles
   with CI flags; CI 45531899038.
+- 21:25 swap test (Wine winewayland follow-up 9d6c0c47 + AIO 5c332930): flicker reduced, not gone (4 owner switches):
+  wineserver update_cursor_pos -> set_cursor_pos after every window move/resize queues a window-less mouse move, and
+  update_desktop_cursor_pos then picks the window under the pointer even during a capture. REPLACED the winewayland
+  follow-up (staging branches rewritten with --force-with-lease) by a SERVER fix "server: Keep the cursor with the window
+  holding the mouse capture." (update_desktop_cursor_pos uses desktop->foreground_input's capture window when the message
+  has no visible window): DD 12.8 24ddfcf8 (CI 45533126366 green, 21:27-21:36 EST), 10.0 23ad8a82, 10.34-GE f0976beb,
+  11.0-2 7a240c6f (green), 11.0-3 686e4156 (green), 11.14-GE 486c9577 (green).
+- 21:39-21:45 EST DEVICE TEST (FIT DD 12.8 v17: bin/wineserver = 24ddfcf8 build e7bea2eb, winewayland.so = c3b19f80;
+  backups /sdcard/Download/wine-layer-backup/11.0-12.8-arm64ec-17-wineserver.orig-20261124 (ed2866f6) + winewayland orig;
+  AIO test exe 5c332930): test mouse steers onto the right edge by Wine's traced position ("g 638 240"), holds BTN_LEFT,
+  drags right. 3 runs: 0 WAYLAND_SetCursor calls between press and release (was dozens), sizing arrow visible in every
+  in-hold screenshot even ahead of the edge; window grows live, cube redrawn at the new size at ~100 fps (timer), no
+  stripes; after release ~2500 fps at +1.5/+3/+5/+8 s (one earlier run showed 0.0 fps at +1.5 s once, not reproduced in
+  2 later runs). Results wlcursor6/7/8-1124. Remaining: hover enter/leave churn (21 per drag) = BL 3602ac32 (staged, not
+  installed - ask).
 - Next: swap Wine winewayland.so (DD 12.8 v17 on FIT) + AIO exe into the AIO-upscaletest test folder, drag test; BL APK
   install = ASK first. Parents FF + v18 after device proof.
 - Resume point: FIT = BL main-equivalent a915ce79 + test winewayland.so c3b19f80 (DD 12.8 v17); BL idle.

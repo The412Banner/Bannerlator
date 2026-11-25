@@ -28,9 +28,16 @@
   stripes; after release ~2500 fps at +1.5/+3/+5/+8 s (one earlier run showed 0.0 fps at +1.5 s once, not reproduced in
   2 later runs). Results wlcursor6/7/8-1124. Remaining: hover enter/leave churn (21 per drag) = BL 3602ac32 (staged, not
   installed - ask).
+- 21:52 EST BL 3602ac32 INSTALLED FIT on the user's "yes install it" (sha256 16c01a61 staged == installed). Drag test
+  (wlcursor9-1124): 0 WAYLAND_SetCursor AND 0 pointer enter/leave between press and release, sizing arrow in every
+  in-hold shot, live resize, ~2500 fps after release, 0 crashes. Regression (wlcursor10-1124, temp shortcut
+  "ZZ AIO cursortest" = --cursortest): 6 tiles correct, hidden 6 -> arrow 5 immediate. The 4 "AIO Cursor Test - ..."
+  shortcuts were deleted by someone else before 21:53 (not me). All 6 Wine server-fix builds GREEN (10.0 23ad8a82,
+  10.34-GE f0976beb, 11.0-2 7a240c6f, 11.0-3 686e4156, 11.14-GE 486c9577, DD 12.8 24ddfcf8). Awaiting user go: BL merge,
+  proton-wine parents FF to the server commit, AIO fix/resize-redraw merge (+ 2.3.1?).
 - Next: swap Wine winewayland.so (DD 12.8 v17 on FIT) + AIO exe into the AIO-upscaletest test folder, drag test; BL APK
   install = ASK first. Parents FF + v18 after device proof.
-- Resume point: FIT = BL main-equivalent a915ce79 + test winewayland.so c3b19f80 (DD 12.8 v17); BL idle.
+- Resume point: FIT = BL 3602ac32 + DD 12.8 v17 test winewayland c3b19f80 + test wineserver e7bea2eb; BL idle.
 
 ## 2026-11-24 18:15–20:56 EST — Wayland desktop mode: program cursors (`fix/wayland-desktop-cursor`, MERGED main 4c7f9775, DEVICE-PROVEN FIT with the Wine half; Wine half NOT released)
 - Why: AIO Cursor Test (new 2.3.0-pre1 build AND the 2.2.0 CursorTest.exe) on the FIT: Wayland shows the same plain arrow on all

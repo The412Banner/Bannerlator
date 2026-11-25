@@ -60,6 +60,14 @@
   bottom edge up/down arrow, bottom-right corner diagonal, title bar + client arrow (screenshots edge-*.png). 0 crashes.
   Not tested: drag-resize with a button held (input mouse swipe gives no buttons in BL) -> user by hand; test driver left in
   place for that (UNDO = backup copy back).
+- 19:39 EST USER VIDEO (Movies/screen-20261124-193902.mp4): hidden tile -> arrow tile stays hidden until another tile.
+  CAUSE (BL compositor): winewayland destroys the cursor surface on hide; the next cursor gets a NEW surface whose image is
+  committed BEFORE wl_pointer.set_cursor (wayland_set_cursor: update_cursor_surface -> commit, then set_cursor); our commit
+  path dropped role-less buffers and set_cursor only waited for the next commit. 2nd bug: hotspot arrives in set_cursor
+  after the image commit -> every cursor drawn with the previous cursor's hotspot. FIX a915ce79 (compositor.c): keep the last
+  small shm image of a role-less surface (g_pre_px) and show it at set_cursor; un-hide/apply hotspot at set_cursor for the
+  surface already shown; NULL attach on the cursor surface hides. CI 45520187959 (headSha a915ce79 == pushed). Wine part
+  unchanged (test winewayland.so c3b19f80 stays).
 - Resume point: FIT = b5bbed8e (main 447b4afd + this fix). If the user reports it works: merge only on the user's word; delete the
   4 "AIO Cursor Test - ..." shortcuts after; then AIO 2.3.0-pre1 publish (AIO branch feat/upscaler-test-scene, see its log).
 - Test plan: Cursor Test shortcuts on the FIT ("AIO Cursor Test - Wayland", "- Wayland OLD 2.2.0"): colour quadrants, shadow,

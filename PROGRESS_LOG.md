@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-24 — Wayland cursor with OLDER Wine layers: pointer vanished (fix/wayland-cursor-old-wine, device-proven)
+## 2026-11-24 — Wayland cursor with OLDER Wine layers: pointer vanished (MERGED main 1d2db982, device-proven)
 - Why: user asked whether the merged BL cursor fixes affect released v17 layers (no Wine half). Tested 22:0x EST on the FIT:
   BL 3602ac32 (= main code) + ORIGINAL v17 winewayland d3b0a2e0 + wineserver ed2866f6 in DD 12.8 v17 (results
   wlcursor11-1124): NO pointer on any Cursor Test tile (old BL showed its fallback arrow). REGRESSION from the hover change
@@ -18,7 +18,9 @@
   the fixed winewayland it resizes, also with the old wineserver (user drag 20:58) -> old winewayland's desktop-hwnd input;
   not proven against old BL). FIXED Wine (e7bea2eb + c3b19f80): 6 tiles + hidden->arrow OK, drag 0 cursor switches / 0
   hover churn, live resize, normal after release, 0 crashes. FIT left with the FIXED files.
-- Next: merge fix/wayland-cursor-old-wine to main (user go), tell root-27.
+- 22:2x EST USER: "yes merge it to main". BL main 5ea6cb7e -> 1d2db982 (--no-ff merge of 63cba920, tree == branch, code ==
+  installed 29ed42de; backup refs/backup/20261124/main-before-wayland-cursor-old-wine), main CI 45538623482. Regression on
+  main closed. Not released.
 
 ## 2026-11-24 — Wayland drag: cursor flicker + resize stripes (MERGED main c9a9f49a, device-proven)
 - Why: user 21:05 EST "resize arrow flickers and the window looks goofy" (screenshot 20:58:56, Wayland session); window

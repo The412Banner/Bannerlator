@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-25 — Frame gen: pace the game to native FG + measured fit advice (feat/fg-pace-real, INSTALLED FIT, device test next)
+## 2026-11-25 — Frame gen: pace the game to native FG + measured fit advice (feat/fg-pace-real, device test 1 done: B works, A not seen)
 - Why: user 21:15 EST "when framegen is enabled base fps drops (40 -> 30) so 2x doesn't work"; logs (DiRT Showdown,
   Pocket FIT, BL 3.2.2 Wayland): the game keeps the cap, native FG cannot take every frame and skips them (WFG 2x @72:
   game 70-72, real 67 -> 50, up to 207 frames/10 s replaced unshown, screen 133 -> 107). lsfg-vk / in-game Win-FG never
@@ -22,6 +22,15 @@
   == staged (versionName 3.2.2 vc109 kept, lastUpdateTime 11:22:00). No game was running (only the app process, killed by
   the install). Crash buffer: one older entry 11-25 20:58 EST = DroidDeck :xcloudnative SIGSEGV in vkp_framegen_run ->
   Adreno vkUpdateDescriptorSets (DD pr-3232 test build, not Bannerlator).
+- DEVICE TEST 1 (11-26 11:23-11:26 EST, user video screen-20261126-112605.mp4 84 s, wayland-2026-11-26_11-23-13.log):
+  DiRT, scaling None, limit 72, WFG 2x 11:24:57-11:25:44. B WORKS: perf 'frame-gen pacing' 601-644 held/10 s, 0-1 let go
+  after 100 ms, replaced unshown 0-1 (run 2 yesterday unpaced: 37-207). Game now = real: 64.6/63.9/61.4/60.5 -> screen
+  129.2/127.8/122.8/121.0 (HUD 65.9 -> 131.7, GPU 95 %, 18.6 W). Yesterday unpaced, same first 4 windows: game 72 but real
+  66.6/66.7/61.4/61.8 -> 131.9/133.4/122.8/123.6. So same frames on screen, no waste; FG part only 47 s, too short to see
+  whether the slide to 107 (yesterday after 90 s) is gone. No FG: limit 72 = 72.0 at GPU 84 %, 12 W; limit Off = 95-108,
+  GPU 99 %, 20 W. Ceiling = GPU: WFG 2x costs ~4-5 ms GPU per real frame -> ~66 max, ~60 when warm. A NOT SEEN: Lab
+  Performance page never scrolled below the Frame generation row where the hint sits (Engine row read '60 real -> 121
+  shown (2x)'); cannot confirm it showed. Crash buffer 11-26 empty, showdown.exe exited 11:26:18.
 - RESUME POINT: FIT runs fg-pace-real cf1dd3c7. Next launch = user runs DiRT Showdown, scaling Off, WFG 2x, limit 72,
   screen recording on. Then read <game>/wayland/wayland-2026-11-26_*.log (perf 'frame-gen pacing', unshown, GPU frames
   from games vs scenes; tabulator scratchpad fgdrop/t.py) + the video (drawer hint + fit button) + logcat crash buffer.

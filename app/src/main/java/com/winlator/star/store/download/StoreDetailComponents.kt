@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
+import com.winlator.star.ui.theme.LabButton as Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,7 +31,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.winlator.star.store.storeFocus
 import com.winlator.star.ui.deck.xmbSolidBackground
+import com.winlator.star.ui.deck.deckShape
 
 /**
  * Shared, theme-token-driven building blocks for the per-store game DETAIL pages
@@ -97,7 +99,7 @@ fun StoreBadge(store: Store, modifier: Modifier = Modifier) {
     val accent = StoreStyle.accent(store)
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(deckShape(6.dp))
             .background(accent.copy(alpha = 0.16f))
             .padding(horizontal = 8.dp, vertical = 3.dp),
     ) {
@@ -145,7 +147,7 @@ fun StoreHero(
 fun InfoChip(text: String) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(deckShape(6.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(horizontal = 8.dp, vertical = 3.dp),
     ) {
@@ -200,14 +202,14 @@ fun StoreProgressBar(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .height(6.dp)
-                .clip(RoundedCornerShape(3.dp))
+                .clip(deckShape(3.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
                     .fillMaxWidth(frac)
-                    .clip(RoundedCornerShape(3.dp))
+                    .clip(deckShape(3.dp))
                     .background(MaterialTheme.colorScheme.primary),
             )
         }
@@ -238,6 +240,7 @@ fun StoreActionButton(
     enabled: Boolean = true,
     destructive: Boolean = false,
 ) {
+    val shape = deckShape(10.dp)
     Button(
         onClick = onClick,
         enabled = enabled,
@@ -249,8 +252,12 @@ fun StoreActionButton(
         } else {
             ButtonDefaults.buttonColors()
         },
-        modifier = modifier,
-        shape = RoundedCornerShape(10.dp),
+        // Filled: the outline takes the ink on the fill.
+        modifier = modifier.storeFocus(
+            shape, onClick,
+            tint = if (destructive) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimary,
+        ),
+        shape = shape,
     ) { Text(text, maxLines = 1) }
 }
 
@@ -288,7 +295,7 @@ fun StoreSection(
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .padding(bottom = 16.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(deckShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(16.dp),
     ) {

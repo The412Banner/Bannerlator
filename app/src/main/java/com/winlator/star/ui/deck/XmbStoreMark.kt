@@ -4,19 +4,15 @@ import android.content.Context
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -86,17 +82,13 @@ internal suspend fun warmStoreMarks(context: Context) {
 }
 
 /**
- * A store's mark on a small dark rounded backing (about 55% black), so it reads on any cover. Put it at the cover's
- * bottom-end corner; it is sized in dp, so inside a scaled cover it scales with it.
+ * A store's mark, drawn straight on the cover with nothing behind it. Put it at the cover's bottom-end corner; it is sized
+ * in dp, so inside a scaled cover it scales with it.
  */
 @Composable
 internal fun XmbStoreMark(mark: StoreMark, modifier: Modifier = Modifier, size: Dp = 24.dp) {
     Box(
-        modifier
-            .size(size)
-            .clip(RoundedCornerShape(size * 0.28f))
-            .background(Color.Black.copy(alpha = 0.55f))
-            .padding(size * 0.16f),
+        modifier.size(size),
         contentAlignment = Alignment.Center,
     ) {
         val logo = mark.logoRes()

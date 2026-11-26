@@ -22,12 +22,16 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Lan
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SdCard
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.SportsEsports
@@ -45,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -55,12 +60,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.winlator.star.core.StringUtils
+import com.winlator.star.ui.deck.xmbFocusSound
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import java.io.File
 
-/** One Home tile. [stats] fills the line under the icon (usage, item count) off the main thread. */
+/**
+ * One Home tile. [usage] / [countItems] fill the line under the icon (usage, item count) off the main thread.
+ * A tile opens [dir], or [target] (a network drive), or runs [action] (set up, add, search again). A tile that is
+ * not [enabled] (a network drive that can't be reached) is greyed out and can't be opened. [id] keeps tiles
+ * without a real folder apart.
+ */
 internal class FmHomeTile(
     val title: String,
     val icon: ImageVector,
@@ -70,21 +81,36 @@ internal class FmHomeTile(
     val usage: Boolean = false,
     val countItems: Boolean = false,
     val menu: (() -> List<FmMenuEntry>)? = null,
-)
+    val target: FmLoc? = null,
+    val action: (() -> Unit)? = null,
+    val enabled: Boolean = true,
+    val id: String? = null,
+) {
+    val key: String get() = id ?: (dir.absolutePath + ":" + title)
+
+    /** What a tap does in pane [p]. */
+    fun openIn(p: FmPane) {
+        if (!enabled) return
+        action?.let { it(); return }
+        target?.let { p.open(it); return }
+        p.openDir(dir)
+    }
+}
 
 internal class FmHomeSection(val title: String, val tiles: List<FmHomeTile>)
 
 /** The Home page: storage, places, containers' drives and favourites as tiles. */
 @Composable
-internal fun FmHome(sections: List<FmHomeSection>, onOpen: (File) -> Unit, refreshTick: Int, modifier: Modifier = Modifier) {
+internal fun FmHome(sections: List<FmHomeSection>, onOpen: (FmHomeTile) -> Unit, refreshTick: Int, modifier: Modifier = Modifier) {
     val cs = MaterialTheme.colorScheme
     val state = rememberLazyGridState()
+    val dense = LocalFmDense.current
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 150.dp),
+        columns = GridCells.Adaptive(minSize = if (dense) 120.dp else 150.dp),
         state = state,
-        contentPadding = PaddingValues(10.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(if (dense) 6.dp else 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (dense) 6.dp else 10.dp),
+        verticalArrangement = Arrangement.spacedBy(if (dense) 6.dp else 10.dp),
         modifier = modifier.fillMaxSize(),
     ) {
         sections.filter { it.tiles.isNotEmpty() }.forEach { section ->
@@ -92,12 +118,12 @@ internal fun FmHome(sections: List<FmHomeSection>, onOpen: (File) -> Unit, refre
                 Text(
                     section.title,
                     color = cs.onSurfaceVariant,
-                    fontSize = 13.sp,
+                    fontSize = if (dense) 12.sp else 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(start = 4.dp, top = 6.dp),
+                    modifier = Modifier.padding(start = 4.dp, top = if (dense) 2.dp else 6.dp),
                 )
             }
-            items(section.tiles, key = { section.title + ":" + it.dir.absolutePath + ":" + it.title }) { tile ->
+            items(section.tiles, key = { section.title + ":" + it.key }) { tile ->
                 HomeTile(tile, refreshTick, onOpen)
             }
         }
@@ -105,7 +131,7 @@ internal fun FmHome(sections: List<FmHomeSection>, onOpen: (File) -> Unit, refre
 }
 
 @Composable
-private fun HomeTile(tile: FmHomeTile, refreshTick: Int, onOpen: (File) -> Unit) {
+private fun HomeTile(tile: FmHomeTile, refreshTick: Int, onOpen: (FmHomeTile) -> Unit) {
     val cs = MaterialTheme.colorScheme
     var focused by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
@@ -124,29 +150,32 @@ private fun HomeTile(tile: FmHomeTile, refreshTick: Int, onOpen: (File) -> Unit)
         }
     }
     val tint = tile.tint ?: cs.primary
+    val dense = LocalFmDense.current
     Box {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 132.dp)
-                .fmGlass(RoundedCornerShape(18.dp), focused = focused)
+                .heightIn(min = if (dense) 88.dp else 132.dp)
+                .alpha(if (tile.enabled) 1f else 0.45f)
+                .fmGlass(RoundedCornerShape(if (dense) 14.dp else 18.dp), focused = focused)
+                .xmbFocusSound()
                 .onFocusChanged { focused = it.isFocused }
-                .clickable { onOpen(tile.dir) }
-                .padding(horizontal = 10.dp, vertical = 12.dp),
+                .clickable(enabled = tile.enabled) { onOpen(tile) }
+                .padding(horizontal = 10.dp, vertical = if (dense) 7.dp else 12.dp),
         ) {
             Text(
-                tile.title, color = cs.onSurface, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                tile.title, color = cs.onSurface, fontSize = if (dense) 13.sp else 15.sp, fontWeight = FontWeight.SemiBold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(if (dense) 5.dp else 10.dp))
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier.size(48.dp).clip(CircleShape).background(tint.copy(alpha = 0.18f)),
+                modifier = Modifier.size(if (dense) 34.dp else 48.dp).clip(CircleShape).background(tint.copy(alpha = 0.18f)),
             ) {
-                Icon(tile.icon, null, tint = tint, modifier = Modifier.size(26.dp))
+                Icon(tile.icon, null, tint = tint, modifier = Modifier.size(if (dense) 20.dp else 26.dp))
             }
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(if (dense) 5.dp else 10.dp))
             val u = usage
             val c = count
             val line = when {
@@ -188,4 +217,8 @@ internal object HomeIcons {
     val folder = Icons.Filled.Folder
     val container = Icons.Filled.Computer
     val favorite = Icons.Filled.Star
+    val network = Icons.Filled.Lan
+    val networkSetup = Icons.Filled.CloudDownload
+    val networkAdd = Icons.Filled.Add
+    val networkSearch = Icons.Filled.Refresh
 }

@@ -144,6 +144,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     /** Native frame-gen engine kinds (mirror VulkanRendererContext). */
     public static final int FG_ENGINE_LSFG  = 0;
     public static final int FG_ENGINE_WINFG = 1;
+    public static final int FG_ENGINE_WFG   = 2;
 
     private static volatile boolean gpuImageChecked = false;
 

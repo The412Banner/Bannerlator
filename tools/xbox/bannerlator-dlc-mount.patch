@@ -1,0 +1,31 @@
+diff --git a/crates/xodus-cli/src/commands/run.rs b/crates/xodus-cli/src/commands/run.rs
+index 72a2c97..86ca402 100644
+--- a/crates/xodus-cli/src/commands/run.rs
++++ b/crates/xodus-cli/src/commands/run.rs
+@@ -1043,14 +1043,26 @@ pub async fn run(
+     if wine == "droiddeck:prepare" {
+         use std::io::Write;
+         if !materialize_chain { return ExitCode::FAILURE; }
++        // The app starts Wine itself: a DLC mount workspace in TMPDIR (the launch directory, which the app
++        // keeps inside its Wine drive) lives as long as this prepare session; the app maps its path to a
++        // Windows path and passes it to the game as XODUS_MOUNT_ROOT.
++        let mount_workspace = Builder::new().prefix(MOUNT_WORKSPACE_PREFIX.trim_start_matches('.'))
++            .permissions(std::fs::Permissions::from_mode(0o700)).tempdir()
++            .and_then(|directory| DlcMountWorkspace::from_view(LaunchView::new(directory)))
++            .inspect_err(|error| eprintln!("could not prepare downloadable content workspace: {error}"))
++            .ok();
++        let mount_root = mount_workspace.as_ref().and_then(|workspace| workspace.view.as_ref())
++            .map(|view| view.path().to_string_lossy().into_owned());
+         let ready = serde_json::json!({
+             "exe": stub_path,
+             "playfab": playfab_auth_header(client, tokens).await,
++            "mountRoot": mount_root,
+         });
+         println!("DROIDDECK_LAUNCH_V1 {}", ready);
+         let _ = std::io::stdout().flush();
+         let mut release = String::new();
+         let _ = std::io::stdin().read_line(&mut release);
++        drop(mount_workspace);
+         drop(launch_mirror);
+         cleanup().await;
+         return ExitCode::SUCCESS;

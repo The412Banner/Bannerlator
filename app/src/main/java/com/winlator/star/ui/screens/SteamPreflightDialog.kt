@@ -36,6 +36,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -47,6 +51,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -81,6 +86,11 @@ import com.winlator.star.store.SteamSessionManager.Step
 import com.winlator.star.store.SteamSessionManager.StepState
 import com.winlator.star.ui.DeckDialogBars
 import com.winlator.star.ui.DeckDialogScaled
+import com.winlator.star.ui.deck.NunitoSansFamily
+import com.winlator.star.ui.deck.SoraFamily
+import com.winlator.star.ui.deck.rememberXmbHome
+import com.winlator.star.ui.deck.xmbPopCard
+import com.winlator.star.ui.deck.xmbPopFill
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.delay
 
@@ -205,6 +215,7 @@ fun SteamPreflightDialog(
 ) {
     val context = LocalContext.current
     val cs = MaterialTheme.colorScheme
+    val xmb = rememberXmbHome()
     val states = remember(shortcut) { mutableStateMapOf<Step, Pair<StepState, String>>() }
     // Terminal outcome awaiting a user choice (null = still running / launching).
     var needSignIn by remember(shortcut) { mutableStateOf<String?>(null) }
@@ -331,6 +342,38 @@ fun SteamPreflightDialog(
         onHelp = { toggleHelp(caption.help) },
     )
 
+    // Lab: a Lab panel with the same photo, the live step list and the fail card's choices as Lab buttons (same state, same handlers).
+    if (com.winlator.star.ui.theme.AppThemeState.simpleLook) {
+        val appSteam = request.clientPackage == SteamSessionManager.ClientPackage.APP_STEAM
+        LabPreflight(
+            title = title,
+            gameName = shortcut.name,
+            clientLabel = if (appSteam) "Headless Steam" else "SteamLite",
+            show = show,
+            rows = preflightRows(states, launching, appSteam, shortcut.name),
+            fail = fail,
+            help = helpText,
+            onHelp = { toggleHelp(titleHelp) },
+            onDismiss = onDismiss,
+        )
+        return
+    }
+
+    // The XMB interface: an XMB dialog with the photo, the live step list and the fail card inline (same state, same handlers).
+    if (xmb) {
+        val appSteam = request.clientPackage == SteamSessionManager.ClientPackage.APP_STEAM
+        XmbPreflight(
+            gameName = shortcut.name,
+            clientLabel = if (appSteam) "Headless Steam" else "SteamLite",
+            launching = launching,
+            show = show,
+            rows = preflightRows(states, launching, appSteam, shortcut.name),
+            fail = fail,
+            onDismiss = onDismiss,
+        )
+        return
+    }
+
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     if (landscape) {
         LandscapePreflight(
@@ -417,8 +460,15 @@ private data class FailCardModel(
     val title: String,
     val body: String,
     val red: Boolean,
+    /** The plain-terms help for this outcome (what each choice does), shown by the XMB card under "More info". */
+    val help: String,
+    /** The same choices as [buttons] for the XMB card: the recommended one first ([PreflightAction.primary]). */
+    val actions: List<PreflightAction>,
     val buttons: @Composable () -> Unit,
 )
+
+/** One choice of the XMB fail card: a big button, [primary] for the recommended one. */
+private data class PreflightAction(val label: String, val primary: Boolean, val onClick: () -> Unit)
 
 @Composable
 private fun failCardFor(
@@ -443,6 +493,11 @@ private fun failCardFor(
             "Steam isn't ready",
             "$needSignIn. Sign in again to play online with SteamLite, or launch offline with Goldberg.",
             red = true,
+            help = HELP_NEED_SIGN_IN,
+            actions = listOf(
+                PreflightAction("Sign in", true, onSignIn),
+                PreflightAction("Launch with Goldberg", false, onGoldberg),
+            ),
         ) {
             TextButton(onClick = onGoldberg) { Text("Launch with Goldberg", color = cs.onSurfaceVariant) }
             TextButton(onClick = onSignIn) { Text("Sign in", color = cs.primary) }
@@ -451,6 +506,12 @@ private fun failCardFor(
             "Steam is unreachable",
             "$offline. You can retry, launch anyway (the game's own Steam client will try to sign in), or launch offline with Goldberg.",
             red = true,
+            help = HELP_OFFLINE,
+            actions = listOf(
+                PreflightAction("Retry", true, retry),
+                PreflightAction("Launch anyway", false, launchAnyway),
+                PreflightAction("Launch with Goldberg", false, onGoldberg),
+            ),
         ) {
             TextButton(onClick = onGoldberg) { Text("Goldberg", color = cs.onSurfaceVariant) }
             TextButton(onClick = launchAnyway) { Text("Launch anyway", color = cs.onSurfaceVariant) }
@@ -462,6 +523,11 @@ private fun failCardFor(
                 "Build ${updateOffer.installedBuild} → ${updateOffer.liveBuild}. Real Steam may refuse an out-of-date build online."
             else "A newer build of ${shortcut.name} is available.",
             red = false,
+            help = HELP_UPDATE_OFFER,
+            actions = listOf(
+                PreflightAction("Update", true, onUpdate),
+                PreflightAction("Launch anyway", false, launchThisBuild),
+            ),
         ) {
             TextButton(onClick = launchThisBuild) { Text("Launch anyway", color = cs.onSurfaceVariant) }
             TextButton(onClick = onUpdate) { Text("Update", color = cs.primary) }
@@ -479,6 +545,9 @@ private fun failCardFor(
                     "A newer SteamLite (v${clientOffer.latestVersion}) is available$size. Update now, or launch " +
                         "with the installed $installed.",
                 red = false,
+                help = HELP_CLIENT_OFFER,
+                actions = listOf(PreflightAction("Update", true, updateClient)) +
+                    (if (clientOffer.required) emptyList() else listOf(PreflightAction("Launch anyway", false, launchInstalledClient))),
             ) {
                 // Below MIN_AGENT_VERSION the only offered action is Update (a failed download
                 // still launches the installed package — see updateClientThenLaunch).
@@ -851,5 +920,391 @@ private fun PreflightHelpTip(text: String, onDismiss: () -> Unit) {
             .padding(horizontal = 10.dp, vertical = 8.dp),
     ) {
         Text(text, style = MaterialTheme.typography.bodySmall, color = cs.onSurface)
+    }
+}
+
+// ── Lab: the pre-flight as a Lab panel (photo + live caption, step list, fail card, its choices as Lab buttons) ──
+
+/**
+ * "Getting Steam ready" for Lab: the photo strip beside (landscape) or over (portrait) the step list, the open help text,
+ * then the fail card when a step stopped the pre-flight. Its choices, Help and Cancel are the panel's buttons; the
+ * recommended choice takes the controller focus when it appears. B is Cancel.
+ */
+@Composable
+private fun LabPreflight(
+    title: String,
+    gameName: String,
+    clientLabel: String,
+    show: SlideShow,
+    rows: List<PreflightRow>,
+    fail: FailCardModel?,
+    help: String?,
+    onHelp: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val recommended = remember { androidx.compose.ui.focus.FocusRequester() }
+    val actions = fail?.actions.orEmpty().sortedByDescending { it.primary }
+    LaunchedEffect(fail?.title) {
+        if (fail == null || actions.isEmpty()) return@LaunchedEffect
+        delay(120)
+        runCatching { recommended.requestFocus() }
+    }
+    com.winlator.star.ui.simple.LabPanelDialog(
+        title = title,
+        onDismiss = onDismiss,
+        wide = landscape,
+        // Modal as Classic's: a tap outside does nothing; B is Cancel.
+        dismissOnOutside = false,
+        buttons = actions.mapIndexed { i, a ->
+            com.winlator.star.ui.simple.LabDialogButton(a.label, a.onClick, primary = a.primary, requester = if (i == 0) recommended else null)
+        } + listOf(
+            com.winlator.star.ui.simple.LabDialogButton(com.winlator.star.ui.simple.L("Help"), onHelp),
+            com.winlator.star.ui.simple.LabDialogButton(com.winlator.star.ui.simple.L("Cancel"), onDismiss),
+        ),
+    ) {
+        Text(
+            gameName + " · " + com.winlator.star.ui.simple.L("Getting Steam ready · %1\$s", clientLabel),
+            color = com.winlator.star.ui.simple.SimpleMuted, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
+        )
+        if (landscape) {
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                SlideStrip(show, photoBias = -0.5f, modifier = Modifier.width(280.dp).height(200.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) { rows.forEach { LabPreflightRow(it, if (it.id == PreflightRowId.CLIENT) show.progress else null) } }
+            }
+        } else {
+            SlideStrip(show, photoBias = -0.4f, modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp).aspectRatio(16f / 8.2f))
+            rows.forEach { LabPreflightRow(it, if (it.id == PreflightRowId.CLIENT) show.progress else null) }
+        }
+        help?.let { com.winlator.star.ui.simple.LabDialogText(it, muted = true) }
+        fail?.let { card ->
+            val edge = if (card.red) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+            Column(
+                Modifier.fillMaxWidth()
+                    .background(edge.copy(alpha = 0.10f), com.winlator.star.ui.simple.SimpleShape)
+                    .border(1.dp, edge.copy(alpha = 0.45f), com.winlator.star.ui.simple.SimpleShape)
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(card.title, color = com.winlator.star.ui.simple.SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(card.body, color = com.winlator.star.ui.simple.SimpleMuted, fontSize = 13.sp)
+            }
+        }
+    }
+}
+
+/** One step of the Lab pre-flight: its mark, its name and what it reported. */
+@Composable
+private fun LabPreflightRow(row: PreflightRow, progress: Float?) {
+    val cs = MaterialTheme.colorScheme
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+            .then(if (row.current) Modifier.background(cs.primary.copy(alpha = 0.14f), com.winlator.star.ui.simple.SimpleShape) else Modifier)
+            .padding(horizontal = 8.dp, vertical = 5.dp),
+    ) {
+        Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
+            when (row.mark) {
+                PreflightMark.RUNNING -> CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = cs.primary)
+                PreflightMark.DONE -> Text("✓", color = OkGreen, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                PreflightMark.NOTICE -> Text("✓", color = NoticeAmber, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                PreflightMark.SKIPPED -> Text("–", color = com.winlator.star.ui.simple.SimpleDim, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                PreflightMark.WARN -> Text("!", color = cs.error, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                PreflightMark.PENDING -> Text("·", color = com.winlator.star.ui.simple.SimpleDim, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+        }
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(row.name, color = com.winlator.star.ui.simple.SimpleStrong, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1)
+            if (row.detail.isNotBlank()) Text(row.detail, color = com.winlator.star.ui.simple.SimpleMuted, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (progress != null) com.winlator.star.ui.simple.LabBar(progress.coerceIn(0f, 1f), Modifier.fillMaxWidth().padding(top = 3.dp))
+        }
+    }
+}
+
+// ── XMB: the pre-flight as an XMB dialog (frame kit, photo + live caption, step list, fail card inline) ──────
+
+/** The photo's width : height (the bundled photos are cropped to it, subject kept high). */
+private const val XMB_PREFLIGHT_PHOTO_ASPECT = 1.6f
+
+/**
+ * "Getting Steam ready" for the XMB interface: a wide [XmbDialogFrame] with the game's name and "Getting Steam ready · client" as
+ * its fixed header, Cancel (secondary glass) in its fixed footer, and as the body the slideshow photo with the live step caption
+ * ([XmbPreflightPhoto], left in landscape, small on top in portrait) beside / above either the step list ([XmbPreflightSteps]) or,
+ * once a step stops the pre-flight, the fail card with big buttons ([XmbPreflightFail]). State and handlers are the dialog's own.
+ */
+@Composable
+private fun XmbPreflight(
+    gameName: String,
+    clientLabel: String,
+    launching: Boolean,
+    show: SlideShow,
+    rows: List<PreflightRow>,
+    fail: FailCardModel?,
+    onDismiss: () -> Unit,
+) {
+    XmbDialogFrame(
+        title = gameName,
+        subtitle = (if (launching) "Launching…" else "Getting Steam ready") + " · " + clientLabel,
+        onDismiss = onDismiss,
+        wide = true,
+        // Back and B cancel; a stray tap outside must not (the old dialog was modal the same way).
+        dismissOnClickOutside = false,
+        keepSubtitleCompact = true,
+        footer = {
+            // Rebuilt when the fail card comes or goes: the focus lands on its recommended button, then back on Cancel.
+            key(fail == null) {
+                XmbDialogButton("Cancel", onDismiss, modifier = Modifier.xmbInitialFocus(enabled = fail == null))
+            }
+        },
+    ) {
+        XmbPreflightBody(show, rows, fail)
+    }
+}
+
+@Composable
+private fun XmbPreflightBody(show: SlideShow, rows: List<PreflightRow>, fail: FailCardModel?) {
+    val size = LocalXmbDialogSize.current
+    val split = xmbPreflightSplit(size.width)
+    val photoMax = xmbPreflightPhotoMaxHeight(xmbPreflightBodyRoom(size.maxHeight, size.compact), split).dp
+    val columns = if (fail == null) 1 else xmbPreflightActionColumns(size.width, split, fail.actions.size)
+    val right: @Composable () -> Unit = {
+        if (fail != null) XmbPreflightFail(fail, columns) else XmbPreflightSteps(rows, show.progress)
+    }
+    if (split) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Box(Modifier.weight(XMB_PREFLIGHT_PHOTO_SHARE)) { XmbPreflightPhoto(show, photoMax) }
+            Box(Modifier.weight(1f - XMB_PREFLIGHT_PHOTO_SHARE)) { right() }
+        }
+    } else {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            XmbPreflightPhoto(show, photoMax)
+            right()
+        }
+    }
+}
+
+/** The slideshow photo (rounded, never taller than [maxHeight], its dots over the bottom edge) and the live step caption under it. */
+@Composable
+private fun XmbPreflightPhoto(show: SlideShow, maxHeight: Dp) {
+    val cs = MaterialTheme.colorScheme
+    val c = show.caption
+    Column(Modifier.fillMaxWidth()) {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier.heightIn(max = maxHeight).aspectRatio(XMB_PREFLIGHT_PHOTO_ASPECT)
+                    .clip(RoundedCornerShape(14.dp)).background(Color.Black),
+            ) {
+                Crossfade(
+                    targetState = show.shown,
+                    animationSpec = if (show.motion) tween(CROSSFADE_MS) else snap(),
+                    label = "xmb-preflight-slide",
+                ) { idx ->
+                    SlidePhoto(SLIDE_PHOTOS[idx], show.motion, -0.4f)
+                }
+                Row(
+                    Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    for (i in SLIDE_PHOTOS.indices) {
+                        val w by animateDpAsState(
+                            targetValue = if (i == show.shown) 18.dp else 6.dp,
+                            animationSpec = if (show.motion) tween(300) else snap(),
+                            label = "xmb-preflight-dot",
+                        )
+                        Box(
+                            Modifier.height(6.dp).width(w).clip(RoundedCornerShape(3.dp)).background(
+                                when {
+                                    i == show.shown -> cs.primary
+                                    i < show.shown -> Color.White.copy(alpha = 0.55f)
+                                    else -> Color.White.copy(alpha = 0.22f)
+                                },
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            c.label,
+            color = cs.onSurface,
+            fontFamily = NunitoSansFamily,
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            c.line,
+            color = toneColor(c.tone, cs.onSurfaceVariant),
+            fontFamily = NunitoSansFamily,
+            fontSize = 13.sp,
+            lineHeight = 17.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/** The step list: slim rows, the current one on a raised accent-tinted card; [progress] draws the SteamLite download under the client row. */
+@Composable
+private fun XmbPreflightSteps(rows: List<PreflightRow>, progress: Float?) {
+    val compact = LocalXmbDialogSize.current.compact
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 3.dp)) {
+        for (row in rows) {
+            key(row.id) {
+                XmbPreflightStepRow(row, if (row.id == PreflightRowId.CLIENT) progress else null, compact)
+            }
+        }
+    }
+}
+
+@Composable
+private fun XmbPreflightStepRow(row: PreflightRow, progress: Float?, compact: Boolean) {
+    val cs = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(12.dp)
+    // Read outside any ink, like the kit's rows do; only the current row is drawn on it.
+    val fill = xmbPopFill(tint = if (row.current) cs.primary else null, tintAlpha = if (row.current) 0.16f else 0f)
+    val look = if (row.current) Modifier.xmbPopCard(shape, fill, shadow = false) else Modifier
+    val detailColor = when (row.mark) {
+        PreflightMark.WARN -> cs.error
+        PreflightMark.NOTICE -> NoticeAmber
+        PreflightMark.DONE, PreflightMark.SKIPPED -> cs.onSurfaceVariant
+        else -> cs.onSurface
+    }
+    Column(
+        Modifier.fillMaxWidth().then(look).padding(horizontal = 10.dp, vertical = if (compact) 3.dp else 5.dp),
+    ) {
+        Row(
+            Modifier.heightIn(min = if (compact) 24.dp else 26.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            XmbPreflightMark(row.mark)
+            Text(
+                row.name,
+                Modifier.weight(0.4f),
+                color = if (row.mark == PreflightMark.PENDING) cs.onSurfaceVariant else cs.onSurface,
+                fontFamily = NunitoSansFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.5.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                row.detail,
+                Modifier.weight(0.6f),
+                color = detailColor,
+                fontFamily = NunitoSansFamily,
+                fontSize = 13.sp,
+                lineHeight = 16.sp,
+                maxLines = if (row.current || row.mark == PreflightMark.NOTICE || row.mark == PreflightMark.WARN) 2 else 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (progress != null) {
+            LinearProgressIndicator(
+                progress = { progress.coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth().padding(start = 32.dp, top = 4.dp).height(4.dp).clip(RoundedCornerShape(2.dp)),
+                color = cs.primary,
+                trackColor = cs.onSurface.copy(alpha = 0.18f),
+            )
+        }
+    }
+}
+
+/** A row's status icon: spinner (running), green tick (done), dim tick (skipped), warning triangle (notice amber, warn red), dot (pending). */
+@Composable
+private fun XmbPreflightMark(mark: PreflightMark) {
+    val cs = MaterialTheme.colorScheme
+    Box(Modifier.size(22.dp), contentAlignment = Alignment.Center) {
+        when (mark) {
+            PreflightMark.RUNNING -> CircularProgressIndicator(
+                modifier = Modifier.size(20.dp), strokeWidth = 2.5.dp,
+                color = cs.primary, trackColor = cs.onSurface.copy(alpha = 0.22f),
+            )
+            PreflightMark.DONE -> XmbPreflightDisc(OkGreen, Color(0xFF0B2A17))
+            PreflightMark.SKIPPED -> XmbPreflightDisc(cs.onSurface.copy(alpha = 0.32f), cs.surface)
+            PreflightMark.NOTICE -> Icon(Icons.Filled.Warning, contentDescription = null, tint = NoticeAmber, modifier = Modifier.size(22.dp))
+            PreflightMark.WARN -> Icon(Icons.Filled.Warning, contentDescription = null, tint = cs.error, modifier = Modifier.size(22.dp))
+            PreflightMark.PENDING -> Box(Modifier.size(8.dp).clip(CircleShape).background(cs.onSurface.copy(alpha = 0.35f)))
+        }
+    }
+}
+
+@Composable
+private fun XmbPreflightDisc(background: Color, tick: Color) {
+    Box(Modifier.size(20.dp).clip(CircleShape).background(background), contentAlignment = Alignment.Center) {
+        Icon(Icons.Filled.Check, contentDescription = null, tint = tick, modifier = Modifier.size(14.dp))
+    }
+}
+
+/**
+ * The terminal outcome in the XMB look: an icon and the bold title on a tinted strip, the body in white, the choices as big
+ * buttons ([columns] of them per line; the recommended one first and holding the controller focus) and the long help folded
+ * under a "More info" row.
+ */
+@Composable
+private fun XmbPreflightFail(card: FailCardModel, columns: Int) {
+    val cs = MaterialTheme.colorScheme
+    val edge = if (card.red) cs.error else cs.primary
+    var more by remember(card.title) { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(edge.copy(alpha = 0.16f))
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(
+                if (card.red) Icons.Filled.Warning else Icons.Filled.Info,
+                contentDescription = null, tint = edge, modifier = Modifier.size(26.dp),
+            )
+            Text(
+                card.title,
+                color = cs.onSurface,
+                fontFamily = SoraFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 17.sp,
+                lineHeight = 21.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        XmbDialogText(card.body, small = true)
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            card.actions.chunked(columns.coerceAtLeast(1)).forEachIndexed { rowIndex, line ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    line.forEachIndexed { i, action ->
+                        XmbDialogButton(
+                            action.label,
+                            action.onClick,
+                            modifier = Modifier.weight(1f).xmbInitialFocus(enabled = rowIndex == 0 && i == 0),
+                            primary = action.primary,
+                        )
+                    }
+                }
+            }
+        }
+        XmbPreflightMore(card.help, more) { more = !more }
+    }
+}
+
+/** "More info": one highlight stop that unfolds the outcome's help (what each choice does) as muted text under it. */
+@Composable
+private fun XmbPreflightMore(help: String, expanded: Boolean, onToggle: () -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        XmbRowCard(onClick = onToggle) {
+            Icon(Icons.Filled.Info, contentDescription = null, tint = cs.primary, modifier = Modifier.size(22.dp))
+            XmbRowTitle("More info", Modifier.weight(1f), maxLines = 1)
+            Icon(
+                if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                contentDescription = null, tint = cs.onSurfaceVariant, modifier = Modifier.size(24.dp),
+            )
+        }
+        if (expanded) XmbDialogText(help, muted = true, small = true)
     }
 }

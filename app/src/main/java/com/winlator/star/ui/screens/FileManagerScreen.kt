@@ -12,6 +12,10 @@ import java.io.File
  * @param pickDirMode browse to pick a folder ("Select" confirms the folder on screen).
  * @param initialDir where to open; null = Home (a picker resumes at the folder it was last used in).
  * @param driveCPath a container's C: drive the add-a-game flow already knows, offered as a Home tile.
+ * @param compactToolbar the Deck shell's Tools > Files: one slim toolbar row (path and paste chip in it) instead of
+ *   the tall pill, the paste bar and the path line. Every other host keeps the default (false).
+ * @param dense the XMB mode's in-app picker: everything slimmer (rows ~40 dp, smaller icons and text, a slim toolbar and
+ *   Select bar), so more rows fit on a landscape phone. Only [com.winlator.star.FilePickerActivity] sets it, in the XMB mode.
  */
 @Composable
 fun FileManagerScreen(
@@ -22,6 +26,8 @@ fun FileManagerScreen(
     pickerTitle: String? = null,
     driveCPath: File? = null,
     onPick: ((File) -> Unit)? = null,
+    compactToolbar: Boolean = false,
+    dense: Boolean = false,
 ) = FileManagerRoot(
     pickMode = pickMode,
     pickDirMode = pickDirMode,
@@ -30,4 +36,6 @@ fun FileManagerScreen(
     pickerTitle = pickerTitle,
     driveCPath = driveCPath,
     onPick = onPick,
+    compactToolbar = compactToolbar,
+    dense = dense,
 )

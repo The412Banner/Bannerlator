@@ -4,6 +4,7 @@
 #include "lsfg/lsfg_engine.h"
 #include "lsfg/lsfg_vkd.h"
 #include "winfg/winfg_engine.h"
+#include "wfg/wfg_engine.h"
 
 // Set by CMake from the copied win-fg chain (upstream tag + a hash over the
 // chain sources). Defaulted so this still compiles if it is ever built without
@@ -21,6 +22,7 @@
 #include <inttypes.h>
 #include <cmath>
 #include <dlfcn.h>
+#include <sys/system_properties.h>
 #include "window_vert.h"
 #include "window_frag.h"
 #include "upscale_vert.h"
@@ -38,6 +40,15 @@
 #include "ntsc_frag.h"
 #include "crt_frag.h"
 #include "deband_frag.h"
+// Half-precision upscaler/CAS set (gen_shaders.sh -DBL_HALF=1).
+#include "sgsr_half_frag.h"
+#include "sgsr_quality_half_frag.h"
+#include "fsr_easu_half_frag.h"
+#include "fsr_rcas_half_frag.h"
+#include "cas_ffx_half_frag.h"
+#include "nis_luma_half_frag.h"
+#include "nis3_half_frag.h"
+#include "nis_coef.h"
 
 // Internal sentinel for upFrame.mode: high-quality supersampling downscale.
 // (Not a user-selectable upscalerMode; gated by the hqDownscale flag.)
@@ -120,11 +131,13 @@ VulkanRendererContext::~VulkanRendererContext() {
     // upscaler resources (DS freed back to winTexPool while it is still alive)
     destroyColorTarget(offscreenImg, offscreenMem, offscreenView, offscreenFB, offscreenDS);
     destroyColorTarget(midImg, midMem, midView, midFB, midDS);
+    destroyColorTarget(nisSrcImg, nisSrcMem, nisSrcView, nisSrcFB, nisSrcDS);
     destroyColorTarget(fx1Img, fx1Mem, fx1View, fx1FB, fx1DS);
     destroyColorTarget(fx2Img, fx2Mem, fx2View, fx2FB, fx2DS);
     if (sgsrPipeline      != VK_NULL_HANDLE) vk_.DestroyPipeline(device, sgsrPipeline, nullptr);
     if (sgsrQualityPipeline != VK_NULL_HANDLE) vk_.DestroyPipeline(device, sgsrQualityPipeline, nullptr);
     if (nisPipeline       != VK_NULL_HANDLE) vk_.DestroyPipeline(device, nisPipeline, nullptr);
+    if (nisLumaPipeline   != VK_NULL_HANDLE) vk_.DestroyPipeline(device, nisLumaPipeline, nullptr);
     if (easuPipeline      != VK_NULL_HANDLE) vk_.DestroyPipeline(device, easuPipeline, nullptr);
     if (rcasPipeline      != VK_NULL_HANDLE) vk_.DestroyPipeline(device, rcasPipeline, nullptr);
     if (downscalePipeline != VK_NULL_HANDLE) vk_.DestroyPipeline(device, downscalePipeline, nullptr);
@@ -144,6 +157,7 @@ VulkanRendererContext::~VulkanRendererContext() {
     if (crtPipelineSwap   != VK_NULL_HANDLE) vk_.DestroyPipeline(device, crtPipelineSwap, nullptr);
     if (debandPipelineSwap!= VK_NULL_HANDLE) vk_.DestroyPipeline(device, debandPipelineSwap, nullptr);
     if (postPipeLayout    != VK_NULL_HANDLE) vk_.DestroyPipelineLayout(device, postPipeLayout, nullptr);
+    destroyNisCoef();
     if (offscreenRenderPass != VK_NULL_HANDLE) vk_.DestroyRenderPass(device, offscreenRenderPass, nullptr);
     if (compositeRenderPass != VK_NULL_HANDLE) { vk_.DestroyRenderPass(device, compositeRenderPass, nullptr); compositeRenderPass = VK_NULL_HANDLE; }
     if (cursorOverlayRenderPass != VK_NULL_HANDLE) { vk_.DestroyRenderPass(device, cursorOverlayRenderPass, nullptr); cursorOverlayRenderPass = VK_NULL_HANDLE; }
@@ -163,7 +177,9 @@ VulkanRendererContext::~VulkanRendererContext() {
         vk_.DestroyFence(device, inFlightFences[i], nullptr);
     lsfgEngine_.reset();
     winfgEngine_.reset();
+    wfgEngine_.reset();
     destroyFgQueryPool();
+    destroyUpQueryPool();
     vk_.DestroyCommandPool(device, cmdPool, nullptr);
     vk_.DestroyRenderPass(device, renderPass, nullptr);
     vk_.DestroyDevice(device, nullptr);
@@ -704,7 +720,8 @@ void VulkanRendererContext::createOffscreenRenderPass() {
         throw std::runtime_error("offscreen renderpass");
 }
 
-VkPipeline VulkanRendererContext::createPostPipeline(const uint32_t* fragCode, size_t fragSz, VkRenderPass rp) {
+VkPipeline VulkanRendererContext::createPostPipeline(const uint32_t* fragCode, size_t fragSz, VkRenderPass rp,
+        VkPipelineLayout layout) {
     auto vert=makeShader(upscale_vert_code,sizeof(upscale_vert_code));
     auto frag=makeShader(fragCode,fragSz);
     VkPipelineShaderStageCreateInfo stages[2]{};
@@ -722,12 +739,58 @@ VkPipeline VulkanRendererContext::createPostPipeline(const uint32_t* fragCode, s
     VkGraphicsPipelineCreateInfo pi{}; pi.sType=VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     pi.stageCount=2; pi.pStages=stages; pi.pVertexInputState=&vi; pi.pInputAssemblyState=&ia;
     pi.pViewportState=&vp; pi.pRasterizationState=&rast; pi.pMultisampleState=&ms;
-    pi.pColorBlendState=&cb; pi.pDynamicState=&ds; pi.layout=postPipeLayout; pi.renderPass=rp; pi.subpass=0;
+    pi.pColorBlendState=&cb; pi.pDynamicState=&ds; pi.layout=layout!=VK_NULL_HANDLE?layout:postPipeLayout; pi.renderPass=rp; pi.subpass=0;
     VkPipeline out=VK_NULL_HANDLE;
     VkResult r=vk_.CreateGraphicsPipelines(device,VK_NULL_HANDLE,1,&pi,nullptr,&out);
     vk_.DestroyShaderModule(device,frag,nullptr); vk_.DestroyShaderModule(device,vert,nullptr);
     if (r!=VK_SUCCESS) throw std::runtime_error("post pipeline");
     return out;
+}
+
+// nis3.frag's coefficient banks: a 4 KB host-visible uniform buffer (scale then usm, two vec4
+// per phase as in nis_coef.h), filled once, bound as descriptor set 1 of nisPipeLayout.
+bool VulkanRendererContext::createNisCoef() {
+    static_assert(sizeof(kNisCoefScale) == 2048 && sizeof(kNisCoefUsm) == 2048, "nis_coef.h layout");
+    VkDescriptorSetLayoutBinding b{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
+    VkDescriptorSetLayoutCreateInfo dli{}; dli.sType=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    dli.bindingCount=1; dli.pBindings=&b;
+    if (vk_.CreateDescriptorSetLayout(device,&dli,nullptr,&nisCoefDsl)!=VK_SUCCESS) { nisCoefDsl=VK_NULL_HANDLE; destroyNisCoef(); return false; }
+    VkDescriptorSetLayout sets[2]={dsLayout, nisCoefDsl};
+    VkPushConstantRange pc{}; pc.stageFlags=VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT;
+    pc.offset=0; pc.size=sizeof(EasuPushConstants);           // == postPipeLayout's range
+    VkPipelineLayoutCreateInfo li{}; li.sType=VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    li.setLayoutCount=2; li.pSetLayouts=sets; li.pushConstantRangeCount=1; li.pPushConstantRanges=&pc;
+    if (vk_.CreatePipelineLayout(device,&li,nullptr,&nisPipeLayout)!=VK_SUCCESS) { nisPipeLayout=VK_NULL_HANDLE; destroyNisCoef(); return false; }
+    try {
+        createBuffer(4096, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nisCoefBuf, nisCoefMem);
+    } catch (...) { nisCoefBuf=VK_NULL_HANDLE; nisCoefMem=VK_NULL_HANDLE; destroyNisCoef(); return false; }
+    void* p=nullptr;
+    if (vk_.MapMemory(device,nisCoefMem,0,4096,0,&p)!=VK_SUCCESS || !p) { destroyNisCoef(); return false; }
+    memcpy(p, kNisCoefScale, 2048); memcpy((char*)p+2048, kNisCoefUsm, 2048);
+    vk_.UnmapMemory(device,nisCoefMem);
+    VkDescriptorPoolSize ps{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1};
+    VkDescriptorPoolCreateInfo pi{}; pi.sType=VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    pi.maxSets=1; pi.poolSizeCount=1; pi.pPoolSizes=&ps;
+    if (vk_.CreateDescriptorPool(device,&pi,nullptr,&nisCoefPool)!=VK_SUCCESS) { nisCoefPool=VK_NULL_HANDLE; destroyNisCoef(); return false; }
+    VkDescriptorSetAllocateInfo ai{}; ai.sType=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    ai.descriptorPool=nisCoefPool; ai.descriptorSetCount=1; ai.pSetLayouts=&nisCoefDsl;
+    if (vk_.AllocateDescriptorSets(device,&ai,&nisCoefDS)!=VK_SUCCESS) { nisCoefDS=VK_NULL_HANDLE; destroyNisCoef(); return false; }
+    VkDescriptorBufferInfo bi{nisCoefBuf, 0, 4096};
+    VkWriteDescriptorSet w{}; w.sType=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w.dstSet=nisCoefDS; w.dstBinding=0;
+    w.descriptorCount=1; w.descriptorType=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; w.pBufferInfo=&bi;
+    vk_.UpdateDescriptorSets(device,1,&w,0,nullptr);
+    return true;
+}
+
+void VulkanRendererContext::destroyNisCoef() {
+    if (nisCoefPool  !=VK_NULL_HANDLE) vk_.DestroyDescriptorPool(device,nisCoefPool,nullptr);   // frees nisCoefDS
+    if (nisCoefBuf   !=VK_NULL_HANDLE) vk_.DestroyBuffer(device,nisCoefBuf,nullptr);
+    if (nisCoefMem   !=VK_NULL_HANDLE) vk_.FreeMemory(device,nisCoefMem,nullptr);
+    if (nisPipeLayout!=VK_NULL_HANDLE) vk_.DestroyPipelineLayout(device,nisPipeLayout,nullptr);
+    if (nisCoefDsl   !=VK_NULL_HANDLE) vk_.DestroyDescriptorSetLayout(device,nisCoefDsl,nullptr);
+    nisCoefPool=VK_NULL_HANDLE; nisCoefDS=VK_NULL_HANDLE; nisCoefBuf=VK_NULL_HANDLE; nisCoefMem=VK_NULL_HANDLE;
+    nisPipeLayout=VK_NULL_HANDLE; nisCoefDsl=VK_NULL_HANDLE;
 }
 
 void VulkanRendererContext::createPostPipelines() {
@@ -737,21 +800,47 @@ void VulkanRendererContext::createPostPipelines() {
     li.setLayoutCount=1; li.pSetLayouts=&dsLayout; li.pushConstantRangeCount=1; li.pPushConstantRanges=&pc;
     if (vk_.CreatePipelineLayout(device,&li,nullptr,&postPipeLayout)!=VK_SUCCESS)
         throw std::runtime_error("post pipelayout");
+    // Shader set for the upscalers and CAS: half precision unless
+    // debug.bannerlator.upscale.shaders is "old" (the fp32 shaders, for A/B).
+    {
+        char v[PROP_VALUE_MAX] = {0};
+        halfShaders_ = !(__system_property_get("debug.bannerlator.upscale.shaders", v) > 0 && strcmp(v, "old") == 0);
+        __android_log_print(ANDROID_LOG_INFO, WLOG_TAG, "upscale shaders: %s",
+            halfShaders_ ? "half precision (SGSR, SGSR HQ, NIS, FSR EASU+RCAS, CAS 5-tap)"
+                         : "old fp32 (debug.bannerlator.upscale.shaders=old)");
+    }
+#define UPSHADER(name) (halfShaders_ ? name##_half_code : name##_code), \
+                       (halfShaders_ ? sizeof(name##_half_code) : sizeof(name##_code))
     // EASU writes the (sampled) mid target -> offscreenRenderPass.
     // SGSR & RCAS write the swapchain -> renderPass.
-    easuPipeline = createPostPipeline(fsr_easu_code, sizeof(fsr_easu_code), offscreenRenderPass);
-    sgsrPipeline = createPostPipeline(sgsr_code,     sizeof(sgsr_code),     renderPass);
+    easuPipeline = createPostPipeline(UPSHADER(fsr_easu), offscreenRenderPass);
+    sgsrPipeline = createPostPipeline(UPSHADER(sgsr),     renderPass);
     // SGSR Quality (mode 8): same single pass + push constants, edge-direction weights.
-    sgsrQualityPipeline = createPostPipeline(sgsr_quality_code, sizeof(sgsr_quality_code), renderPass);
+    sgsrQualityPipeline = createPostPipeline(UPSHADER(sgsr_quality), renderPass);
     // NIS NVScaler is single-pass and writes the swapchain directly -> renderPass.
-    nisPipeline  = createPostPipeline(nis_code,      sizeof(nis_code),      renderPass);
-    rcasPipeline = createPostPipeline(fsr_rcas_code, sizeof(fsr_rcas_code), renderPass);
+    // NIS: the half set runs a game-res prepass (rgb + luma in alpha, offscreenRenderPass)
+    // and nis3 (9 gathers on that alpha, coefficients in a uniform buffer); the old set nis.frag.
+    if (halfShaders_ && createNisCoef()) {
+        nisLumaPipeline = createPostPipeline(nis_luma_half_code, sizeof(nis_luma_half_code), offscreenRenderPass);
+        nisPipeline     = createPostPipeline(nis3_half_code, sizeof(nis3_half_code), renderPass, nisPipeLayout);
+        __android_log_print(ANDROID_LOG_INFO, WLOG_TAG,
+            "upscale shaders: NIS = luma prepass + gather pass, coefficients in a uniform buffer");
+    } else {
+        if (halfShaders_) RLOG_E("NIS coefficient buffer unavailable; NIS uses nis.frag");
+        nisPipeline     = createPostPipeline(nis_code,           sizeof(nis_code),           renderPass);
+    }
+    rcasPipeline = createPostPipeline(UPSHADER(fsr_rcas), renderPass);
+#undef UPSHADER
     // Supersampling downscale writes the swapchain too.
     downscalePipeline = createPostPipeline(downscale_code, sizeof(downscale_code), renderPass);
     // CAS/HDR effects: an offscreen-targeted variant (non-final, writes an fx target)
     // and a swapchain-targeted variant (final pass). Bound by stage at record time.
-    casPipelineOff  = createPostPipeline(cas_code, sizeof(cas_code), offscreenRenderPass);
-    casPipelineSwap = createPostPipeline(cas_code, sizeof(cas_code), renderPass);
+    // CAS: AMD's 5-tap ffx_cas.h path in the half set, the 9-tap cas.frag in the old one
+    // (same push constants).
+    const uint32_t* casCode = halfShaders_ ? cas_ffx_half_code : cas_code;
+    const size_t    casSize = halfShaders_ ? sizeof(cas_ffx_half_code) : sizeof(cas_code);
+    casPipelineOff  = createPostPipeline(casCode, casSize, offscreenRenderPass);
+    casPipelineSwap = createPostPipeline(casCode, casSize, renderPass);
     hdrPipelineOff  = createPostPipeline(hdr_code, sizeof(hdr_code), offscreenRenderPass);
     hdrPipelineSwap = createPostPipeline(hdr_code, sizeof(hdr_code), renderPass);
     // Phase 2 screen effects: same Off/Swap variant pair as CAS/HDR.
@@ -1003,6 +1092,78 @@ void VulkanRendererContext::readFgQueryResult() {
              perGen, (float)ms, fgQueryGens_[currentFrame], fgChainMsPerGen_);
 }
 
+// ================== Upscale/effect pass timing ==============================
+// Four BOTTOM_OF_PIPE timestamps per frame slot bracket recordUpscalePasses:
+// [0] start, [1] after the composite, [2] after the scaling stage, [3] end.
+// A cursor-only frame (final pass re-run) writes all four around that pass.
+
+void VulkanRendererContext::ensureUpQueryPool() {
+    if (upQueryPool_ != VK_NULL_HANDLE || !fgTimestampsOk_ || !vk_.CreateQueryPool) return;
+    VkQueryPoolCreateInfo qi{}; qi.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+    qi.queryType = VK_QUERY_TYPE_TIMESTAMP; qi.queryCount = MAX_FRAMES_IN_FLIGHT * 4;
+    if (vk_.CreateQueryPool(device, &qi, nullptr, &upQueryPool_) != VK_SUCCESS) {
+        upQueryPool_ = VK_NULL_HANDLE;
+        RLOG_E("upscale timing: timestamp query pool unavailable");
+    }
+}
+
+void VulkanRendererContext::destroyUpQueryPool() {
+    if (upQueryPool_ != VK_NULL_HANDLE && vk_.DestroyQueryPool)
+        vk_.DestroyQueryPool(device, upQueryPool_, nullptr);
+    upQueryPool_ = VK_NULL_HANDLE;
+    for (auto& p : upQueryPending_) p = false;
+}
+
+void VulkanRendererContext::upTimestamp(VkCommandBuffer cb, uint32_t q) {
+    if (upQueryPool_ == VK_NULL_HANDLE) return;
+    vk_.CmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, upQueryPool_, currentFrame * 4 + q);
+}
+
+void VulkanRendererContext::readUpQueryResult() {
+    if (upQueryPool_ == VK_NULL_HANDLE || !upQueryPending_[currentFrame]) return;
+    upQueryPending_[currentFrame] = false;      // one attempt per sample; a miss is dropped
+    uint64_t ts[4] = {0, 0, 0, 0};
+    const VkResult r = vk_.GetQueryPoolResults(device, upQueryPool_, currentFrame * 4, 4,
+                                               sizeof(ts), ts, sizeof(uint64_t),
+                                               VK_QUERY_RESULT_64_BIT);
+    if (r != VK_SUCCESS || ts[3] < ts[0] || ts[1] < ts[0] || ts[2] < ts[1] || ts[3] < ts[2]) return;
+    const double k = (double)fgTimestampPeriodNs_ / 1.0e6;
+    UpTiming& t = upTiming_;
+    if (upQueryReused_[currentFrame]) {
+        t.reusedMs += (double)(ts[3] - ts[0]) * k;
+        t.reused++;
+    } else {
+        t.compositeMs += (double)(ts[1] - ts[0]) * k;
+        t.scaleMs     += (double)(ts[2] - ts[1]) * k;
+        t.effectsMs   += (double)(ts[3] - ts[2]) * k;
+        t.full++;
+    }
+    const int64_t now = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+    if (t.startNs == 0) { t.startNs = now; return; }
+    if (now - t.startNs < 10000000000LL) return;
+    static const char* const kModes[] = {"none", "Linear", "Nearest", "SGSR", "FSR", "FSR Fit",
+                                         "Sharpen", "NIS", "SGSR HQ"};
+    const char* mode = (t.mode >= 0 && t.mode <= 8) ? kModes[t.mode] : "downscale";
+    const double f = t.full ? (double)t.full : 1.0;
+    const double ru = t.reused ? (double)t.reused : 1.0;
+    __android_log_print(ANDROID_LOG_INFO, WLOG_TAG,
+        "upscale timing (%s shaders): %s + %d effect(s), %.1f s: %u frames, composite %.3f ms, "
+        "scale %.3f ms, effects %.3f ms, total %.3f ms; cursor-only %u frames, %.3f ms",
+        halfShaders_ ? "half" : "old", mode, t.effects, (double)(now - t.startNs) / 1.0e9, t.full,
+        t.compositeMs / f, t.scaleMs / f, t.effectsMs / f,
+        (t.compositeMs + t.scaleMs + t.effectsMs) / f, t.reused, t.reusedMs / ru);
+    const int keepMode = t.mode, keepFx = t.effects;
+    t = UpTiming{};
+    t.startNs = now; t.mode = keepMode; t.effects = keepFx;
+}
+
+uint32_t VulkanRendererContext::upFxMask() const {
+    return (upFrame.fxaa ? 1u : 0u) | (upFrame.toon ? 2u : 0u) | (upFrame.color ? 4u : 0u) |
+           (upFrame.cas ? 8u : 0u) | (upFrame.hdr ? 16u : 0u) | (upFrame.ntsc ? 32u : 0u) |
+           (upFrame.crt ? 64u : 0u) | (upFrame.deband ? 128u : 0u);
+}
+
 bool VulkanRendererContext::ensureWinFgEngine() {
     if (winfgEngine_) return winfgEngine_->valid();
     if (winfgEngineTried_) return false;     // failed once; don't retry every frame
@@ -1021,8 +1182,26 @@ bool VulkanRendererContext::ensureWinFgEngine() {
     return true;
 }
 
+bool VulkanRendererContext::ensureWfgEngine() {
+    if (wfgEngine_) return wfgEngine_->valid();
+    if (wfgEngineTried_) return false;       // failed once; don't retry every frame
+    wfgEngineTried_ = true;
+
+    auto engine = std::make_unique<wfg::Engine>();
+    if (!engine->init(vk_, physicalDevice, device)) {
+        RLOG_E("wfg-native: engine init failed");
+        return false;
+    }
+    wfgEngine_ = std::move(engine);
+    fgConfigDirty_.store(true, std::memory_order_relaxed);
+    RLOG("wfg-native: engine ready (%s)", WFG_UPSTREAM);
+    return true;
+}
+
 bool VulkanRendererContext::fgCapsOk() const {
-    if (fgEngineKind_.load(std::memory_order_relaxed) == 1)
+    // win-fg and WFG both write the generated frame as a storage image and need nothing else
+    // from the device.
+    if (fgEngineKind_.load(std::memory_order_relaxed) != 0)
         return lsfgCaps_.storageOnSwapchainFormat;
     return lsfgCaps_.supported();
 }
@@ -1040,6 +1219,8 @@ int VulkanRendererContext::frameGenProblem() const {
     // creation and be rejected here. The engine object stays alive with
     // unavailable() set; report that as a start failure too, or the drawer
     // would show frame gen armed while nothing generates.
+    if (fgEngineKind_.load(std::memory_order_relaxed) == 2)
+        return ((wfgEngineTried_ && !wfgEngine_) || (wfgEngine_ && wfgEngine_->unavailable())) ? 2 : 0;
     if (fgEngineKind_.load(std::memory_order_relaxed) == 1)
         return ((winfgEngineTried_ && !winfgEngine_) || (winfgEngine_ && winfgEngine_->unavailable())) ? 2 : 0;
     return ((lsfgEngineTried_ && !lsfgEngine_) || (lsfgEngine_ && lsfgEngine_->unavailable())) ? 2 : 0;
@@ -1049,11 +1230,14 @@ void VulkanRendererContext::setFrameGenEngine(int kind) {
     std::lock_guard<std::mutex> lk(renderMutex);
     const int was = fgEngineKind_.exchange(kind, std::memory_order_relaxed);
     if (was == kind) return;
-    RLOG("native-fg: engine %s -> %s", was == 1 ? "win-fg" : "lsfg", kind == 1 ? "win-fg" : "lsfg");
+    static const char* const kNames[] = {"lsfg", "win-fg", "wfg"};
+    RLOG("native-fg: engine %s -> %s", kNames[was >= 0 && was <= 2 ? was : 0],
+         kNames[kind >= 0 && kind <= 2 ? kind : 0]);
     // Only one engine holds GPU resources at a time; the other is rebuilt on
     // demand if the user switches back.
     lsfgEngine_.reset();   lsfgEngineTried_ = false;
     winfgEngine_.reset();  winfgEngineTried_ = false;
+    wfgEngine_.reset();    wfgEngineTried_ = false;
     fgConfigDirty_.store(true, std::memory_order_relaxed);
 }
 
@@ -1067,9 +1251,10 @@ void VulkanRendererContext::recordFrameGenProcess(VkCommandBuffer cb) {
     // Which engine generates is a runtime choice: LSFG needs the user's
     // Lossless.dll, win-fg carries its own shaders. They are mutually
     // exclusive and only one holds GPU resources at a time.
-    const bool useWinFg = fgEngineKind_.load(std::memory_order_relaxed) == 1;
+    const int kind = fgEngineKind_.load(std::memory_order_relaxed);
+    const bool useWinFg = kind == 1;
     if (!compositeActive() || compositeTargets.empty()) return;
-    if (useWinFg ? !winfgEngine_ : !lsfgEngine_) return;
+    if (kind == 2 ? !wfgEngine_ : useWinFg ? !winfgEngine_ : !lsfgEngine_) return;
     const CompositeTarget& src = compositeTargets[compositeIndex];
     ensureFgQueryPool();
     if (fgQueryPool_ != VK_NULL_HANDLE && fgPlan_.generations > 0) {
@@ -1078,14 +1263,16 @@ void VulkanRendererContext::recordFrameGenProcess(VkCommandBuffer cb) {
     }
     // Take frame N as the chain's newest input and run everything that is
     // shared across generations (mipmaps -> alpha -> beta -> gamma -> delta).
-    if (useWinFg) winfgEngine_->process(cb, src.img, compositeW, compositeH, fgPlan_.generations);
+    if (kind == 2) wfgEngine_->process(cb, src.img, compositeW, compositeH, fgPlan_.generations);
+    else if (useWinFg) winfgEngine_->process(cb, src.img, compositeW, compositeH, fgPlan_.generations);
     else          lsfgEngine_->process(cb, src.img, compositeW, compositeH, fgPlan_.generations);
 }
 
 void VulkanRendererContext::recordFrameGenGeneration(VkCommandBuffer cb, uint32_t g) {
-    const bool useWinFg = fgEngineKind_.load(std::memory_order_relaxed) == 1;
+    const int kind = fgEngineKind_.load(std::memory_order_relaxed);
+    const bool useWinFg = kind == 1;
     if (!compositeActive() || compositeTargets.empty()) return;
-    if (useWinFg ? !winfgEngine_ : !lsfgEngine_) return;
+    if (kind == 2 ? !wfgEngine_ : useWinFg ? !winfgEngine_ : !lsfgEngine_) return;
     if (g >= fgPlan_.generations) return;
     const uint32_t w = compositeW, h = compositeH;
     {
@@ -1093,7 +1280,8 @@ void VulkanRendererContext::recordFrameGenGeneration(VkCommandBuffer cb, uint32_
         const CompositeTarget& dst = compositeTargets[slot];
         if (dst.img == VK_NULL_HANDLE || dst.storageView == VK_NULL_HANDLE) return;
 
-        if (useWinFg) winfgEngine_->generateInto(cb, g, fgPlan_.generations, dst.img, dst.storageView, w, h);
+        if (kind == 2) wfgEngine_->generateInto(cb, g, g, dst.img, dst.storageView, w, h);
+        else if (useWinFg) winfgEngine_->generateInto(cb, g, fgPlan_.generations, dst.img, dst.storageView, w, h);
         else          lsfgEngine_->generateInto(cb, g, g, dst.img, dst.storageView, w, h);
 
         if (fgQueryPool_ != VK_NULL_HANDLE && g + 1 == fgPlan_.generations) {
@@ -1339,6 +1527,12 @@ void VulkanRendererContext::frameGenStats(float out[6]) const {
     // from inside the guest. It is reported even with no LSFG engine present.
     out[3] = fgPresentedRate_;
     out[5] = fgChainMsPerGen_;
+    if (fgEngineKind_.load(std::memory_order_relaxed) == 2) {
+        if (!wfgEngine_) return;
+        out[0] = out[1] = (float)fgPlan_.generations;
+        out[2] = fgSourceRate_;
+        return;
+    }
     if (fgEngineKind_.load(std::memory_order_relaxed) == 1) {
         // win-fg has no governor: what is planned is what is generated.
         if (!winfgEngine_) return;
@@ -1351,6 +1545,47 @@ void VulkanRendererContext::frameGenStats(float out[6]) const {
     out[1] = (float)fgPlan_.generations;
     out[2] = lsfgEngine_->sourceRate();
     out[4] = (float)lsfgEngine_->thermalStatus();
+}
+
+static uint64_t fgNowNs() {
+    return (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+// Keep the present queue short while frame generation runs (see the members' comment).
+// Two rules, both only ever REMOVE generated frames from this draw's plan:
+//  - a draw without a new game frame generates nothing: there is no new motion to show;
+//  - while more than two images wait beyond the next refresh, one generated frame is left
+//    out, one at a time so the motion cadence stays even, until the queue drains.
+// fgRefreshHz_ is the panel's top rate, so on a panel running slower the model drains too
+// fast and trims less than it could - never more.
+void VulkanRendererContext::guardPresentQueue() {
+    const uint64_t serial = fgContentSerial_.load(std::memory_order_relaxed);
+    const bool newContent = serial != fgSeenContent_;
+    fgSeenContent_ = serial;
+    // The first rule needs proof that this session's game frames come through the content
+    // updates at all (a path that presents some other way must not lose its generation).
+    if (newContent) { fgContentIdle_ = 0; fgContentLive_ = true; }
+    else if (++fgContentIdle_ > 120) fgContentLive_ = false;
+    if (fgPlan_.generations == 0) return;
+    if (fgContentLive_ && !newContent) {
+        fgPlan_.generations = 0;
+        fgSameSource_++;
+        return;
+    }
+    const float hz = fgRefreshHz_.load(std::memory_order_relaxed);
+    if (hz <= 1.0f) return;
+    const uint64_t period = (uint64_t)(1.0e9f / hz);
+    const uint64_t now = fgNowNs();
+    const uint64_t ahead = fgQueueEndNs_ > now + period ? (fgQueueEndNs_ - now - period) / period : 0;
+    if (ahead > 2) {
+        fgPlan_.generations--;
+        fgTrimmed_++;
+    }
+    if ((fgGuardLog_++ % 600u) == 0u)
+        RLOG("native-fg: queue guard ahead=%llu trimmed=%llu same-source=%llu",
+             (unsigned long long)ahead, (unsigned long long)fgTrimmed_,
+             (unsigned long long)fgSameSource_);
 }
 
 void VulkanRendererContext::trackPresentedRate(uint32_t presents) {
@@ -1469,6 +1704,7 @@ void VulkanRendererContext::copyCompositeToSwapchain(VkCommandBuffer cb, uint32_
 
 void VulkanRendererContext::destroyColorTarget(VkImage& img, VkDeviceMemory& mem, VkImageView& view,
         VkFramebuffer& fb, VkDescriptorSet& ds) {
+    upReuse_.valid = false;     // the kept final pass may read this target
     if (ds  !=VK_NULL_HANDLE){ vk_.FreeDescriptorSets(device,winTexPool,1,&ds); ds=VK_NULL_HANDLE; }
     if (fb  !=VK_NULL_HANDLE){ vk_.DestroyFramebuffer(device,fb,nullptr); fb=VK_NULL_HANDLE; }
     if (view!=VK_NULL_HANDLE){ vk_.DestroyImageView(device,view,nullptr); view=VK_NULL_HANDLE; }
@@ -1499,6 +1735,19 @@ bool VulkanRendererContext::ensureMid(int w, int h) {
         return false;
     }
     midW=w; midH=h;
+    return true;
+}
+
+bool VulkanRendererContext::ensureNisSrc(int w, int h) {
+    if (nisSrcImg!=VK_NULL_HANDLE && nisSrcW==w && nisSrcH==h) return true;
+    if (w<=0||h<=0) return false;
+    if (nisSrcImg!=VK_NULL_HANDLE) { vk_.DeviceWaitIdle(device); destroyColorTarget(nisSrcImg,nisSrcMem,nisSrcView,nisSrcFB,nisSrcDS); }
+    nisSrcW=nisSrcH=0;
+    if (!createColorTarget(w,h,nisSrcImg,nisSrcMem,nisSrcView,nisSrcFB,nisSrcDS)) {
+        RLOG_E("ensureNisSrc: createColorTarget %dx%d failed", w, h);
+        return false;
+    }
+    nisSrcW=w; nisSrcH=h;
     return true;
 }
 
@@ -1596,6 +1845,7 @@ void VulkanRendererContext::recreateSyncObjects() {
 }
 
 void VulkanRendererContext::cleanupSwapchain() {
+    upReuse_.valid = false;
     // The composite ring is sized to the swapchain extent and its framebuffers
     // reference compositeRenderPass, so it goes with the swapchain.
     destroyCompositeTargets();
@@ -1845,7 +2095,7 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
     VkBuffer cursorUpload, bool hasCursorUpload,
     float ox, float oy, float sx, float sy, float cw, float ch,
     short ptrX, short ptrY, short curHotX, short curHotY,
-    short curW, short curH, bool curVis)
+    short curW, short curH, bool curVis, bool cursorOnly)
 {
     VkCommandBufferBeginInfo bi{}; bi.sType=VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     if (vk_.BeginCommandBuffer(cb,&bi)!=VK_SUCCESS) throw std::runtime_error("begin cb");
@@ -1944,7 +2194,7 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
         // Spatial-upscaler / effects path: composite to an offscreen target at
         // game res, then upscale / run the effect chain into the render target
         // (see recordUpscalePasses).
-        recordUpscalePasses(cb, imgIdx, draws, cursorDrawn,
+        recordUpscalePasses(cb, imgIdx, draws, cursorDrawn, cursorOnly,
             ptrX, ptrY, curHotX, curHotY, curW, curH,
             ox, oy, sx, sy, cw, ch);
     } else {
@@ -2037,7 +2287,7 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
 }
 
 void VulkanRendererContext::recordUpscalePasses(VkCommandBuffer cb, uint32_t imgIdx,
-    const std::vector<DrawEntry>& draws, bool cursorDrawn,
+    const std::vector<DrawEntry>& draws, bool cursorDrawn, bool cursorOnly,
     short ptrX, short ptrY, short curHotX, short curHotY, short curW, short curH,
     float ox, float oy, float sx, float sy, float scw, float sch)
 {
@@ -2083,22 +2333,33 @@ void VulkanRendererContext::recordUpscalePasses(VkCommandBuffer cb, uint32_t img
             vk_.CmdPushConstants(cb,pipeLayout,VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(pc),&pc);
             vk_.CmdDraw(cb,4,1,0,0);
         }
-        if (cursorDrawn) {
-            vk_.CmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeLayout,0,1,&cursorDS,0,nullptr);
-            float cx=(float)std::max(0,(int)ptrX-curHotX), cy=(float)std::max(0,(int)ptrY-curHotY);
-            WindowPushConstants cpc{};
-            if (identity) {
-                cpc.ndcX0=cx/cw*2.f-1.f; cpc.ndcY0=cy/ch*2.f-1.f;
-                cpc.ndcX1=(cx+curW)/cw*2.f-1.f; cpc.ndcY1=(cy+curH)/ch*2.f-1.f;
-            } else {
-                cpc.ndcX0=(ox+cx*sx)/cw*2.f-1.f; cpc.ndcY0=(oy+cy*sy)/ch*2.f-1.f;
-                cpc.ndcX1=(ox+(cx+curW)*sx)/cw*2.f-1.f; cpc.ndcY1=(oy+(cy+curH)*sy)/ch*2.f-1.f;
-            }
-            cpc.useTexAlpha=1;
-            vk_.CmdPushConstants(cb,pipeLayout,VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(cpc),&cpc);
-            vk_.CmdDraw(cb,4,1,0,0);
-        }
         vk_.CmdEndRenderPass(cb);
+    };
+
+    // The cursor is not composited at game resolution any more: it is drawn over
+    // the final pass at output size (same on-screen size, not run through the
+    // scaler or the effects), and a cursor-only frame needs only that last pass.
+    auto drawCursorOut=[&](){
+        const float cx=(float)std::max(0,(int)ptrX-curHotX), cy=(float)std::max(0,(int)ptrY-curHotY);
+        WindowPushConstants cpc{};
+        if (hasScaling) {
+            // Game pixels -> the scaler's destination rect (output pixels).
+            const float kx=(float)upFrame.outW/(float)std::max(1,offscreenW);
+            const float ky=(float)upFrame.outH/(float)std::max(1,offscreenH);
+            const float x0=(float)upFrame.outX+cx*kx, y0=(float)upFrame.outY+cy*ky;
+            const float W=(float)outExt.width, H=(float)outExt.height;
+            cpc.ndcX0=x0/W*2.f-1.f;            cpc.ndcY0=y0/H*2.f-1.f;
+            cpc.ndcX1=(x0+curW*kx)/W*2.f-1.f;  cpc.ndcY1=(y0+curH*ky)/H*2.f-1.f;
+        } else {
+            // Effects only: the composite's own scene transform.
+            cpc.ndcX0=(ox+cx*sx)/scw*2.f-1.f;        cpc.ndcY0=(oy+cy*sy)/sch*2.f-1.f;
+            cpc.ndcX1=(ox+(cx+curW)*sx)/scw*2.f-1.f; cpc.ndcY1=(oy+(cy+curH)*sy)/sch*2.f-1.f;
+        }
+        cpc.useTexAlpha=1;
+        vk_.CmdBindPipeline(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline);
+        vk_.CmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeLayout,0,1,&cursorDS,0,nullptr);
+        vk_.CmdPushConstants(cb,pipeLayout,VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(cpc),&cpc);
+        vk_.CmdDraw(cb,4,1,0,0);
     };
 
     // A full-target post pass: sample `srcDS`, draw the quad into `fb` at the full
@@ -2113,16 +2374,66 @@ void VulkanRendererContext::recordUpscalePasses(VkCommandBuffer cb, uint32_t img
         vk_.CmdSetViewport(cb,0,1,&fullVp); vk_.CmdSetScissor(cb,0,1,&fullSc);
         vk_.CmdBindPipeline(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,pl);
         vk_.CmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,postPipeLayout,0,1,&srcDS,0,nullptr);
+        if (pl==nisPipeline && nisCoefDS!=VK_NULL_HANDLE)   // nis3: coefficient banks at set 1
+            vk_.CmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,nisPipeLayout,1,1,&nisCoefDS,0,nullptr);
         vk_.CmdPushConstants(cb,postPipeLayout,VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT,0,pcsz,pcd);
         vk_.CmdDraw(cb,4,1,0,0);
+        if (toSwapchain) {
+            if (cursorDrawn) drawCursorOut();
+            // Keep the final pass for cursor-only frames (not on the frame-gen ring:
+            // every composite there feeds the engine).
+            if (!compositeActive() && pcsz <= sizeof(upReuse_.pc)) {
+                UpReuse k{};
+                k.valid=true; k.pipeline=pl; k.srcDS=srcDS;
+                memcpy(k.pc, pcd, pcsz); k.pcSize=pcsz;
+                k.mode=upFrame.mode; k.outX=upFrame.outX; k.outY=upFrame.outY;
+                k.outW=upFrame.outW; k.outH=upFrame.outH;
+                k.extW=outExt.width; k.extH=outExt.height; k.fxMask=upFxMask();
+                upReuse_=k;
+            } else {
+                upReuse_.valid=false;
+            }
+        }
         vk_.CmdEndRenderPass(cb);
     };
+
+    // ---- Timing (see readUpQueryResult) and the cursor-only shortcut.
+    ensureUpQueryPool();
+    const bool timed = upQueryPool_ != VK_NULL_HANDLE;
+    if (timed) {
+        vk_.CmdResetQueryPool(cb, upQueryPool_, currentFrame * 4, 4);
+        upTimestamp(cb, 0);
+    }
+    const int nFx = (int)upFrame.fxaa + (int)upFrame.toon + (int)upFrame.color + (int)upFrame.cas +
+                    (int)upFrame.hdr + (int)upFrame.ntsc + (int)upFrame.crt + (int)upFrame.deband;
+    if (upTiming_.mode != upFrame.mode || upTiming_.effects != nFx) {
+        upTiming_ = UpTiming{};             // new mode or effect set: start a new window
+        upTiming_.mode = upFrame.mode; upTiming_.effects = nFx;
+    }
+    auto finishTiming=[&](bool reused){
+        if (!timed) return;
+        upTimestamp(cb, 3);
+        upQueryPending_[currentFrame] = true;
+        upQueryReused_[currentFrame]  = reused;
+    };
+    const UpReuse& r = upReuse_;
+    if (cursorOnly && r.valid && !compositeActive() &&
+        r.mode==upFrame.mode && r.outX==upFrame.outX && r.outY==upFrame.outY &&
+        r.outW==upFrame.outW && r.outH==upFrame.outH &&
+        r.extW==outExt.width && r.extH==outExt.height && r.fxMask==upFxMask()) {
+        if (timed) { upTimestamp(cb, 1); upTimestamp(cb, 2); }
+        const UpReuse keep = r;             // postPass stores it again
+        postPass(keep.pipeline, targetFramebuffer(imgIdx), true, keep.srcDS, keep.pc, keep.pcSize);
+        finishTiming(true);
+        return;
+    }
 
     // ---- Stage 1 (+ scaling): produce the pre-effects image; curDS = its sampler.
     VkDescriptorSet curDS = VK_NULL_HANDLE;
     if (hasScaling) {
         // composite 1:1 into offscreen at game res (the upscaler input)
         composite(offscreenFB, offscreenW, offscreenH, /*identity*/true, (float)offscreenW, (float)offscreenH);
+        if (timed) upTimestamp(cb, 1);
         // The scaling stage writes the swapchain directly only when no effect follows;
         // otherwise it writes fx1 so CAS/HDR can sample it. Cross-binding a swapchain-
         // renderPass post pipeline into an offscreenRenderPass fx target reuses the
@@ -2140,7 +2451,26 @@ void VulkanRendererContext::recordUpscalePasses(VkCommandBuffer cb, uint32_t img
             else if (upFrame.mode==7) { pcd=&upFrame.nisPC;  pcsz=sizeof(upFrame.nisPC);  }
             else if (upFrame.mode==6) { pcd=&upFrame.rcasPC; pcsz=sizeof(upFrame.rcasPC); }
             else                      { pcd=&upFrame.dsPC;   pcsz=sizeof(upFrame.dsPC);   }
-            postPass(pl, stFB, scaleFinal, offscreenDS, pcd, pcsz);
+            VkDescriptorSet src = offscreenDS;
+            if (upFrame.mode==7 && nisLumaPipeline!=VK_NULL_HANDLE) {
+                // NIS prepass: offscreen -> nisSrc (same size, rgb + luma in alpha); nis3
+                // gathers its 6x6 luma support from that alpha.
+                VkRenderPassBeginInfo rpi{}; rpi.sType=VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+                rpi.renderPass=offscreenRenderPass; rpi.framebuffer=nisSrcFB;
+                rpi.renderArea={{0,0},{(uint32_t)nisSrcW,(uint32_t)nisSrcH}};
+                rpi.clearValueCount=1; rpi.pClearValues=&blk;
+                vk_.CmdBeginRenderPass(cb,&rpi,VK_SUBPASS_CONTENTS_INLINE);
+                VkViewport lvp{0,0,(float)nisSrcW,(float)nisSrcH,0,1}; vk_.CmdSetViewport(cb,0,1,&lvp);
+                VkRect2D lsc{{0,0},{(uint32_t)nisSrcW,(uint32_t)nisSrcH}}; vk_.CmdSetScissor(cb,0,1,&lsc);
+                vk_.CmdBindPipeline(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,nisLumaPipeline);
+                vk_.CmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,postPipeLayout,0,1,&offscreenDS,0,nullptr);
+                const float fullNdc[4]={-1.f,-1.f,1.f,1.f};
+                vk_.CmdPushConstants(cb,postPipeLayout,VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(fullNdc),fullNdc);
+                vk_.CmdDraw(cb,4,1,0,0);
+                vk_.CmdEndRenderPass(cb);
+                src = nisSrcDS;
+            }
+            postPass(pl, stFB, scaleFinal, src, pcd, pcsz);
         } else {
             // FSR: EASU offscreen -> mid (at output res, mid viewport), then RCAS mid -> stFB.
             VkRenderPassBeginInfo rpi{}; rpi.sType=VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -2157,12 +2487,14 @@ void VulkanRendererContext::recordUpscalePasses(VkCommandBuffer cb, uint32_t img
             vk_.CmdEndRenderPass(cb);
             postPass(rcasPipeline, stFB, scaleFinal, midDS, &upFrame.rcasPC, sizeof(upFrame.rcasPC));
         }
-        if (scaleFinal) return;     // no effects: scaling wrote the swapchain, done
+        if (timed) upTimestamp(cb, 2);
+        if (scaleFinal) { finishTiming(false); return; }   // no effects: scaling wrote the swapchain
         curDS = fx1DS;
     } else {
         // Effects-only (no scaling mode active): composite with the normal scene
         // transform straight into fx1 (full output extent), then run the effect chain.
         composite(fx1FB, (int)outExt.width, (int)outExt.height, /*identity*/false, scw, sch);
+        if (timed) { upTimestamp(cb, 1); upTimestamp(cb, 2); }
         curDS = fx1DS;
     }
 
@@ -2204,6 +2536,7 @@ void VulkanRendererContext::recordUpscalePasses(VkCommandBuffer cb, uint32_t img
         }
         if (!toSwap) curDS = tgtDS;
     }
+    finishTiming(false);
 }
 
 // Decide whether and how the spatial upscaler runs this frame, and pre-compute
@@ -2274,6 +2607,7 @@ void VulkanRendererContext::planUpscaleFrame() {
             }
             bool ok = (outW>0 && outH>0) && ensureOffscreen(containerWidth,containerHeight);
             if (ok && (mode==4||mode==5)) ok = ensureMid(outW,outH);
+            if (ok && mode==7 && nisLumaPipeline!=VK_NULL_HANDLE) ok = ensureNisSrc(containerWidth,containerHeight);
             if (ok) {
                 float nx0=(float)outX/scW*2.f-1.f, ny0=(float)outY/scH*2.f-1.f;
                 float nx1=(float)(outX+outW)/scW*2.f-1.f, ny1=(float)(outY+outH)/scH*2.f-1.f;
@@ -2438,11 +2772,16 @@ void VulkanRendererContext::flushDeleteQueue() {
 void VulkanRendererContext::renderFrame() {
     std::shared_lock<std::shared_mutex> frameLock(frameMutex);
 
-    needsRender.store(false,std::memory_order_relaxed);
-    cursorMoved.store(false,std::memory_order_relaxed);
+    // Only the cursor moved since the last frame: the upscale path can re-run
+    // its final pass instead of the whole chain (recordUpscalePasses).
+    const bool sceneDirty = needsRender.exchange(false,std::memory_order_relaxed) || sceneDirtyCarry_;
+    const bool curMoved   = cursorMoved.exchange(false,std::memory_order_relaxed);
+    const bool cursorOnly = curMoved && !sceneDirty;
+    sceneDirtyCarry_ = sceneDirty;      // cleared once this frame is recorded
 
     if (surfaceDetached.load(std::memory_order_acquire)) return;
     if (scanoutActive.load()) {
+        upReuse_.valid = false;
         applyScanoutBuffer();
 
         if (!scanoutBlackFrameDone.load()) {
@@ -2501,6 +2840,7 @@ ok=true;}catch(...){}
     }
     // This slot's previous frame is complete, so its chain timestamps are final.
     readFgQueryResult();
+    readUpQueryResult();
 
     // --- Frame gen: decide whether THIS frame composites off-swapchain. The
     // targets are created lazily on the first armed frame and torn down when it
@@ -2530,7 +2870,25 @@ ok=true;}catch(...){}
     const uint32_t fgCapacity = (uint32_t)std::min<size_t>(
         kMaxPresentsPerFrame - 1,
         compositeTargets.empty() ? 0 : compositeTargets.size() - 1);
-    if (fgEngineKind_.load(std::memory_order_relaxed) == 1) {
+    if (fgEngineKind_.load(std::memory_order_relaxed) == 2) {
+        // WFG paces itself against the display rate; the 2x/3x/4x choice caps how many frames
+        // it may add per source frame, and the performance preset picks its flow resolution.
+        if (compositeActive() && ensureWfgEngine()) {
+            if (fgConfigDirty_.exchange(false, std::memory_order_relaxed)) {
+                const float hz = fgRefreshHz_.load(std::memory_order_relaxed);
+                wfgEngine_->configure(
+                    fgPerfPreset_.load(std::memory_order_relaxed) >= 2 ? wfg::kMinSideFast
+                                                                       : wfg::kMinSideBalance,
+                    0, hz > 1.0f ? hz : 60.0f);
+            }
+            if (wfgEngine_->prepare(compositeW, compositeH, swapchainFmt)) {
+                const uint32_t cap = std::min<uint32_t>(
+                    fgCapacity,
+                    (uint32_t)std::max(fgMultiplier_.load(std::memory_order_relaxed), 2) - 1u);
+                fgPlan_.generations = wfgEngine_->plan(cap, ++fgSourceFrames_);
+            }
+        }
+    } else if (fgEngineKind_.load(std::memory_order_relaxed) == 1) {
         // win-fg: no cache, no governor, no pacer. Configure AFTER ensure so a
         // freshly built engine is prepared at the right preset straight away
         // instead of at the default and then rebuilt one frame later.
@@ -2589,13 +2947,24 @@ ok=true;}catch(...){}
             }
         }
     }   // lsfg
+    guardPresentQueue();
     fgPlan_.presents = fgPlan_.generations + 1;
 
     // ERL bug report #9: real timeout so VK_TIMEOUT is reachable; existing non-success guard below returns on it.
+    const float fgGuardHz = fgRefreshHz_.load(std::memory_order_relaxed);
+    const uint64_t fgPeriodNs = fgGuardHz > 1.0f ? (uint64_t)(1.0e9f / fgGuardHz) : 0;
     for (uint32_t k = 0; k < fgPlan_.presents; k++) {
         uint32_t idx = 0;
+        const uint64_t acquireBeginNs = k == 0 && fgPeriodNs ? fgNowNs() : 0;
         VkResult ar = vk_.AcquireNextImageKHR(device,swapchain,2000000000ULL,
                                               imgAvailSems[syncSlot(k)],VK_NULL_HANDLE,&idx);
+        if (acquireBeginNs) {
+            // A real acquire that blocked means the queue is at least that full, whatever
+            // the model says.
+            const uint64_t nowNs = fgNowNs();
+            if (nowNs - acquireBeginNs > fgPeriodNs / 2 && fgQueueEndNs_ < nowNs + 2 * fgPeriodNs)
+                fgQueueEndNs_ = nowNs + 2 * fgPeriodNs;
+        }
         if (ar==VK_ERROR_OUT_OF_DATE_KHR||ar==VK_ERROR_SURFACE_LOST_KHR){
             // Logged deliberately: when this fires every frame it IS the
             // swapchain-recreate loop, and it used to be invisible.
@@ -2715,7 +3084,8 @@ ok=true;}catch(...){}
     recordCmdBuf(cmdBufs[cmdSlot(0)],imgIdx,frameDraws,
         frameAhbTransitions,framePreUpload,framePostUpload,
         curUpload,hasCurUpload,
-        ox,oy,sx,sy,cw,ch,ptrX,ptrY,curHotX,curHotY,curW,curH,effectiveCurVis);
+        ox,oy,sx,sy,cw,ch,ptrX,ptrY,curHotX,curHotY,curW,curH,effectiveCurVis,cursorOnly);
+    sceneDirtyCarry_ = false;
 
     // Each pending present gets its own submit. cmdBufs[cmdSlot(0)] (recorded
     // above) carries the composite, the chain's shared passes and generated
@@ -2802,6 +3172,14 @@ ok=true;}catch(...){}
         // still means "this frame's work is done".
         VkSubmitInfo si{}; si.sType=VK_STRUCTURE_TYPE_SUBMIT_INFO;
         vk_.QueueSubmit(graphicsQueue,1,&si,inFlightFences[currentFrame]);
+    }
+    // The queue model: each image presented leaves the queue one refresh after the one before.
+    if (fgPeriodNs) {
+        const uint64_t nowNs = fgNowNs();
+        for (uint32_t i = 0; i < presented; i++) {
+            const uint64_t next = fgQueueEndNs_ + fgPeriodNs;
+            fgQueueEndNs_ = next > nowNs + fgPeriodNs ? next : nowNs + fgPeriodNs;
+        }
     }
     trackPresentedRate(presented);
     currentFrame=(currentFrame+1)%MAX_FRAMES_IN_FLIGHT;
@@ -2895,6 +3273,7 @@ void VulkanRendererContext::updateCursorImage(void* px, short w, short h, short 
 }
 
 void VulkanRendererContext::updateWindowContent(int64_t id, void* px, short w, short h, short stride, int, int) {
+    fgContentSerial_.fetch_add(1, std::memory_order_relaxed);
     if (!px||w<=0||h<=0) return;
 
     void* mapped=nullptr;
@@ -2925,6 +3304,7 @@ void VulkanRendererContext::updateWindowContent(int64_t id, void* px, short w, s
 }
 
 void VulkanRendererContext::updateWindowContentAHB(int64_t id, AHardwareBuffer* ahb, short, short, int, int) {
+    fgContentSerial_.fetch_add(1, std::memory_order_relaxed);
     if (!ahb) return;
     std::lock_guard<std::mutex> lk(renderMutex);
 

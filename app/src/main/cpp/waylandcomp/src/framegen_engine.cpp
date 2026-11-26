@@ -19,6 +19,7 @@
 #include "lsfg/lsfg_probe.h"
 #include "lsfg/lsfg_vkd.h"
 #include "winfg/winfg_engine.h"
+#include "wfg/wfg_engine.h"
 
 #define ELOG(...) __android_log_print(ANDROID_LOG_INFO, "BannerWayland", "framegen: " __VA_ARGS__)
 #define ELOGE(...) __android_log_print(ANDROID_LOG_ERROR, "BannerWayland", "framegen: " __VA_ARGS__)
@@ -37,6 +38,8 @@ bool g_probed = false, g_ready = false;
 
 std::unique_ptr<lsfg::Engine> g_lsfg;
 std::unique_ptr<winfg::Engine> g_winfg;
+std::unique_ptr<wfg::Engine> g_wfg;
+uint32_t g_wfg_cap = 1;   // generated frames allowed per game frame (multiplier - 1)
 int g_kind = -1;
 char g_build[96] = "";
 
@@ -63,7 +66,7 @@ char g_build[96] = "";
     X(FreeCommandBuffers) X(BeginCommandBuffer) X(EndCommandBuffer) X(ResetCommandBuffer)   \
     X(CmdBlitImage) X(CmdCopyBufferToImage) X(FreeDescriptorSets) X(FlushMappedMemoryRanges) \
     X(GetDeviceQueue) X(CreateQueryPool) X(DestroyQueryPool) X(CmdResetQueryPool)           \
-    X(CmdWriteTimestamp) X(GetQueryPoolResults)
+    X(CmdWriteTimestamp) X(GetQueryPoolResults) X(CmdPushConstants)
 
 void fill_instance(PFN_vkGetInstanceProcAddr gipa, VkInstance inst) {
 #define X(n) g_table.n = reinterpret_cast<PFN_vk##n>(gipa(inst, "vk" #n));
@@ -138,7 +141,7 @@ void fge_device_ready(PFN_vkGetInstanceProcAddr gipa, VkInstance inst, VkPhysica
 
 int fge_caps_ok(int kind) {
     if (!g_ready) return 0;
-    if (kind == 1) return g_caps.storageOnSwapchainFormat ? 1 : 0;
+    if (kind == 1 || kind == 2) return g_caps.storageOnSwapchainFormat ? 1 : 0;
     return g_caps.supported() ? 1 : 0;
 }
 
@@ -152,6 +155,21 @@ int fge_format_ok(VkFormat fmt) {
 int fge_start(int kind, const char *cache_path) {
     fge_stop();
     if (!g_ready) return -1;
+    if (kind == 2) {
+        auto e = std::make_unique<wfg::Engine>();
+        if (!e->init(g_table, g_pd, g_dev)) {
+            ELOGE("wfg-native: engine init failed");
+            return -1;
+        }
+        g_wfg = std::move(e);
+        g_kind = 2;
+#if defined(WFG_UPSTREAM)
+        std::snprintf(g_build, sizeof(g_build), "%s", WFG_UPSTREAM);
+#else
+        std::snprintf(g_build, sizeof(g_build), "embedded chain");
+#endif
+        return 0;
+    }
     if (kind == 1) {
         auto e = std::make_unique<winfg::Engine>();
         if (!e->init(g_table, g_pd, g_dev, g_qfam, g_queue)) {
@@ -186,13 +204,15 @@ int fge_start(int kind, const char *cache_path) {
 }
 
 void fge_stop(void) {
-    if ((g_lsfg || g_winfg) && g_table.DeviceWaitIdle && g_dev) g_table.DeviceWaitIdle(g_dev);
+    if ((g_lsfg || g_winfg || g_wfg) && g_table.DeviceWaitIdle && g_dev) g_table.DeviceWaitIdle(g_dev);
     g_lsfg.reset();
     g_winfg.reset();
+    g_wfg.reset();
     g_kind = -1;
 }
 
 int fge_unavailable(void) {
+    if (g_kind == 2) return g_wfg && g_wfg->unavailable() ? 1 : 0;
     if (g_kind == 1) return g_winfg && g_winfg->unavailable() ? 1 : 0;
     return g_lsfg && g_lsfg->unavailable() ? 1 : 0;
 }
@@ -200,11 +220,20 @@ int fge_unavailable(void) {
 void fge_configure(uint32_t multiplier, float flow_scale, float refresh_hz, int model,
                    int perf_preset) {
     if (multiplier < 2) multiplier = 2;
+    if (g_kind == 2) {
+        // WFG paces itself against the display rate; the multiplier caps how many frames it may
+        // add per game frame and the performance preset picks its flow resolution.
+        g_wfg_cap = multiplier - 1;
+        if (g_wfg) g_wfg->configure(perf_preset >= 2 ? wfg::kMinSideFast : wfg::kMinSideBalance, 0,
+                                    refresh_hz > 1.0f ? refresh_hz : 60.0f);
+        return;
+    }
     if (g_kind == 1 && g_winfg) g_winfg->configure(multiplier, model, perf_preset, flow_scale);
     else if (g_lsfg) g_lsfg->configure(multiplier, 0, flow_scale, refresh_hz);
 }
 
 int fge_prepare(uint32_t w, uint32_t h, VkFormat fmt) {
+    if (g_kind == 2) return g_wfg && g_wfg->prepare(w, h, fmt) ? 1 : 0;
     if (g_kind == 1) return g_winfg && g_winfg->prepare(w, h, fmt) ? 1 : 0;
     if (!g_lsfg) return 0;
     // The Wayland scene is the game's own size when it runs fullscreen, so the flow pyramid is
@@ -214,6 +243,8 @@ int fge_prepare(uint32_t w, uint32_t h, VkFormat fmt) {
 }
 
 uint32_t fge_plan(uint32_t capacity, uint64_t source_frames, float presented_rate) {
+    if (g_kind == 2)
+        return g_wfg ? g_wfg->plan(capacity < g_wfg_cap ? capacity : g_wfg_cap, source_frames) : 0;
     if (g_kind == 1) return g_winfg ? g_winfg->plan(capacity) : 0;
     if (!g_lsfg) return 0;
     g_lsfg->setPresentedRate(presented_rate);
@@ -221,18 +252,21 @@ uint32_t fge_plan(uint32_t capacity, uint64_t source_frames, float presented_rat
 }
 
 void fge_process(VkCommandBuffer cmd, VkImage source, uint32_t w, uint32_t h, uint32_t gens) {
+    if (g_kind == 2) { if (g_wfg) g_wfg->process(cmd, source, w, h, gens); return; }
     if (g_kind == 1) { if (g_winfg) g_winfg->process(cmd, source, w, h, gens); return; }
     if (g_lsfg) g_lsfg->process(cmd, source, w, h, gens);
 }
 
 void fge_generate(VkCommandBuffer cmd, uint32_t g, uint32_t count, VkImage img, VkImageView view,
                   uint32_t w, uint32_t h) {
+    if (g_kind == 2) { if (g_wfg) g_wfg->generateInto(cmd, g, g, img, view, w, h); return; }
     if (g_kind == 1) { if (g_winfg) g_winfg->generateInto(cmd, g, count, img, view, w, h); return; }
     if (g_lsfg) g_lsfg->generateInto(cmd, g, g, img, view, w, h);
 }
 
 void fge_forget_targets(void) {
     if (g_lsfg) g_lsfg->forgetTargets();
+    if (g_wfg) g_wfg->forgetTargets();
 }
 
 void fge_telemetry(float *accepted, float *source_rate, float *thermal) {
@@ -244,7 +278,9 @@ void fge_telemetry(float *accepted, float *source_rate, float *thermal) {
     }
 }
 
-const char *fge_engine_name(int kind) { return kind == 1 ? "Win-FG Native" : "LSFG Native"; }
+const char *fge_engine_name(int kind) {
+    return kind == 2 ? "WFG Native" : kind == 1 ? "Win-FG Native" : "LSFG Native";
+}
 const char *fge_build_info(void) { return g_build; }
 
 } // extern "C"

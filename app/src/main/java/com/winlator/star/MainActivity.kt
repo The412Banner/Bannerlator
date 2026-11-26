@@ -127,6 +127,9 @@ class MainActivity : AppCompatActivity() {
     @Volatile
     private var contentReady = false
 
+    /** This instance was the app icon landing on a task that already runs: closed at once in onCreate. */
+    private var duplicateLaunch = false
+
     private val showAllFilesDialog = mutableStateOf(false)
     // Deck first-run due at this start (Deck style, never finished); cleared once the user finishes or skips it.
     private val deckOnboardingPending = mutableStateOf(false)
@@ -177,6 +180,16 @@ class MainActivity : AppCompatActivity() {
         // to our first Compose frame; hold it only until the UI is ready to draw (set just below).
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+        // The app icon on a task this app started another way (a game's home-screen icon, the installer's Open,
+        // adb) makes Android put another MainActivity on top of it, which opens on Home and keeps the old one
+        // underneath. Close that one: the task then shows as it was left.
+        if (savedInstanceState == null && !isTaskRoot &&
+            intent?.action == Intent.ACTION_MAIN && intent?.hasCategory(Intent.CATEGORY_LAUNCHER) == true
+        ) {
+            duplicateLaunch = true
+            finish()
+            return
+        }
         splashScreen.setKeepOnScreenCondition { !contentReady }
 
         PACKAGE_NAME = applicationContext.packageName
@@ -198,6 +211,9 @@ class MainActivity : AppCompatActivity() {
             ?: when {
                 prefs.getBoolean("enable_big_picture_mode", false) -> Screen.BigPicture.route
                 prefs.getString("default_landing_screen", "games") == "containers" -> Screen.Containers.route
+                // Lab: "Library" (stored as "games") opens the Library page; "Home" or never set, the Home page.
+                AppThemeState.uiStyle.value == AppThemeState.UI_STYLE_DECK && AppThemeState.simpleLook &&
+                    prefs.getString("default_landing_screen", null) == "games" -> com.winlator.star.ui.simple.LabRoutes.LIBRARY
                 else -> Screen.Games.route
             }
 
@@ -222,6 +238,8 @@ class MainActivity : AppCompatActivity() {
 
         // First-run/install decision is made; let the OS splash hand off to the Compose UI.
         contentReady = true
+        // The start-up sound, once per app start (not on rotation or coming back to the screen).
+        if (savedInstanceState == null) com.winlator.star.sound.UiSounds.startup()
 
         // Settings-side Controller Test: the Input Controls screen's test dialog arms/disarms the input
         // fork through this bus (so this Activity consumes gamepad events instead of navigating the UI),
@@ -275,6 +293,9 @@ class MainActivity : AppCompatActivity() {
                     com.winlator.star.ui.screens.ComponentInstallResume(
                         onNavigateToGames = { pendingRoute.value = Screen.Games.route },
                     )
+
+                    // Which drivers of a zip that holds several (DroidDeck's Android + Linux) to install.
+                    com.winlator.star.ui.DriverPartsPromptHost()
 
                     // The Deck first-run covers the app (and owns the install screen as its step 5) while it is due or re-run from Tools.
                     val uiStyle by AppThemeState.uiStyle.collectAsState()
@@ -382,6 +403,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        // A closed duplicate set nothing up; the capture and the controller belong to the instance under it.
+        if (duplicateLaunch) {
+            super.onDestroy()
+            return
+        }
         // Kill any armed win-fg diagnostic-log capture (logcat subprocess) so it can't outlive the app.
         // The game (XServerDisplayActivity) shares this process, so a mid-play capture survives until here.
         WinFgDiag.stopDiagLog(this)
@@ -531,10 +557,12 @@ class MainActivity : AppCompatActivity() {
             controllerTestFeedKeyEvent(event)
             return true
         }
-        if (super.dispatchKeyEvent(event)) return true
         // Deck shell controller shortcuts (L1/R1 tabs, B back, X/Start options, Y search) get only keys the view tree left unhandled.
         // The handler is null unless the Deck shell is on screen.
-        return com.winlator.star.ui.deck.DeckInput.handler?.invoke(event) ?: false
+        val handled = super.dispatchKeyEvent(event) ||
+            (com.winlator.star.ui.deck.DeckInput.handler?.invoke(event) ?: false)
+        com.winlator.star.sound.UiSounds.key(event, handled)
+        return handled
     }
 
     private fun isControllerTestMotionEvent(event: android.view.MotionEvent): Boolean {
@@ -683,12 +711,15 @@ private fun AppShell(
                 )
             }
             if (showAboutDialog) {
-                AboutDialog(onDismiss = onDismissAboutDialog)
+                // Lab draws its own About box (same content).
+                if (AppThemeState.simpleLook) com.winlator.star.ui.simple.LabAboutDialog(onDismiss = onDismissAboutDialog)
+                else AboutDialog(onDismiss = onDismissAboutDialog)
             }
         }
     } else {
         ClassicAppShell(
-            startRoute = startRoute,
+            // Lab's own start page has no Classic screen (the style was changed since launch): the games list.
+            startRoute = if (startRoute.startsWith("lab_")) Screen.Games.route else startRoute,
             pendingRoute = pendingRoute,
             onPendingRouteConsumed = onPendingRouteConsumed,
             showAllFilesDialog = showAllFilesDialog,
@@ -717,6 +748,7 @@ private fun ClassicAppShell(
 ) {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
+    com.winlator.star.sound.MenuSound(drawerState.targetValue == DrawerValue.Open)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val topBarActionsState = remember { topBarActionsState() }

@@ -93,13 +93,18 @@ public final class GogDownloadManager {
     public static Runnable startDownload(Context ctx, GogGame game, Callback cb) {
         AtomicBoolean cancelled = new AtomicBoolean(false);
         AtomicReference<File> installDirRef = new AtomicReference<>(null);
+        // Installed before this run (an update, a verify/repair): a cancel stops it and keeps the game.
+        final boolean wasInstalled = ctx.getSharedPreferences("bh_gog_prefs", 0).contains("gog_dir_" + game.gameId);
         Thread t = new Thread(() -> doDownload(ctx, game, cb, cancelled, installDirRef),
                 "gog-dl-" + game.gameId);
         t.start();
         return () -> {
             cancelled.set(true);
             File dir = installDirRef.get();
-            if (dir != null) deleteDir(dir);
+            // Only a new download's folder, and only inside a GOG download location.
+            if (dir != null && !wasInstalled) {
+                StoreInstallLocations.INSTANCE.safeDelete(ctx, StoreInstallLocations.Store.GOG, dir);
+            }
             cb.onCancelled();
         };
     }
@@ -113,7 +118,7 @@ public final class GogDownloadManager {
     public static Runnable verifyRepair(Context ctx, GogGame game, Callback cb) {
         try {
             SharedPreferences prefs = ctx.getSharedPreferences("bh_gog_prefs", 0);
-            String dirName = prefs.getString("gog_dir_" + game.gameId, game.title);
+            String dirName = prefs.getString("gog_dir_" + game.gameId, GogTitles.english(ctx, game));
             File installPath = GogInstallPath.getInstallDir(ctx, dirName);
             File marker = new File(installPath, "_gog_manifest.json");
             if (marker.exists()) marker.delete();
@@ -197,6 +202,13 @@ public final class GogDownloadManager {
             if (buildsJson != null) {
                 String err = runGen2(ctx, game, token, buildsJson, cb, dbg, cancelled, installDirRef);
                 if (err == null) { writeDebug(ctx, dbg); return; }
+                if (err.startsWith(GogInstallPath.ADOPT_ERROR)) {
+                    // An import that can't go on (folder name, installer-only game): never fall back to another
+                    // download type, which would install somewhere else.
+                    writeDebug(ctx, dbg);
+                    cb.onError(err.substring(GogInstallPath.ADOPT_ERROR.length()));
+                    return;
+                }
                 if (err.startsWith("DISK_GUARD:")) {
                     // Hard stop — user already notified via cb.onError; do NOT fall through
                     // to Gen1 (same install would need the same missing space).
@@ -222,6 +234,11 @@ public final class GogDownloadManager {
                 cb.onError("No builds available for this game"); return;
             }
             String err1 = runGen1(ctx, game, token, builds1Json, cb, dbg, cancelled, installDirRef);
+            if (err1 != null && err1.startsWith(GogInstallPath.ADOPT_ERROR)) {
+                writeDebug(ctx, dbg);
+                cb.onError(err1.substring(GogInstallPath.ADOPT_ERROR.length()));
+                return;
+            }
             if (err1 != null) {
                 dbg.append("gen1_failed=").append(err1).append("\n");
 
@@ -230,6 +247,11 @@ public final class GogDownloadManager {
                     cb.onProgress("No Galaxy builds — trying installer download…", 12);
                     String installerErr = runInstaller(ctx, game, token, cb, dbg, cancelled, installDirRef);
                     if (installerErr == null) { writeDebug(ctx, dbg); return; }
+                    if (installerErr.startsWith(GogInstallPath.ADOPT_ERROR)) {
+                        writeDebug(ctx, dbg);
+                        cb.onError(installerErr.substring(GogInstallPath.ADOPT_ERROR.length()));
+                        return;
+                    }
                     dbg.append("installer_failed=").append(installerErr).append("\n");
                     writeDebug(ctx, dbg);
                     cb.onError("No downloadable builds for this game");
@@ -292,12 +314,13 @@ public final class GogDownloadManager {
             cb.onProgress("Fetching manifest…", 5);
             // Shared build-manifest head (token → builds → windows build → meta → decompress → JSON),
             // reused by installDlc() so the fetch/decompress logic lives in one place.
-            Gen2Manifest gm = resolveGen2Manifest(buildsJson, token, dbg);
+            Gen2Manifest gm = resolveGen2Manifest(buildsJson, token,
+                    ctx.getSharedPreferences("bh_gog_prefs", 0).getString("gog_build_" + game.gameId, null), dbg);
             if (gm == null) return "gen2 manifest resolve failed";
             String buildId = gm.buildId;
             JSONObject manifest = gm.manifest;
             dbg.append("buildId=").append(buildId).append("\n");
-            String installDir = manifest.optString("installDirectory", game.title);
+            String installDir = manifest.optString("installDirectory", GogTitles.english(ctx, game));
             String manifestClientId     = manifest.optString("clientId", null);
             String manifestClientSecret = manifest.optString("clientSecret", null);
             JSONArray depots  = manifest.optJSONArray("depots");
@@ -411,12 +434,38 @@ public final class GogDownloadManager {
                 return "cdnBase null; secure_link_response=" + (secureLinkJson == null ? "NULL"
                         : secureLinkJson.substring(0, Math.min(200, secureLinkJson.length())));
 
-            // Install dir
+            // Install dir (a picked download location applies to a fresh download)
+            String adoptErr = GogInstallPath.claimPendingBase(ctx, String.valueOf(game.gameId), installDir);
+            if (adoptErr != null) return adoptErr;
             File installPath = GogInstallPath.getInstallDir(ctx, installDir);
             installPath.mkdirs();
             installDirRef.set(installPath);
             File chunksDir = new File(installPath, ".gog_chunks");
             chunksDir.mkdirs();
+
+            // Some DLC ship files at the base game's paths (replacement patches); doInstallDlc
+            // wrote the DLC copies there. On a verify or update of an installed game, leave the
+            // paths an installed DLC wrote that are on disk, so the base copies are not put back.
+            if (ctx.getSharedPreferences("bh_gog_prefs", 0).contains("gog_dir_" + game.gameId)) {
+                java.util.Set<String> dlcPaths = installedDlcPathKeys(ctx, game.gameId);
+                java.util.Set<String> leave = new java.util.HashSet<>();
+                int left = 0;
+                for (DepotFile df : files) {
+                    String key = depotPathKey(df.relativePath);
+                    if (dlcPaths.contains(key) && new File(installPath, df.relativePath).isFile()) {
+                        leave.add(key);
+                        left++;
+                    }
+                }
+                if (left > 0 && left < files.size()) {
+                    files.removeIf(df -> leave.contains(depotPathKey(df.relativePath)));
+                    for (int j = 0; j < depotJsons.size(); j++)
+                        depotJsons.set(j, withoutDepotFiles(depotJsons.get(j), leave));
+                    dbg.append("left ").append(left).append(" file(s) an installed DLC replaces\n");
+                    GogCloudSaveManager.debug(ctx, "DLC: base pass leaves " + left
+                            + " file(s) an installed DLC replaces, game=" + game.gameId);
+                }
+            }
 
             // Free-space guard: sum planned (decompressed) size, compare to usable bytes
             // on the install target. Hard-stop (via DISK_GUARD sentinel) before writing.
@@ -610,26 +659,66 @@ public final class GogDownloadManager {
     }
 
     /**
-     * Picks the first windows build from a {@code builds?generation=2} response, fetches its meta
-     * manifest, decompresses, and parses to JSON. Returns null on any failure (a short reason is
-     * appended to {@code dbg}). Shared by {@link #runGen2} and {@link #doInstallDlc}.
+     * The Windows build to install from a {@code builds} response's items: the first on
+     * {@code branch}, else the first on the default branch, else the first Windows build. GOG
+     * lists the builds of every public branch (a beta too) in one list, newest first, so the first
+     * item can be a beta. A null or empty {@code branch} is the default branch. Null when no
+     * Windows build is listed.
      */
-    private static Gen2Manifest resolveGen2Manifest(String buildsJson, String token, StringBuilder dbg) {
+    public static JSONObject selectWindowsBuild(JSONArray items, String branch) {
+        if (items == null) return null;
+        String target = (branch == null || branch.isEmpty()) ? null : branch;
+        JSONObject onBranch = null, onDefault = null, first = null;
+        for (int i = 0; i < items.length(); i++) {
+            JSONObject item = items.optJSONObject(i);
+            if (item == null || !"windows".equals(item.optString("os"))) continue;
+            if (first == null) first = item;
+            String b = buildBranch(item);
+            if (onBranch == null && target != null && target.equals(b)) onBranch = item;
+            if (onDefault == null && b == null) onDefault = item;
+        }
+        if (onBranch != null) return onBranch;
+        return onDefault != null ? onDefault : first;
+    }
+
+    /** Branch of the listed build {@code buildId}; null for the default branch or a build no longer listed. */
+    public static String installedBranch(JSONArray items, String buildId) {
+        if (items == null || buildId == null || buildId.isEmpty()) return null;
+        for (int i = 0; i < items.length(); i++) {
+            JSONObject item = items.optJSONObject(i);
+            if (item != null && buildId.equals(item.optString("build_id"))) return buildBranch(item);
+        }
+        return null;
+    }
+
+    /** A build item's branch; null for the default branch (JSON null or empty). */
+    private static String buildBranch(JSONObject item) {
+        if (item.isNull("branch")) return null;
+        String b = item.optString("branch", "");
+        return b.isEmpty() ? null : b;
+    }
+
+    /**
+     * Picks the windows build from a {@code builds?generation=2} response ({@link #selectWindowsBuild},
+     * on the branch of {@code installedBuildId}), fetches its meta manifest, decompresses, and
+     * parses to JSON. Returns null on any failure (a short reason is appended to {@code dbg}).
+     * Shared by {@link #runGen2} and {@link #doInstallDlc}.
+     */
+    private static Gen2Manifest resolveGen2Manifest(String buildsJson, String token,
+                                                    String installedBuildId, StringBuilder dbg) {
         try {
             JSONObject builds = new JSONObject(buildsJson);
             JSONArray items = builds.optJSONArray("items");
             if (items == null || items.length() == 0) { dbg.append("resolveGen2Manifest: no items\n"); return null; }
             dbg.append("items=").append(items.length()).append("\n");
             String buildId = null, manifestUrl = null;
-            for (int i = 0; i < items.length(); i++) {
-                JSONObject item = items.getJSONObject(i);
-                if ("windows".equals(item.optString("os"))) {
-                    buildId     = item.optString("build_id");
-                    manifestUrl = item.optString("link");
-                    if (manifestUrl == null || manifestUrl.isEmpty())
-                        manifestUrl = item.optString("meta_url");
-                    break;
-                }
+            JSONObject build = selectWindowsBuild(items, installedBranch(items, installedBuildId));
+            if (build != null) {
+                buildId     = build.optString("build_id");
+                manifestUrl = build.optString("link");
+                if (manifestUrl == null || manifestUrl.isEmpty())
+                    manifestUrl = build.optString("meta_url");
+                dbg.append("build=").append(buildId).append(" branch=").append(buildBranch(build)).append("\n");
             }
             if (buildId == null || manifestUrl == null || manifestUrl.isEmpty()) {
                 dbg.append("resolveGen2Manifest: no windows build / manifest URL empty\n"); return null;
@@ -704,7 +793,8 @@ public final class GogDownloadManager {
                 GogCloudSaveManager.debug(ctx, dlgTag + " builds fetch null");
                 cb.onError("DLC install failed: no builds"); return;
             }
-            Gen2Manifest gm = resolveGen2Manifest(buildsJson, token, dbg);
+            Gen2Manifest gm = resolveGen2Manifest(buildsJson, token,
+                    prefs.getString("gog_build_" + baseId, null), dbg);
             if (gm == null) {
                 GogCloudSaveManager.debug(ctx, dlgTag + " manifest resolve failed: " + dbg);
                 cb.onError("DLC install failed: manifest unavailable"); return;
@@ -904,14 +994,8 @@ public final class GogDownloadManager {
             if (items == null || items.length() == 0)
                 return builds.optInt("total_count", -1) == 0 ? "NO_CS_BUILDS" : "no items (api error)";
 
-            String manifestUrl = null;
-            for (int i = 0; i < items.length(); i++) {
-                JSONObject item = items.getJSONObject(i);
-                if ("windows".equals(item.optString("os"))) {
-                    manifestUrl = item.optString("link");
-                    break;
-                }
-            }
+            JSONObject build = selectWindowsBuild(items, null);
+            String manifestUrl = build == null ? null : build.optString("link");
             if (manifestUrl == null || manifestUrl.isEmpty())
                 return "no windows manifest URL";
             dbg.append("manifestUrl=").append(manifestUrl.substring(0, Math.min(80, manifestUrl.length()))).append("\n");
@@ -923,7 +1007,7 @@ public final class GogDownloadManager {
             if (manifestStr == null) return "manifest decompress failed";
 
             JSONObject manifest = new JSONObject(manifestStr);
-            String installDir  = manifest.optString("installDirectory", game.title);
+            String installDir  = manifest.optString("installDirectory", GogTitles.english(ctx, game));
             JSONArray depots   = manifest.optJSONArray("depot");
             if (depots == null) return "no depot array in manifest";
 
@@ -949,6 +1033,8 @@ public final class GogDownloadManager {
             if (files.isEmpty()) return "no files in manifest";
             dbg.append("gen1 files=").append(files.size()).append("\n");
 
+            String adoptErr = GogInstallPath.claimPendingBase(ctx, String.valueOf(game.gameId), installDir);
+            if (adoptErr != null) return adoptErr;
             File installPath = GogInstallPath.getInstallDir(ctx, installDir);
             installPath.mkdirs();
             installDirRef.set(installPath);
@@ -1112,10 +1198,10 @@ public final class GogDownloadManager {
                         JSONObject f = files.getJSONObject(0);
                         manualUrl = f.optString("downlink", null);
                         if (manualUrl == null) manualUrl = f.optString("manualUrl", null);
-                        fileName  = f.optString("filename", game.title + "_installer.exe");
+                        fileName  = f.optString("filename", GogTitles.english(ctx, game) + "_installer.exe");
                     }
                     if (manualUrl == null) manualUrl = inst.optString("manualUrl", null);
-                    if (fileName == null)  fileName  = game.title + "_installer.exe";
+                    if (fileName == null)  fileName  = GogTitles.english(ctx, game) + "_installer.exe";
                     break;
                 }
             }
@@ -1129,7 +1215,13 @@ public final class GogDownloadManager {
             if (downloadUrl == null) return "redirect resolve failed";
 
             // Download the installer .exe
-            File installDir = GogInstallPath.getInstallDir(ctx, game.title);
+            // An import can't reuse an installer-only game (only its setup .exe is downloaded).
+            if (GogInstallPath.isPendingAdopt(String.valueOf(game.gameId))) {
+                GogInstallPath.claimPendingBase(ctx, String.valueOf(game.gameId), null);
+                return GogInstallPath.ADOPT_ERROR + "This GOG game only has an installer, so its folder can't be imported. Install it normally.";
+            }
+            GogInstallPath.claimPendingBase(ctx, String.valueOf(game.gameId), GogTitles.english(ctx, game));
+            File installDir = GogInstallPath.getInstallDir(ctx, GogTitles.english(ctx, game));
             installDir.mkdirs();
             installDirRef.set(installDir);
             if (cancelled.get()) return "cancelled";
@@ -1140,7 +1232,7 @@ public final class GogDownloadManager {
 
             // Save prefs
             SharedPreferences.Editor ed = ctx.getSharedPreferences("bh_gog_prefs", 0).edit();
-            ed.putString("gog_dir_" + game.gameId, game.title);
+            ed.putString("gog_dir_" + game.gameId, GogTitles.english(ctx, game));
             ed.putString("gog_exe_" + game.gameId, outFile.getAbsolutePath());
             ed.apply();
 
@@ -1296,6 +1388,74 @@ public final class GogDownloadManager {
             }
         } catch (Exception e) {
             Log.w(TAG, "parseDepotManifest error", e);
+        }
+    }
+
+    /** A depot path as the same file on a case-insensitive filesystem: '/' separators, no empty segments, lower case. */
+    private static String depotPathKey(String path) {
+        StringBuilder sb = new StringBuilder();
+        for (String seg : path.replace('\\', '/').split("/")) {
+            if (seg.isEmpty()) continue;
+            if (sb.length() > 0) sb.append('/');
+            sb.append(seg);
+        }
+        return sb.toString().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    /**
+     * Path keys ({@link #depotPathKey}) of the files the installed DLCs of {@code gameId} wrote:
+     * the {@code gog_dlc_files_} list of each DLC with its installed marker ({@link #markDlcInstalled}).
+     */
+    private static java.util.Set<String> installedDlcPathKeys(Context ctx, String gameId) {
+        java.util.Set<String> keys = new java.util.HashSet<>();
+        SharedPreferences prefs = ctx.getSharedPreferences("bh_gog_prefs", 0);
+        String markerPrefix = "gog_dlc_installed_" + gameId + "_";
+        for (java.util.Map.Entry<String, ?> e : prefs.getAll().entrySet()) {
+            if (!e.getKey().startsWith(markerPrefix) || !Boolean.TRUE.equals(e.getValue())) continue;
+            String dlcId = e.getKey().substring(markerPrefix.length());
+            try {
+                JSONArray arr = new JSONArray(prefs.getString("gog_dlc_files_" + gameId + "_" + dlcId, "[]"));
+                for (int i = 0; i < arr.length(); i++) {
+                    String p = arr.optString(i, "");
+                    if (!p.isEmpty()) keys.add(depotPathKey(p));
+                }
+            } catch (Exception ignored) {}
+        }
+        return keys;
+    }
+
+    /**
+     * Depot manifest {@code json} without the file entries {@link #parseDepotManifest} would take
+     * whose path key is in {@code dropKeys}; the same string when none match. Keeps the Rust
+     * engine's plan equal to the Java file list.
+     */
+    private static String withoutDepotFiles(String json, java.util.Set<String> dropKeys) {
+        try {
+            JSONObject root = new JSONObject(json);
+            JSONObject depotObj = root.optJSONObject("depot");
+            JSONArray items = depotObj == null ? null : depotObj.optJSONArray("items");
+            if (items == null) return json;
+            JSONArray kept = new JSONArray();
+            boolean dropped = false;
+            for (int i = 0; i < items.length(); i++) {
+                JSONObject entry = items.optJSONObject(i);
+                if (entry != null) {
+                    JSONArray chunks = entry.optJSONArray("chunks");
+                    String path = entry.optString("path", "");
+                    if (chunks != null && chunks.length() > 0 && !path.isEmpty()
+                            && dropKeys.contains(depotPathKey(path))) {
+                        dropped = true;
+                        continue;
+                    }
+                }
+                kept.put(items.get(i));
+            }
+            if (!dropped) return json;
+            depotObj.put("items", kept);
+            return root.toString();
+        } catch (Exception e) {
+            Log.w(TAG, "withoutDepotFiles error", e);
+            return json;
         }
     }
 
@@ -2159,27 +2319,19 @@ public final class GogDownloadManager {
             if (buildsJson == null) buildsJson = httpGet(buildsUrl, token);
             if (buildsJson != null) {
                 JSONObject builds = new JSONObject(buildsJson);
-                JSONArray items = builds.optJSONArray("items");
-                if (items != null) {
-                    for (int i = 0; i < items.length(); i++) {
-                        JSONObject item = items.getJSONObject(i);
-                        if (!"windows".equals(item.optString("os"))) continue;
-                        String mUrl = item.optString("link");
-                        if (mUrl == null || mUrl.isEmpty()) mUrl = item.optString("meta_url");
-                        if (mUrl == null || mUrl.isEmpty()) break;
-                        byte[] raw = fetchBytes(mUrl, token);
-                        if (raw == null) break;
-                        String mStr = decompressBytes(raw);
-                        if (mStr == null) break;
-                        JSONObject manifest = new JSONObject(mStr);
-                        JSONArray depots = manifest.optJSONArray("depots");
-                        if (depots != null) {
-                            long total = 0;
-                            for (int d = 0; d < depots.length(); d++)
-                                total += depots.getJSONObject(d).optLong("size", 0);
-                            if (total > 0) return total;
-                        }
-                        break;
+                JSONObject item = selectWindowsBuild(builds.optJSONArray("items"), null);
+                String mUrl = item == null ? null : item.optString("link");
+                if (item != null && (mUrl == null || mUrl.isEmpty())) mUrl = item.optString("meta_url");
+                byte[] raw = (mUrl == null || mUrl.isEmpty()) ? null : fetchBytes(mUrl, token);
+                String mStr = raw == null ? null : decompressBytes(raw);
+                if (mStr != null) {
+                    JSONObject manifest = new JSONObject(mStr);
+                    JSONArray depots = manifest.optJSONArray("depots");
+                    if (depots != null) {
+                        long total = 0;
+                        for (int d = 0; d < depots.length(); d++)
+                            total += depots.getJSONObject(d).optLong("size", 0);
+                        if (total > 0) return total;
                     }
                 }
             }
@@ -2191,16 +2343,9 @@ public final class GogDownloadManager {
             if (builds1Json == null) builds1Json = httpGet(builds1Url, token);
             if (builds1Json != null) {
                 JSONObject builds1 = new JSONObject(builds1Json);
-                JSONArray items1 = builds1.optJSONArray("items");
-                if (items1 != null) {
-                    for (int i = 0; i < items1.length(); i++) {
-                        JSONObject item = items1.getJSONObject(i);
-                        if (!"windows".equals(item.optString("os"))) continue;
-                        long sz = item.optLong("total_size", 0);
-                        if (sz > 0) return sz;
-                        break;
-                    }
-                }
+                JSONObject item1 = selectWindowsBuild(builds1.optJSONArray("items"), null);
+                long sz = item1 == null ? 0 : item1.optLong("total_size", 0);
+                if (sz > 0) return sz;
             }
             return -1;
         } catch (Exception e) {
@@ -2238,14 +2383,11 @@ public final class GogDownloadManager {
             if (items == null || items.length() == 0) return -1;
 
             String manifestUrl = null;
-            for (int i = 0; i < items.length(); i++) {
-                JSONObject item = items.getJSONObject(i);
-                if ("windows".equals(item.optString("os"))) {
-                    manifestUrl = item.optString("link");
-                    if (manifestUrl == null || manifestUrl.isEmpty())
-                        manifestUrl = item.optString("meta_url");
-                    break;
-                }
+            JSONObject build = selectWindowsBuild(items, null);
+            if (build != null) {
+                manifestUrl = build.optString("link");
+                if (manifestUrl == null || manifestUrl.isEmpty())
+                    manifestUrl = build.optString("meta_url");
             }
             if (manifestUrl == null || manifestUrl.isEmpty()) return -1;
 

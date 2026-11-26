@@ -152,9 +152,12 @@ object XboxDownloads {
         check(!XboxRuntime.isActive(id)) { "Close this Xbox game first." }
         val record = XboxInstallState.get(app, id)
         val dir = record?.let { File(it.folder) } ?: folder(app, id)
-        if (dir.canonicalPath.startsWith(root(app).canonicalPath + File.separator)) dir.deleteRecursively()
+        val inside = dir.canonicalPath.startsWith(root(app).canonicalPath + File.separator)
+        if (inside) dir.deleteRecursively()
         XboxInstallState.remove(app, id)
         StoreDownloadHooks.markUninstalled(Store.XBOX, id)
+        // Its shortcuts go with it (a folder outside the Xbox games folder is not deleted, and its shortcuts stay).
+        com.winlator.star.store.StoreShortcutCleanup.afterDelete(app, Store.XBOX, id, dir.absolutePath, gone = !dir.exists(), refused = !inside && dir.exists())
         XboxDiag.log(app, "uninstalled $id")
     }
 

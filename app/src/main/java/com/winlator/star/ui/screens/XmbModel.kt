@@ -12,7 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 // Nested XMB menus (Games tab, XMB view). A game's options open as further XMB columns instead of
-// pop-up dialogs: Settings → section → setting → choices. This file is the MODEL only; rendering and
+// pop-up dialogs: Game Details → field → value. This file is the MODEL only; rendering and
 // input live in XmbMenuHost.kt.
 //
 // Contract for menu builders:
@@ -26,17 +26,10 @@ import kotlinx.coroutines.CoroutineScope
 //  • Anything blocking (disk, network) goes through xmb.scope + Dispatchers.IO; update state, not UI.
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Keys a custom [XmbPanel] can receive (the host maps D-pad, controller buttons and keyboard). */
+/**
+ * Keys a custom [XmbPanel] can receive (the host maps D-pad, controller buttons and keyboard).
+ */
 internal enum class XmbKey { Up, Down, Left, Right, A, B, L1, R1 }
-
-/** L1/R1 cycling between sibling menus at the same depth (e.g. the Settings sections). */
-internal class XmbSiblings(
-    val index: Int,
-    val count: Int,
-    val make: (Int) -> XmbMenu,
-    /** Key of the row in the PARENT menu that opens sibling n (so the parent's highlight follows). */
-    val parentKey: (Int) -> String,
-)
 
 /** What a confirm step says. Shown as its own XMB column that opens on Cancel. */
 internal data class XmbConfirm(val title: String, val message: String, val okLabel: String, val danger: Boolean = false)
@@ -55,12 +48,11 @@ internal class XmbMenu(
     initialKey: String? = null,
     /** Custom panel instead of rows. */
     val panel: XmbPanel? = null,
-    /** Called once when this menu is closed (back, popToRoot, or replaced by a sibling). */
+    /** Called once when this menu is closed (back or popToRoot). */
     val onClose: (() -> Unit)? = null,
     val rows: XmbScope.() -> List<XmbRow> = { emptyList() },
 ) {
     var selKey by mutableStateOf(initialKey)
-    var siblings: XmbSiblings? = null
 }
 
 /** Every row type. [subtitle] shows under the label on the highlighted row; [disabledReason] non-null
@@ -82,10 +74,6 @@ internal sealed class XmbRow {
         override val key: String, override val label: String, val icon: ImageVector,
         val options: List<String>, val selected: String,
         val subtitle: String? = null, val disabledReason: String? = null,
-        /** Options shown but not pickable (e.g. DirectAudio on an unsupported layer). */
-        val disabledOptions: Set<String> = emptySet(),
-        /** Non-null → ask first (e.g. "SurfaceFlinger renderer — experimental"). */
-        val confirm: ((String) -> XmbConfirm?)? = null,
         val onSelect: (String) -> Unit,
     ) : XmbRow()
 
@@ -95,14 +83,6 @@ internal sealed class XmbRow {
         val value: String, val subtitle: String? = null, val disabledReason: String? = null,
         val placeholder: String = "", val numeric: Boolean = false,
         val onCommit: (String) -> Unit,
-    ) : XmbRow()
-
-    class Slider(
-        override val key: String, override val label: String, val icon: ImageVector,
-        val value: Float, val min: Float, val max: Float, val step: Float,
-        val format: (Float) -> String = { "%.1f".format(it) },
-        val subtitle: String? = null, val disabledReason: String? = null,
-        val onChange: (Float) -> Unit,
     ) : XmbRow()
 
     /** Opens a deeper column ("›"). [value] is an optional summary shown on the right. */

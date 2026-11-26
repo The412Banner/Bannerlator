@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.SdCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -40,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -54,6 +59,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import com.winlator.star.container.Shortcut
+import com.winlator.star.core.WinePath
 import com.winlator.star.ui.deck.DeckRoutes
 import com.winlator.star.ui.deck.SoraFamily
 import java.io.File
@@ -115,6 +121,18 @@ internal object LabArt {
         grid = p.getBoolean("grid", false)
         cards = p.getString("cards", COVERS)?.takeIf { v -> CARDS.any { it.first == v } } ?: COVERS
         cardSize = p.getString("card_size", "m")?.takeIf { v -> SIZES.any { it.first == v } } ?: "m"
+        // Steam's published art (PICS) comes first for linked games: load its on-device mirror off the main thread, and read the
+        // art again once it is there and whenever the engine refreshes it.
+        val app = context.applicationContext
+        com.winlator.star.store.SteamLibraryArt.onRefreshed = { artReady() }
+        io.launch {
+            runCatching { com.winlator.star.store.SteamLibraryArt.loadNow(app) }
+            artReady()
+        }
+    }
+
+    private fun artReady() {
+        io.launch { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { changed() } }
     }
 
     fun chooseMode(v: String) { mode = v; prefs?.edit()?.putString("mode", v)?.apply() }
@@ -177,63 +195,88 @@ internal object LabArt {
     /** The game's Steam app: its link (Game details), else one found by its name for art and previews only. */
     fun appId(s: Shortcut): Int? = s.getExtra("steamAppId", "").toIntOrNull()?.takeIf { it > 0 } ?: foundIds[s.name]
 
-    /** Steam apps found by name for games without a link (never written to the game); found SteamGridDB heroes. */
+    /** Steam apps found by name for games without a link (never written to the game); found SteamGridDB heroes, by [labHeroKey]. */
     private val foundIds = androidx.compose.runtime.mutableStateMapOf<String, Int>()
     private val foundHeroes = androidx.compose.runtime.mutableStateMapOf<String, String>()
     private val tried = HashSet<String>()
+    private val jobs = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.Job>()
     /** Games whose SteamGridDB lookup got no answer (no network, a server error), and when: looked up again a minute later. */
     private val failed = HashMap<String, Long>()
-    private val io = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob())
+    private val io = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob() +
+        kotlinx.coroutines.CoroutineExceptionHandler { _, t -> if (com.winlator.star.BuildConfig.DEBUG) android.util.Log.w("LabArt", "art lookup failed", t) })
 
     /**
      * The art found for a game automatically: its Steam app by name when it has no link (the store's strict title
      * match, remembered by SteamStoreSearch) and SteamGridDB's sharpest background (3840x1240 first, not the blurred
-     * style) by its Steam app or a game of the same title. Remembered on the device (prefs lab_art_found; a miss is
-     * retried after a week), so SteamGridDB is asked once per game. A lookup that got no answer is not remembered and
-     * runs again on a later call, a minute on at the soonest. A game with its own background only gets its Steam app looked up.
+     * style) by its Steam app or a game of the same title. Remembered on the device (prefs lab_art_found, under the name
+     * and the Steam app the hero was found for; a miss is retried after a week), so SteamGridDB is asked once per game.
+     * A lookup that got no answer is not remembered and runs again on a later call, a minute on at the soonest.
+     * A game with its own background only gets its Steam app looked up.
      */
-    fun resolve(context: Context, s: Shortcut) {
+    fun resolve(context: Context, s: Shortcut) { start(context, s) }
+
+    /** [resolve], returning once this game's lookup (this call's, or one already running) is finished: its art is found or there is none. */
+    suspend fun resolveAndWait(context: Context, s: Shortcut) {
+        val key = start(context, s) ?: return
+        // A slow server must not keep the caller waiting: after RESOLVE_WAIT_MS this returns as "nothing found so far". Only the
+        // wait times out; the lookup goes on in the background and its art arrives later through [tick].
+        kotlinx.coroutines.withTimeoutOrNull(RESOLVE_WAIT_MS) { jobs[key]?.join() }
+    }
+
+    private const val RESOLVE_WAIT_MS = 4_000L
+
+    /** Starts the lookup for [s] unless one ran or is running (per name and linked app); returns what it is tracked under, null when none is needed. */
+    private fun start(context: Context, s: Shortcut): String? {
         val name = s.name
         val linked = s.getExtra("steamAppId", "").toIntOrNull()?.takeIf { it > 0 }
+        val app = context.applicationContext
         // A game with its own background still needs its Steam app (logo, wide cover, preview clip, Steam picks);
         // only the background search is skipped. Its own key, so clearing the background later searches one.
         if (pick(s, "bg") != null) {
-            if (linked != null) return
-            synchronized(tried) { if (!tried.add("$name|app")) return }
-            val app = context.applicationContext
-            io.launch {
-                val id = runCatching { com.winlator.star.store.SteamStoreSearch.findAppIdByName(app, name) }.getOrNull() ?: return@launch
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { foundIds[name] = id; changed() }
+            if (linked != null) return null
+            val appKey = "$name|app"
+            synchronized(tried) {
+                if (!tried.add(appKey)) return appKey
+                val job = io.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
+                    val id = runCatching { com.winlator.star.store.SteamStoreSearch.findAppIdByName(app, name) }.getOrNull() ?: return@launch
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { foundIds[name] = id; changed() }
+                }
+                jobs[appKey] = job
+                job.start()
             }
-            return
+            return appKey
         }
-        synchronized(tried) {
-            failed[name]?.let { at -> if (System.currentTimeMillis() - at > 60_000) { failed.remove(name); tried.remove(name) } }
-            if (!tried.add(name)) return
-        }
-        val app = context.applicationContext
+        val identity = labHeroKey(name, linked)
         val prefs = app.getSharedPreferences("lab_art_found", Context.MODE_PRIVATE)
-        prefs.getString("hero:$name", null)?.takeIf { it.startsWith("http") }?.let { foundHeroes[name] = it }
-        io.launch {
-            val id = linked ?: runCatching { com.winlator.star.store.SteamStoreSearch.findAppIdByName(app, name) }.getOrNull()
-            val cached = prefs.getString("hero:$name", null)
-            val now = System.currentTimeMillis()
-            val hero = when {
-                cached != null && cached.startsWith("http") -> cached
-                cached != null && now - (cached.removePrefix("none:").toLongOrNull() ?: 0L) < 7L * 24 * 3600 * 1000 -> null
-                else -> {
-                    val r = runCatching { labSgdbHero(app, id, name) }
-                    if (r.isSuccess) prefs.edit().putString("hero:$name", r.getOrNull() ?: "none:$now").apply()
-                    else synchronized(tried) { failed[name] = System.currentTimeMillis() }
-                    r.getOrNull()
+        synchronized(tried) {
+            failed[identity]?.let { at -> if (System.currentTimeMillis() - at > 60_000) { failed.remove(identity); tried.remove(identity) } }
+            if (!tried.add(identity)) return identity
+            if (linked != null) prefs.getString("hero:$identity", null)?.takeIf { it.startsWith("http") }?.let { foundHeroes[identity] = it }
+            val job = io.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
+                val id = linked ?: runCatching { com.winlator.star.store.SteamStoreSearch.findAppIdByName(app, name) }.getOrNull()
+                val heroKey = labHeroKey(name, id)
+                val cached = prefs.getString("hero:$heroKey", null)
+                val now = System.currentTimeMillis()
+                val hero = when {
+                    cached != null && cached.startsWith("http") -> cached
+                    cached != null && now - (cached.removePrefix("none:").toLongOrNull() ?: 0L) < 7L * 24 * 3600 * 1000 -> null
+                    else -> {
+                        val r = runCatching { labSgdbHero(app, id, name) }
+                        if (r.isSuccess) prefs.edit().putString("hero:$heroKey", r.getOrNull() ?: "none:$now").apply()
+                        else synchronized(tried) { failed[identity] = System.currentTimeMillis() }
+                        r.getOrNull()
+                    }
+                }
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (linked == null && id != null) foundIds[name] = id
+                    if (hero != null) foundHeroes[heroKey] = hero
+                    if ((linked == null && id != null) || hero != null) changed()
                 }
             }
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                if (linked == null && id != null) foundIds[name] = id
-                if (hero != null) foundHeroes[name] = hero
-                if ((linked == null && id != null) || hero != null) changed()
-            }
+            jobs[identity] = job
+            job.start()
         }
+        return identity
     }
 
     private const val STEAM = "https://shared.steamstatic.com/store_item_assets/steam/apps/"
@@ -256,16 +299,22 @@ internal object LabArt {
     /** The game's own pick for [slot]: a URL or file path, "none", or null (automatic). */
     fun pick(s: Shortcut, slot: String): String? = s.getExtra(slotKey(slot), "").takeIf { it.isNotBlank() }
 
-    /** What [slot] shows, in the order to try: the game's pick, then Steam's. Empty for "none" or nothing known. */
+    /** Steam's own published URLs for [appId] (PICS appinfo, kept on the device), or null when the app is not in the snapshot. */
+    private fun steamPics(appId: Int): LabSteamPics? = com.winlator.star.store.SteamLibraryArt.of(appId)?.let {
+        LabSteamPics(hero = it.libraryHero, header = it.header, libraryHeader = it.libraryHeader, capsule = it.libraryCapsule ?: it.libraryCapsule2x)
+    }
+
+    /**
+     * What [slot] shows, in the order to try: the game's pick, then for a game linked to Steam what Steam publishes for the app
+     * (PICS: its hashed asset paths, as the Steam client shows), then the constructed CDN URLs, then SteamGridDB's background
+     * (3840x1240 when it has one). Empty for "none" or nothing known.
+     */
     fun models(s: Shortcut, slot: String): List<Any> {
         val p = pick(s, slot)
         if (p == "none") return emptyList()
         val id = appId(s)
-        if (slot == "bg") {
-            // Sharpest first: Steam's double size, SteamGridDB's (3840x1240 when it has one), Steam's 1920x620.
-            return listOfNotNull(p?.let(::model), id?.let { "$STEAM$it/library_hero_2x.jpg" }, foundHeroes[s.name], id?.let { "$STEAM$it/library_hero.jpg" })
-        }
-        return listOfNotNull(p?.let(::model)) + (if (id != null) steamUrls(id, slot) else emptyList())
+        val sgdb = if (slot == "bg") foundHeroes[labHeroKey(s.name, id)] else null
+        return (listOfNotNull(p?.let(::model)) + labSteamSources(id, slot, id?.let(::steamPics), sgdb)).distinct()
     }
 
     /** The cover the app already shows (Simple cover's bitmap), as a picture model. */
@@ -307,13 +356,13 @@ internal object LabArt {
             else -> models(s, "bg").map { Pic(it) } + listOfNotNull(cover)
         }
         if (pics.isEmpty()) return null
-        return Look(s.file.path + "|" + pic + "|" + pick(s, "bg") + "|" + pick(s, "wide"), pics, gamePanels(s), gameGrid(s), has3d(m), m)
+        return Look(s.file.path + "|" + pic + "|" + pick(s, "bg") + "|" + pick(s, "wide") + "|" + labPicsKey(pics.map { it.model }), pics, gamePanels(s), gameGrid(s), has3d(m), m)
     }
 }
 
-/** A picture from [pics], the next one when one does not load; nothing when none does. */
+/** A picture from [pics], the next one when one does not load; nothing when none does. [onLoaded] runs with the model of the one that has loaded. */
 @Composable
-internal fun LabPicture(pics: List<LabArt.Pic>, modifier: Modifier = Modifier, contentScale: ContentScale = ContentScale.Crop, alignment: Alignment = Alignment.Center, onNone: (@Composable () -> Unit)? = null) {
+internal fun LabPicture(pics: List<LabArt.Pic>, modifier: Modifier = Modifier, contentScale: ContentScale = ContentScale.Crop, alignment: Alignment = Alignment.Center, onNone: (@Composable () -> Unit)? = null, onLoaded: ((Any) -> Unit)? = null) {
     var i by remember(pics.map { it.model }) { mutableIntStateOf(0) }
     val p = pics.getOrNull(i)
     if (p == null) {
@@ -326,7 +375,7 @@ internal fun LabPicture(pics: List<LabArt.Pic>, modifier: Modifier = Modifier, c
         contentScale = contentScale,
         alignment = alignment,
         modifier = modifier.then(if (p.blur) Modifier.blur(22.dp) else Modifier),
-        onState = { if (it is AsyncImagePainter.State.Error) i++ },
+        onState = { if (it is AsyncImagePainter.State.Error) i++ else if (it is AsyncImagePainter.State.Success) onLoaded?.invoke(p.model) },
     )
 }
 
@@ -390,38 +439,78 @@ internal fun labCardMin(style: String, size: String): Dp = when (style) {
     else -> when (size) { "s" -> 100.dp; "l" -> 190.dp; else -> 140.dp }
 }
 
-/** A card's name over the bottom of its picture, with [line] (its container) and the Linux runtime's state under it. */
+/**
+ * A card's name over the bottom of its picture, with [line] (its container) and the Linux runtime's state under it, and
+ * the game's setup [chips] (the Library's cards; at most two lines of them).
+ */
 @Composable
-private fun BoxScope.LabCaption(s: Shortcut, line: String?, nameLines: Int = 2) {
+private fun BoxScope.LabCaption(s: Shortcut, line: String?, nameLines: Int = 2, chips: List<String> = emptyList()) {
     Column(
         Modifier.align(Alignment.BottomStart).fillMaxWidth()
             .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.72f))))
             .padding(start = 10.dp, end = 10.dp, top = 22.dp, bottom = 9.dp),
     ) {
-        Text(s.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = nameLines, overflow = TextOverflow.Ellipsis, lineHeight = 15.sp)
+        Text(LabTitles.of(s), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = nameLines, overflow = TextOverflow.Ellipsis, lineHeight = 15.sp)
         if (line != null) Text(line, color = Color.White.copy(alpha = 0.7f), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         LabRuntimeStatus(s)
+        if (chips.isNotEmpty()) LabCardChips(chips, Color.White, Color.White.copy(alpha = 0.16f), Modifier.padding(top = 4.dp))
     }
 }
 
-/** A game's wide cover (its pick, Steam's header, else the cover cropped), with its name (and [line]) over the bottom when [title]. */
+/** The setup chips of a Library card: small ones, wrapping onto a second line, the rest cut off. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun LabWideCard(s: Shortcut, modifier: Modifier, title: Boolean, line: String? = null) {
+private fun LabCardChips(chips: List<String>, ink: Color, fill: Color, modifier: Modifier = Modifier) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+        modifier = modifier.fillMaxWidth().heightIn(max = 33.dp).clipToBounds(),
+    ) {
+        chips.forEach { c ->
+            Text(
+                c, color = ink.copy(alpha = 0.9f), fontSize = 9.sp, lineHeight = 11.sp, maxLines = 1, softWrap = false,
+                modifier = Modifier.background(fill, SimpleChipShape).padding(horizontal = 5.dp, vertical = 2.dp),
+            )
+        }
+    }
+}
+
+/**
+ * The game's setup for its Library card, read off the main thread: the chips Home shows (driver, DXVK, renderer,
+ * frame generation, VKD3D, x86 backend — Classic's list card values), without the container the card already names.
+ * None on small cards.
+ */
+@Composable
+private fun rememberCardChips(s: Shortcut): List<String> {
+    if (LabArt.cardSize == "s") return emptyList()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val tick = LabArt.tick
+    val chips by androidx.compose.runtime.produceState(emptyList<String>(), s.file.path, tick) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching { labSetupChips(context, s) }.getOrDefault(emptyList())
+        }.filter { it != s.container?.name }
+    }
+    return chips
+}
+
+/** A game's wide cover (its pick, Steam's header, else the cover cropped), with its name (and [line], [chips]) over the bottom when [title]. */
+@Composable
+internal fun LabWideCard(s: Shortcut, modifier: Modifier, title: Boolean, line: String? = null, chips: List<String> = emptyList()) {
     val tick = LabArt.tick
     val pics = remember(s.file.path, tick) { LabArt.models(s, "wide").map { LabArt.Pic(it) } }
     Box(modifier.clip(SimpleShape).background(Color(0xFF20242E))) {
         LabPicture(pics, Modifier.fillMaxSize(), onNone = { SimpleCover(s, Modifier.fillMaxSize(), title = false) })
         // A wide card is short: with the container line the name keeps to one.
-        if (title) LabCaption(s, line, nameLines = if (line != null) 1 else 2)
+        if (title) LabCaption(s, line, nameLines = if (line != null || chips.isNotEmpty()) 1 else 2, chips = chips)
     }
 }
 
-/** A game's cover (Simple's) with its name and [line] over the bottom. */
+/** A game's cover (Simple's) with its name and [line] (and [chips]) over the bottom. */
 @Composable
-internal fun LabCoverCard(s: Shortcut, modifier: Modifier, line: String?) {
+internal fun LabCoverCard(s: Shortcut, modifier: Modifier, line: String?, chips: List<String> = emptyList()) {
     Box(modifier.clip(SimpleShape)) {
         SimpleCover(s, Modifier.fillMaxSize(), title = false)
-        LabCaption(s, line)
+        LabCaption(s, line, chips = chips)
     }
 }
 
@@ -456,6 +545,9 @@ internal fun LabBadged(s: Shortcut, modifier: Modifier, picked: Boolean? = null,
         // Two pills (EPIC + EOS, STEAM + EA) need about 80 dp, more beside the selection mark.
         val compact = maxWidth < 84.dp || (picked != null && maxWidth < 120.dp)
         Box(Modifier.align(Alignment.TopStart).padding(6.dp)) { LabStoreBadges(s, compact) }
+        // On a removable drive (an SD card, USB): Classic's SD mark, top right (under the pick mark while picking).
+        val sd = remember(s.file.path) { runCatching { WinePath.isOnRemovableStorage(s.container, s.path) }.getOrDefault(false) }
+        if (sd) LabSdBadge(Modifier.align(Alignment.TopEnd).padding(end = 6.dp, top = if (picked != null) 36.dp else 6.dp))
         if (picked != null) {
             Box(
                 contentAlignment = Alignment.Center,
@@ -464,6 +556,19 @@ internal fun LabBadged(s: Shortcut, modifier: Modifier, picked: Boolean? = null,
                     .border(1.5.dp, Color.White.copy(alpha = 0.8f), CircleShape),
             ) { if (picked) Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp)) }
         }
+    }
+}
+
+/** The SD mark of a game on a removable drive. */
+@Composable
+private fun LabSdBadge(modifier: Modifier) {
+    androidx.compose.foundation.layout.Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.background(Color.Black.copy(alpha = 0.6f), SimpleShape).padding(horizontal = 5.dp, vertical = 2.dp),
+    ) {
+        Icon(Icons.Filled.SdCard, contentDescription = L("On SD card"), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(11.dp))
+        androidx.compose.foundation.layout.Spacer(Modifier.size(3.dp))
+        Text("SD", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -491,27 +596,34 @@ private fun LabStoreBadges(s: Shortcut, compact: Boolean) {
     )
 }
 
-/** An icon card: the icon and the name (and [line]) under it, with the store pills over the icon when [badges]. */
+/** An icon card: the icon and the name (and [line], [chips]) under it, with the store pills over the icon when [badges]. */
 @Composable
-internal fun LabIconCard(s: Shortcut, modifier: Modifier, iconModifier: Modifier, badges: Boolean = false, line: String? = null, picked: Boolean? = null) {
+internal fun LabIconCard(s: Shortcut, modifier: Modifier, iconModifier: Modifier, badges: Boolean = false, line: String? = null, picked: Boolean? = null, chips: List<String> = emptyList()) {
     Column(modifier.padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (badges) LabBadged(s, iconModifier, picked) { LabIcon(s, it) } else LabIcon(s, iconModifier)
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(s.name, color = SimpleInk, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 14.sp)
+            Text(LabTitles.of(s), color = SimpleInk, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 14.sp)
             if (line != null) Text(line, color = SimpleMuted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
             LabRuntimeStatus(s, color = SimpleMuted)
+            if (chips.isNotEmpty()) LabCardChips(chips, SimpleInk, SimpleCard, Modifier.padding(top = 3.dp))
         }
     }
 }
 
-/** A Library grid card in the chosen style, with [line] (its container) under the name; [picked] as on [LabBadged]. */
+/**
+ * A Library grid card in the chosen style, with [line] (its container) and the game's setup chips (as Classic's list
+ * card shows them) under the name; [picked] as on [LabBadged].
+ */
 @Composable
 internal fun LabGridCard(s: Shortcut, modifier: Modifier, line: String? = null, picked: Boolean? = null) {
+    val chips = rememberCardChips(s)
+    // A thin outline round each game's art, so it stands apart from the page's backdrop (user 11-15); the focus ring is drawn over it.
+    val outline = SimpleStrong.copy(alpha = 0.35f)
     when (LabArt.cards) {
-        LabArt.WIDE -> LabBadged(s, modifier.aspectRatio(460f / 215f), picked) { LabWideCard(s, it, title = true, line = line) }
+        LabArt.WIDE -> LabBadged(s, modifier.aspectRatio(460f / 215f).border(1.dp, outline, SimpleShape), picked) { LabWideCard(s, it, title = true, line = line, chips = chips) }
         // Small icons have no room for a second line.
-        LabArt.ICONS -> LabIconCard(s, modifier, Modifier.fillMaxWidth().aspectRatio(1f), badges = true, line = line.takeIf { LabArt.cardSize != "s" }, picked = picked)
-        else -> LabBadged(s, modifier.aspectRatio(3f / 4f), picked) { LabCoverCard(s, it, line) }
+        LabArt.ICONS -> LabIconCard(s, modifier, Modifier.fillMaxWidth().aspectRatio(1f).border(1.dp, outline, RoundedCornerShape(18)), badges = true, line = line.takeIf { LabArt.cardSize != "s" }, picked = picked, chips = chips)
+        else -> LabBadged(s, modifier.aspectRatio(3f / 4f).border(1.dp, outline, SimpleShape), picked) { LabCoverCard(s, it, line, chips = chips) }
     }
 }
 
@@ -532,7 +644,7 @@ internal fun LabTitle(s: Shortcut, height: Dp, fontSize: TextUnit, modifier: Mod
     val tick = LabArt.tick
     val pics = remember(s.file.path, tick) { LabArt.models(s, "logo").map { LabArt.Pic(it) } }
     val name: @Composable () -> Unit = {
-        Text(s.name, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = fontSize, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = modifier)
+        Text(LabTitles.of(s), color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = fontSize, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = modifier)
     }
     if (pics.isEmpty()) { name(); return }
     val centred = labLogoCentred(s)

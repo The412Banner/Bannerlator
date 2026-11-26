@@ -64,7 +64,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
 
-// The Expert page's environment variables, which were the classic editors' Env Vars tab
+// The Expert page's (XMB: Advanced tab's) environment variables, which were the classic editors' Env Vars tab
 // (EnvVarsEditor). The storage is the classic one: a single space-separated "NAME=VALUE" string, the
 // container form's envVarsStr for a container and All containers, and a game's own "envVars" extra
 // (removed when empty), which the launch merges over its container's name by name. So a game lists
@@ -133,7 +133,7 @@ private val SYNC_VARS = setOf("WINEESYNC", "WINENTSYNC", "WINEFSYNC")
 /** The audio cog's own keys (audioConfigToEnv), one set per sound engine. */
 private val AUDIO_OWNED = Regex("""^BANNER_AUDIO_(ALSA|PULSE|DIRECT)_(PRESET|PERF|ADAPTIVE|LAT|BF|MBF)$""")
 
-/** The Expert page's variables and "Prefer game-folder DLLs", for a game, a container and All containers. */
+/** The Expert page's (XMB: Advanced tab's) variables and "Prefer game-folder DLLs", for a game, a container and All containers. */
 internal class DeckEnvVarsSection(
     val env: SettingsEnv,
     val source: SettingsSource,

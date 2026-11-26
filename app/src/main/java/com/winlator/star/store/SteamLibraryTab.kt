@@ -1,5 +1,6 @@
 package com.winlator.star.store
 
+import com.winlator.star.ui.screens.outlinedMenuCard
 import android.app.Activity
 import android.content.Intent
 import androidx.annotation.StringRes
@@ -32,7 +33,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Sort
-import androidx.compose.material3.Button
+import com.winlator.star.ui.theme.LabButton as Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -42,15 +43,16 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.winlator.star.ui.theme.LabOutlinedButton as OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.winlator.star.ui.theme.LabTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -72,15 +74,21 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.winlator.star.R
+import com.winlator.star.ui.deck.LocalXmbGroup
+import com.winlator.star.ui.deck.XmbInk
 import com.winlator.star.ui.deck.rememberScreenScale
+import com.winlator.star.ui.deck.rememberXmbHighlightItem
 import com.winlator.star.ui.deck.xmbCardFill
 import com.winlator.star.ui.deck.xmbCardLine
+import com.winlator.star.ui.deck.xmbGlassCard
+import com.winlator.star.ui.deck.xmbInner
 import com.winlator.star.store.compose.AddResultDialog
 import com.winlator.star.store.compose.AddShortcutResult
 import com.winlator.star.store.compose.AddToShortcutsRequest
 import com.winlator.star.store.compose.ContainerPickerDialog
 import com.winlator.star.store.compose.openShortcutsScreen
 import com.winlator.star.ui.screens.OutlinedAlertDialog
+import com.winlator.star.ui.deck.deckShape
 
 /**
  * The **Library** tab: the owned-games grid, moved here out of [SteamGamesActivity] so the tab host
@@ -266,7 +274,7 @@ internal fun filterLibraryByQuery(
     val words = foldForSearch(query).trim().split(WHITESPACE_RUN).filter { it.isNotEmpty() }
     if (words.isEmpty()) return games
     return games.filter { g ->
-        val name = folded[g.appId] ?: foldForSearch(g.name)
+        val name = folded[g.appId] ?: foldForSearch(g.name + " " + g.englishName)
         words.all { name.contains(it) }
     }
 }
@@ -512,7 +520,16 @@ fun SteamLibraryTab(
     // are hoisted into the host (like [typeFilter]) so they survive a tab switch and rotation.
     val byType = remember(state.games, typeFilter) { typeFilter.filter(state.games) }
     val foldedNames = remember(state.games) {
-        state.games.associate { it.appId to foldForSearch(it.name) }
+        state.games.associate { it.appId to foldForSearch(it.name + " " + it.englishName) }
+    }
+    // Installed games whose language (the app's, or their own pick) asks for files they do not have.
+    val languageFilesCount by produceState(0, state.games) {
+        value = withContext(Dispatchers.IO) {
+            state.games.count { it.isInstalled && SteamGameLanguage.missingPack(it.appId, true) != null }
+        }
+    }
+    var languageNoticeHidden by remember {
+        mutableStateOf(runCatching { SteamPrefs.getLanguageNoticeDismissed() == StoreLang.steam() }.getOrDefault(false))
     }
     val shown = remember(byType, foldedNames, query, sort) {
         filterLibraryByQuery(byType, foldedNames, query).sortedWith(sort.comparator())
@@ -554,6 +571,7 @@ fun SteamLibraryTab(
     }
 
     var showExePicker by remember { mutableStateOf<SteamExePickerData?>(null) }
+    var importing by remember { mutableStateOf(false) }
     var addToShortcuts by remember { mutableStateOf<AddToShortcutsRequest?>(null) }
     var addResult by remember { mutableStateOf<AddShortcutResult?>(null) }
     var uninstallingName by remember { mutableStateOf<String?>(null) }
@@ -605,7 +623,7 @@ fun SteamLibraryTab(
         uninstallingName = game.name
         // Found in another Steam client's library: those files and that manifest are the client's.
         val imported = SteamLibraryImport.isImported(ctx, game.appId)
-        StoreUninstaller.run(
+        StoreUninstaller.runReporting(
             installDir = game.installDir,
             mark = {
                 if (imported) SteamLibraryImport.releaseImported(ctx, game.appId)
@@ -614,8 +632,10 @@ fun SteamLibraryTab(
             },
             // Another game (a demo / server sharing this installdir) still uses the folder: keep it.
             keepFolder = { imported || SteamInstallPaths.folderSharedWithOtherGame(ctx.applicationContext, java.io.File(game.installDir), game.appId) },
-        ) { ok ->
+        ) { ok, kept ->
             uninstallingName = null
+            // The game's shortcuts go with it, as from the Download Manager.
+            StoreShortcutCleanup.remove(ctx, com.winlator.star.store.download.Store.STEAM, game.appId.toString(), game.installDir, shortcutRemovalFor(ok, kept, imported))
             if (ok) StorefrontLog.i(StorefrontLog.LIBRARY, "uninstalled app ${game.appId} (${game.name})" + if (imported) ", files kept (another client's library)" else "")
             else StorefrontLog.w(StorefrontLog.LIBRARY, "uninstall INCOMPLETE for app ${game.appId} (${game.name}) — files remain at ${game.installDir}")
             onMessage(when {
@@ -651,9 +671,10 @@ fun SteamLibraryTab(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    LibraryTypeChips(typeFilter, onTypeFilter)
+                    LibraryTypeChips(typeFilter, onTypeFilter) { importing = true }
                     searchField(Modifier.weight(1f))
                     LibrarySortButton(sort, onSort)
+                    StoreViewButton()
                 }
             } else {
                 Row(
@@ -666,6 +687,7 @@ fun SteamLibraryTab(
                 ) {
                     searchField(Modifier.weight(1f))
                     LibrarySortButton(sort, onSort)
+                    StoreViewButton()
                 }
                 // The chips are one short line, so they keep the same single row as before.
                 Row(
@@ -673,7 +695,26 @@ fun SteamLibraryTab(
                         .fillMaxWidth()
                         .padding(horizontal = 14.dp, vertical = 8.dp)
                         .focusGroup(),
-                ) { LibraryTypeChips(typeFilter, onTypeFilter) }
+                ) { LibraryTypeChips(typeFilter, onTypeFilter) { importing = true } }
+            }
+
+            if (languageFilesCount > 0 && !languageNoticeHidden) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = if (languageFilesCount == 1) "1 installed game has language files to download. Open it to download them."
+                               else "$languageFilesCount installed games have language files to download. Open a game to download them.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = {
+                        languageNoticeHidden = true
+                        runCatching { SteamPrefs.setLanguageNoticeDismissed(StoreLang.steam()) }
+                    }) { Text("OK") }
+                }
             }
 
             // The rating sort is only as complete as the backfill: say so while it is still working,
@@ -735,51 +776,29 @@ fun SteamLibraryTab(
                     modifier = Modifier.align(Alignment.Center),
                 )
 
-                viewMode == "list" -> LazyColumn(
-                    state = header.trackedListState(),
-                    modifier = Modifier.fillMaxSize().focusGroup(),
-                    contentPadding = PaddingValues(vertical = 4.dp),
-                ) {
-                    val row: @Composable (SteamGame) -> Unit = { game ->
-                        LibraryDetailRow(
-                            game = game,
-                            onClick = { onOpenApp(game.appId) },
-                            onLaunch = { launchInstalled(game) },
-                            onUninstall = { uninstall(game) },
-                        )
-                    }
-                    if (sections == null) {
-                        items(shown, key = { it.appId }) { game -> row(game) }
-                    } else {
-                        sections.forEach { section ->
-                            item(key = "section_${section.level}", contentType = "section") {
-                                LibrarySectionHeader(section, Modifier.padding(horizontal = 16.dp))
-                            }
-                            items(section.games, key = { it.appId }) { game -> row(game) }
-                        }
-                    }
-                }
-
                 else -> LazyVerticalGrid(
                     state = header.trackedGridState(),
                     // Adaptive rather than a fixed count: 2 columns on a portrait phone, 4-6 across a
                     // handheld in landscape, from one declaration.
                     // XMB home: portrait covers, a bit smaller, with room for the focused one's pop.
-                    columns = GridCells.Adaptive(
-                        minSize = if (xmb) rememberScreenScale().xmbCoverWidth() else if (wide) 190.dp else 165.dp,
-                    ),
+                    columns = GridCells.Adaptive(minSize = storeGridCell(wide)),
                     modifier = Modifier.fillMaxSize().focusGroup(),
-                    contentPadding = PaddingValues(14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(if (xmb) 12.dp else 11.dp),
-                    verticalArrangement = Arrangement.spacedBy(if (xmb) 14.dp else 11.dp),
+                    contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
+                    // The same card as every other store: a tap opens the game's page.
                     val card: @Composable (SteamGame) -> Unit = { game ->
-                        LibraryCapsuleCard(
-                            game = game,
+                        StoreLibraryCard(
+                            item = CatalogItem(
+                                store = com.winlator.star.store.download.Store.STEAM,
+                                id = game.appId.toString(),
+                                title = game.name,
+                                imageUrl = "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${game.appId}/header.jpg",
+                                tallImageUrl = steamTallArt(game.appId),
+                            ),
+                            installed = game.isInstalled,
                             onOpen = { onOpenApp(game.appId) },
-                            onAction = {
-                                if (game.isInstalled) launchInstalled(game) else onOpenApp(game.appId)
-                            },
                         )
                     }
                     if (sections == null) {
@@ -804,6 +823,8 @@ fun SteamLibraryTab(
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
+
+            if (importing) SteamImportGamesFlow(onClose = { importing = false })
 
             showExePicker?.let { data ->
                 ExePickerDialog(
@@ -857,15 +878,20 @@ fun SteamLibraryTab(
 private fun LibraryTypeChips(
     typeFilter: LibraryTypeFilter,
     onTypeFilter: (LibraryTypeFilter) -> Unit,
+    onImport: () -> Unit,
 ) {
+    androidx.compose.runtime.LaunchedEffect(typeFilter) { if (typeFilter == LibraryTypeFilter.GAMES) onTypeFilter(LibraryTypeFilter.ALL) }
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        LibraryTypeFilter.entries.forEach { f ->
+        // All, Demos, Installed: the Games chip is gone (a saved Games choice shows as All).
+        listOf(LibraryTypeFilter.ALL, LibraryTypeFilter.DEMOS, LibraryTypeFilter.INSTALLED).forEach { f ->
             StoreFilterChip(
                 label = f.label,
-                selected = typeFilter == f,
+                selected = typeFilter == f || (f == LibraryTypeFilter.ALL && typeFilter == LibraryTypeFilter.GAMES),
                 onClick = { onTypeFilter(f) },
             )
         }
+        // Game folders the user already has (a PC copy, another app, a backup) → installed without a full download.
+        StoreFilterChip(label = "+ Import game library", selected = false, onClick = onImport)
     }
 }
 
@@ -883,7 +909,7 @@ private fun LibrarySortButton(
     Box {
         IconButton(
             onClick = { expanded = true },
-            modifier = Modifier.steamFocusRing(RoundedCornerShape(24.dp)),
+            modifier = Modifier.steamFocusRing(deckShape(24.dp)),
         ) {
             Icon(
                 imageVector = Icons.Filled.Sort,
@@ -893,7 +919,7 @@ private fun LibrarySortButton(
                 else MaterialTheme.colorScheme.primary,
             )
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, modifier = Modifier.outlinedMenuCard()) {
             LibrarySort.entries.forEach { option ->
                 DropdownMenuItem(
                     text = {
@@ -1008,13 +1034,12 @@ private fun LibraryCapsuleCard(
         )
         return
     }
-    val shape = RoundedCornerShape(10.dp)
+    val shape = deckShape(10.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .steamFocusRing(shape)
-            .clip(shape)
-            .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+            .xmbGlassCard(shape, xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
             .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
             .clickable(onClick = onOpen),
     ) {
@@ -1040,8 +1065,8 @@ private fun LibraryCapsuleCard(
             if (game.isInstalled) {
                 Button(
                     onClick = onAction,
-                    modifier = Modifier.fillMaxWidth().steamFocusRing(RoundedCornerShape(7.dp)),
-                    shape = RoundedCornerShape(7.dp),
+                    modifier = Modifier.fillMaxWidth().steamFocusRing(deckShape(7.dp)),
+                    shape = deckShape(7.dp),
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                 ) { Text("Play", style = MaterialTheme.typography.labelSmall, maxLines = 1) }
             } else {
@@ -1067,23 +1092,69 @@ private fun LibraryDetailRow(
     onLaunch: () -> Unit,
     onUninstall: () -> Unit,
 ) {
+    if (LocalStoreXmb.current) {
+        LibraryDetailRowXmb(game, onClick, onLaunch, onUninstall)
+        return
+    }
     Card(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .steamFocusRing(RoundedCornerShape(12.dp)),
-        shape = RoundedCornerShape(12.dp),
+            .steamFocusRing(deckShape(12.dp)),
+        shape = deckShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
     ) {
+        LibraryDetailBody(game, onClick, onLaunch, onUninstall)
+    }
+}
+
+/**
+ * XMB home: the detailed row as a glass panel. An installed game has buttons, so the whole row is ONE stop of the D-pad
+ * (the highlight glides row to row); A enters its Details / Launch / Uninstall buttons and B comes back to the row. A game
+ * without buttons is a plain row: highlighted whole, A opens it. Taps open it either way.
+ */
+@Composable
+private fun LibraryDetailRowXmb(
+    game: SteamGame,
+    onClick: () -> Unit,
+    onLaunch: () -> Unit,
+    onUninstall: () -> Unit,
+) {
+    val shape = deckShape(12.dp)
+    val cs = MaterialTheme.colorScheme
+    // Room for the panel's shadow between the rows.
+    val outer = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
+    if (game.isInstalled) {
+        XmbPanelCard(outer, onOpen = onClick) { LibraryDetailBody(game, onClick, onLaunch, onUninstall) }
+    } else {
+        val hl = rememberXmbHighlightItem()
+        Box(
+            outer
+                .xmbRing(shape, hl)
+                .xmbGlassCard(shape, xmbCardFill(cs.surfaceVariant))
+                .border(1.dp, xmbCardLine(cs.outline), shape)
+                .clickable(onClick = onClick),
+        ) { XmbInk(hl) { LibraryDetailBody(game, onClick, onLaunch, onUninstall) } }
+    }
+}
+
+/** The detailed row's content: cover, text lines and, for an installed game, its buttons ([LibraryDetailRow], [LibraryDetailRowXmb]). */
+@Composable
+private fun LibraryDetailBody(
+    game: SteamGame,
+    onOpen: () -> Unit,
+    onLaunch: () -> Unit,
+    onUninstall: () -> Unit,
+) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().padding(12.dp),
         ) {
             GameCoverArt(
                 appId = game.appId,
-                modifier = Modifier.size(width = 60.dp, height = 80.dp).clip(RoundedCornerShape(6.dp)),
+                modifier = Modifier.size(width = 60.dp, height = 80.dp).clip(deckShape(6.dp)),
             )
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -1119,26 +1190,34 @@ private fun LibraryDetailRow(
                     )
                     Spacer(Modifier.height(6.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Only in the XMB row (a group item): the way to open the game with a controller, as a tap does.
+                        if (LocalXmbGroup.current != null) {
+                            OutlinedButton(
+                                onClick = onOpen,
+                                shape = deckShape(8.dp),
+                                modifier = Modifier.height(32.dp).steamFocusRing(deckShape(8.dp)).xmbInner(first = true),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                            ) { Text(stringResource(R.string.xmb_store_details), style = MaterialTheme.typography.labelSmall) }
+                        }
                         Button(
                             onClick = onLaunch,
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.height(32.dp).steamFocusRing(RoundedCornerShape(8.dp)),
+                            shape = deckShape(8.dp),
+                            modifier = Modifier.height(32.dp).steamFocusRing(deckShape(8.dp)).xmbInner(),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
                         ) { Text("Launch / Add", style = MaterialTheme.typography.labelSmall) }
                         OutlinedButton(
                             onClick = onUninstall,
-                            shape = RoundedCornerShape(8.dp),
+                            shape = deckShape(8.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 contentColor = MaterialTheme.colorScheme.error,
                             ),
-                            modifier = Modifier.height(32.dp).steamFocusRing(RoundedCornerShape(8.dp)),
+                            modifier = Modifier.height(32.dp).steamFocusRing(deckShape(8.dp)).xmbInner(),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
                         ) { Text("Uninstall", style = MaterialTheme.typography.labelSmall) }
                     }
                 }
             }
         }
-    }
 }
 
 @Composable
@@ -1186,7 +1265,7 @@ private fun ExePickerDialog(
                     val label = if (parent != null) "${parent.name}/${f.name}" else f.name
                     TextButton(
                         onClick = { onSelected(path) },
-                        modifier = Modifier.fillMaxWidth().steamFocusRing(RoundedCornerShape(8.dp)),
+                        modifier = Modifier.fillMaxWidth().steamFocusRing(deckShape(8.dp)),
                     ) { Text(label, modifier = Modifier.weight(1f)) }
                 }
             }

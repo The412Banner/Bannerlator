@@ -1,18 +1,19 @@
 {
-  "repository": "domsvoboda/xodus-nexus",
-  "tag": "runtime-11.0-20261018-gf291f544",
-  "archive": "xodus-nexus-runtime-11.0-20261018-gf291f544-x86_64.tar.xz",
-  "sha512": "8e16634dc4d75ead4b7f48712624e107cfdc29a31a2da1b32624af25a6e3e8938636a6701e076a9dee08eb0c5b36b549342598313971f5fceb5de1e483c43578",
+  "repository": "domsvoboda/nexus-runtime",
+  "tag": "runtime-11.0-20261102-g76c6dd13",
+  "archive": "nexus-runtime-11.0-experimental-g76c6dd13-x86_64.tar.xz",
+  "sha512": "ed6bf55af56128d831ec78ce223770978250d8a4692ea1f24f26258e9d5460c8106e9e6000f554665c91cfcf2abdd235e018d845d8f0cbbed0daaa3d50e61b62",
   "source": {
-    "name": "xodus-nexus-runtime-11.0-20261018-gf291f544-source.tar.xz",
-    "sha256": "58b5d35d23b61f73f771b733fde43ea75096fe8b60f2ddc660949af3d8d87baf"
+    "name": "nexus-runtime-11.0-experimental-g76c6dd13-source.tar.xz",
+    "sha256": "9fd3ce24d0c9032fc2237df828c69f07e3de67f6c7008c89881ae7b805f953f5"
   },
+  "xgameruntime": "455b1ba9c59984f9478af062fa1aec496bc58ccc",
   "dlls": {
-    "twinapi.appcore.dll": "c203bbd707d521c68719b42a0a81db2b4838cc41be83fc76bfd87bf33e507336",
-    "windows.web.dll": "1a510c73ca31475b163692337d3cf37fef3381078df9729662095fc92b2e4e83",
-    "libnghttp2.dll": "2b171eba9296b207fe6016560e5381bc6e7405f3ad5ee5cd4add316358204ec0",
-    "xgameruntime.dll": "060120e0ec6bccfbab516128315a0658b11d3e316f62a917c653daf1a1dd3e05",
-    "winhttp.dll": "81e1da7a731d83fbd24dbe2fa2ecb8f155bd477a9f9b6f4cc3932063cc326c27",
-    "wintypes.dll": "7d06083e3d8b3a7e11555a91e7918f11c7d444a74755d41c8d1990db3697c895"
+    "twinapi.appcore.dll": "a9e640dee244a900a2d629ea62f2794e8ff973f916871b32b8f3b0f385e70006",
+    "windows.web.dll": "c0b3c78c0d61f0df5387f8bbf6b6b1090d27db07ebdf6f941dce51b02dd28faa",
+    "libnghttp2.dll": "a9c265b965d9af735886eb51e01afde905bc7ea53ed3dcc9ae18e2aebd45d8d0",
+    "xgameruntime.dll": "90b4fd26bd52924a38b720840a3ad1cd9281a9aa64a91c0b52b650d096f1a883",
+    "winhttp.dll": "e8e4e8a91834b481e305a0b6ae83894378ed6a1e83d5a1200605ca7526a46d45",
+    "wintypes.dll": "0583b241fcbf2817a5088373875212f8f2c06bc84d854bc7fc4eb3b5cf75e126"
   }
 }

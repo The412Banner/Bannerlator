@@ -1975,13 +1975,70 @@ public final class SteamRepository {
     }
 
     /**
-     * WORKER THREAD: parse + store ONE app's PICS product-info KeyValue tree (the per-app body of
-     * {@link #processAppsCore}, extracted verbatim). Engine-agnostic: the JavaSteam path hands it the
-     * {@code PICSProductInfo} KeyValues, the Rust engine path ({@link #rustSyncLibrary}) hands it the
-     * SAME tree rebuilt from the engine's JSON appinfo (see {@link #jsonToKeyValue}) — so both engines
-     * produce byte-identical {@code steam_games} / {@code depot_manifests} / {@code steam_branches} /
-     * {@code steam_dlc} rows. Returns true when the app was stored, false when it was filtered/skipped.
+     * The Steam languages an app lists: PICS common/supported_languages (entries marked supported), else
+     * common/languages, plus every language a downloadable depot is tagged with. Lower case, English first.
      */
+    static java.util.List<String> supportedLanguages(KeyValue common, KeyValue root) {
+        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
+        try {
+            List<KeyValue> sup = common.get("supported_languages").getChildren();
+            if (sup != null) for (KeyValue l : sup) {
+                String n = l.getName();
+                if (n == null || n.isEmpty()) continue;
+                String ok = kvStr(l.get("supported")).trim();
+                if (ok.isEmpty() || ok.equalsIgnoreCase("true") || ok.equals("1")) out.add(n.toLowerCase());
+            }
+            if (out.isEmpty()) {
+                List<KeyValue> langs = common.get("languages").getChildren();
+                if (langs != null) for (KeyValue l : langs) {
+                    String n = l.getName();
+                    if (n != null && !n.isEmpty() && !kvStr(l).trim().equals("0")) out.add(n.toLowerCase());
+                }
+            }
+            List<KeyValue> depots = root.get("depots").getChildren();
+            if (depots != null) for (KeyValue d : depots) {
+                String lang = kvStr(d.get("config").get("language")).trim().toLowerCase();
+                if (!lang.isEmpty()) out.add(lang);
+            }
+        } catch (Throwable ignored) {}
+        java.util.List<String> list = new java.util.ArrayList<>(out);
+        if (list.remove("english")) list.add(0, "english");
+        return list;
+    }
+
+    /** The languages that have a depot of their own with a public manifest (lower case). */
+    static java.util.List<String> packagedLanguages(KeyValue root) {
+        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
+        try {
+            List<KeyValue> depots = root.get("depots").getChildren();
+            if (depots != null) for (KeyValue d : depots) {
+                String lang = kvStr(d.get("config").get("language")).trim().toLowerCase();
+                if (lang.isEmpty()) continue;
+                String gid = kvStr(d.get("manifests").get("public").get("gid"));
+                if (gid.isEmpty()) gid = kvStr(d.get("manifest"));
+                if (!gid.isEmpty()) out.add(lang);
+            }
+        } catch (Throwable ignored) {}
+        return new java.util.ArrayList<>(out);
+    }
+
+    /** PICS common/name_localized as a JSON object (Steam language -> name); "" when the app has none. */
+    static String localizedNames(KeyValue common) {
+        try {
+            List<KeyValue> names = common.get("name_localized").getChildren();
+            if (names == null || names.isEmpty()) return "";
+            org.json.JSONObject out = new org.json.JSONObject();
+            for (KeyValue n : names) {
+                String lang = n.getName();
+                String value = kvStr(n);
+                if (lang != null && !lang.isEmpty() && !value.isEmpty()) out.put(lang.toLowerCase(), value);
+            }
+            return out.length() > 0 ? out.toString() : "";
+        } catch (Throwable ignored) {
+            return "";
+        }
+    }
+
     /**
      * VAC marker from an app's PICS app-info: {@code common/category/category_8} (store category 8,
      * "Valve Anti-Cheat enabled") or any {@code extended/vac*} key ({@code vacmodulefilename},
@@ -2003,7 +2060,17 @@ public final class SteamRepository {
         return false;
     }
 
+    /**
+     * WORKER THREAD: parse + store ONE app's PICS product-info KeyValue tree (the per-app body of
+     * {@link #processAppsCore}, extracted verbatim). Engine-agnostic: the JavaSteam path hands it the
+     * {@code PICSProductInfo} KeyValues, the Rust engine path ({@link #rustSyncLibrary}) hands it the
+     * SAME tree rebuilt from the engine's JSON appinfo (see {@link #jsonToKeyValue}) — so both engines
+     * produce byte-identical {@code steam_games} / {@code depot_manifests} / {@code steam_branches} /
+     * {@code steam_dlc} rows. Returns true when the app was stored, false when it was filtered/skipped.
+     */
     boolean processAppKv(int appId, KeyValue root, SteamDatabase db, java.util.Set<Integer> licensedApps) {
+                    // Fresh launch entries for a game whose entries are kept (SteamLaunchEntries).
+                    SteamLaunchEntries.rememberIfKept(appContext, appId, root);
                     try {
                         KeyValue common = root.get("common");
                         // "type" is absent on some entries (tools, hardware, etc.) — skip those
@@ -2063,11 +2130,27 @@ public final class SteamRepository {
                         //   - oslist       : if present & non-blank, must contain "windows"
                         //   - language     : if present & non-blank, must equal "english"
                         //   - lowviolence  : if set (1/true), exclude
+                        //   - optionaldlc  : if set, exclude (opt-in content, see the loop)
                         //   - osarch       : SKIPPED — we pass downloadAllArchs=true (never filters)
                         // A depot with no config, or empty oslist/language, is shared/common content
                         // and is always included. A depot with no public manifest can't be
                         // downloaded, so it is skipped entirely (contributes nothing).
+                        // The language this game downloads in (SteamGameLanguage): the user's pick or the
+                        // app's language when the game has it, else English. A depot tagged with a language
+                        // is taken only for that language; when the game has no depot for it (all its
+                        // languages in the common depots, or only some languages packaged apart) the
+                        // English-tagged ones are taken, as before.
+                        java.util.List<String> appLanguages = supportedLanguages(common, root);
+                        String gameLanguage = SteamGameLanguage.resolve(SteamGameLanguage.picked(appId), appLanguages);
+                        java.util.List<String> packagedLanguages = packagedLanguages(root);
+                        SteamDatabase.GameRow knownRow = null;
+                        try { knownRow = db.getGame(appId); } catch (Throwable ignored) {}
+                        // An installed game keeps the pack it has (SteamGameLanguage.selection): the list saved
+                        // here is handed to the real Steam client as what is on disk.
+                        String depotLanguage = SteamGameLanguage.selection(appId, knownRow != null && knownRow.isInstalled,
+                                SteamGameLanguage.packOf(gameLanguage, packagedLanguages));
                         StringBuilder depotSb = new StringBuilder();
+                        java.util.List<Integer> packDepots = new java.util.ArrayList<>();  // language-tagged depots taken
                         java.util.List<Integer> includedDlcIds = new java.util.ArrayList<>();  // owned DLC bundled with the game
                         // The game's DLC appIds (extended/listofdlc). A depot whose id is in this set is
                         // a DLC depot (its depot id == the DLC appId) — see the depot loop for handling.
@@ -2087,6 +2170,8 @@ public final class SteamRepository {
                         // points at: no manifest of their own here, kept for the Windows-components
                         // recommendations (SteamRedists).
                         java.util.List<String> sharedDepots = new java.util.ArrayList<>();
+                        // Depots installed from another app's manifest (SteamSharedDepots): depot id -> source app.
+                        java.util.Map<Integer, Integer> borrowedDepots = new java.util.LinkedHashMap<>();
                         if (depotChildren != null) {
                             for (KeyValue d : depotChildren) {
                                 int depotId;
@@ -2100,7 +2185,11 @@ public final class SteamRepository {
                                 KeyValue pub = d.get("manifests").get("public");
                                 String manifestGid = kvStr(pub.get("gid"));
                                 if (manifestGid.isEmpty()) manifestGid = kvStr(d.get("manifest")); // older format
-                                if (manifestGid.isEmpty()) { skippedCount++; continue; }
+                                // No manifest here but taken from another app (CS 1.6's Half-Life depots 1-3
+                                // from app 70): filtered like the rest, then resolved there at download time.
+                                int borrowedFrom = manifestGid.isEmpty() ? SteamSharedDepots.sourceApp(
+                                        kvStr(d.get("depotfromapp")), kvStr(d.get("sharedinstall"))) : 0;
+                                if (manifestGid.isEmpty() && borrowedFrom == 0) { skippedCount++; continue; }
 
                                 // Mirror the DepotDownloader oslist/language/lowviolence filter.
                                 KeyValue config = d.get("config");
@@ -2117,14 +2206,24 @@ public final class SteamRepository {
                                     }
                                 }
                                 String lang = kvStr(config.get("language")).trim();
-                                if (!lang.isEmpty() && !"english".equalsIgnoreCase(lang)) {
+                                if (!lang.isEmpty() && !depotLanguage.equalsIgnoreCase(lang)) {
                                     Log.d(TAG, "app " + appId + " skip depot " + depotId
-                                            + " language='" + lang + "' (not english)");
+                                            + " language='" + lang + "' (not " + depotLanguage + ")");
                                     skippedCount++; continue;
                                 }
                                 String lv = kvStr(config.get("lowviolence")).trim();
                                 if (lv.equals("1") || lv.equalsIgnoreCase("true")) {
                                     Log.d(TAG, "app " + appId + " skip depot " + depotId + " lowviolence");
+                                    skippedCount++; continue;
+                                }
+                                // Optional DLC content (config optionaldlc = its DLC appId, e.g. CS2's Workshop
+                                // Tools, depot 2347779, 2.1 GB): Steam installs it only when the player turns it on,
+                                // and a real Steam client removes it otherwise (2026-11-12: SteamLite deleted the 908
+                                // files of 2347779 we had downloaded). There is no opt-in here, so it is never taken.
+                                String optionalDlc = kvStr(config.get("optionaldlc")).trim();
+                                if (!optionalDlc.isEmpty()) {
+                                    Log.d(TAG, "app " + appId + " skip depot " + depotId
+                                            + " optionaldlc=" + optionalDlc + " (optional, not turned on)");
                                     skippedCount++; continue;
                                 }
                                 // DLC handling. Steam does NOT tag a depot's config with dlcappid here;
@@ -2142,10 +2241,12 @@ public final class SteamRepository {
                                     }
                                     if (!includedDlcIds.contains(depotId)) includedDlcIds.add(depotId);
                                 }
+                                if (borrowedFrom != 0) { borrowedDepots.put(depotId, borrowedFrom); continue; }
 
                                 // Selected — count it.
                                 if (depotSb.length() > 0) depotSb.append(',');
                                 depotSb.append(depotId);
+                                if (!lang.isEmpty()) packDepots.add(depotId);
                                 selectedCount++;
 
                                 // Uncompressed size: modern PICS at manifests/public/size,
@@ -2176,6 +2277,12 @@ public final class SteamRepository {
                         try {
                             com.winlator.star.components.SteamRedists.rememberShared(appContext, appId, sharedDepots);
                         } catch (Throwable ignored) {}
+                        try {
+                            String free = kvStr(common.get("freetodownload")).trim();
+                            if (free.isEmpty()) free = kvStr(common.get("FreeToDownload")).trim();
+                            SteamSharedDepots.remember(appContext, appId, borrowedDepots,
+                                    "1".equals(free) || "true".equalsIgnoreCase(free));
+                        } catch (Throwable ignored) {}
 
                         // Beta branches — depots/branches/* (skipped by the numeric-name depot loop
                         // above). Each child is a branch: name = branch id ("public", "beta", …) with
@@ -2204,6 +2311,7 @@ public final class SteamRepository {
                         // a cache miss on a later session falls back to an estimate.
                         downloadSizeByApp.put(appId, totalDownload);
                         Log.i(TAG, "app " + appId + " depots: selected=" + selectedCount
+                                + " shared=" + borrowedDepots.size()
                                 + " skipped=" + skippedCount + " install=" + totalSize
                                 + "B download=" + totalDownload + "B");
 
@@ -2226,6 +2334,8 @@ public final class SteamRepository {
                         // vacmacmodulecache); Brawlhalla (291550) has neither. There is no literal "vac"
                         // key. Rule: category_8 OR any extended/vac* key → secured.
                         db.setVacSecure(appId, detectVacSecure(common, root));
+                        db.setNameLocalized(appId, localizedNames(common));
+                        db.setLanguages(appId, SteamGameLanguage.encode(appLanguages, packagedLanguages, depotLanguage, packDepots));
                         // Valve's own folder name under steamapps/common (PICS config/installdir) — what
                         // every Steam client and the appmanifest's "installdir" use. Recorded so a game
                         // installed into a steamapps library lands where other clients look for it.
@@ -2431,7 +2541,7 @@ public final class SteamRepository {
                         String name = "";
                         String kind = null;   // null → updateDlcResolved leaves the stored kind as-is
                         if (root != null) {
-                            name = kvStr(root.get("common").get("name"));
+                            name = StoreLang.steamName(localizedNames(root.get("common")), kvStr(root.get("common").get("name")));
                             // Only classify app vs entitlement when the kind isn't already final
                             // ('depot' is set from the base game's depots and must not be overwritten).
                             if (r.kind == null || r.kind.isEmpty()) {

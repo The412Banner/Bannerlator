@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import com.winlator.star.ui.screens.OutlinedAlertDialog as AlertDialog
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -28,7 +28,12 @@ import androidx.compose.ui.unit.dp
 import com.winlator.star.MainActivity
 import com.winlator.star.R
 import com.winlator.star.container.Container
+import com.winlator.star.store.StarLaunchBridge
 import com.winlator.star.ui.Screen
+import com.winlator.star.ui.deck.rememberXmbHome
+import com.winlator.star.ui.screens.XmbChoice
+import com.winlator.star.ui.screens.XmbContainerPickerDialog
+import com.winlator.star.ui.screens.XmbMessageDialog
 
 /**
  * Shared Compose add-to-shortcuts flow for the store activities (Steam today):
@@ -47,6 +52,8 @@ data class AddToShortcutsRequest(
     val containers: List<Container>,
     /** Steam appId stamped on the shortcut (0 = none). Without it Goldberg/SteamLite/cloud saves can't find the game. */
     val appId: Int = 0,
+    /** Epic game data stamped on the shortcut (null = not an Epic game). Without it the game is launched without the Epic launch arguments. */
+    val epic: StarLaunchBridge.EpicMeta? = null,
 )
 
 /** Outcome of writeShortcutAsync, held in a mutableStateOf by the caller. */
@@ -70,6 +77,26 @@ fun ContainerPickerDialog(
     /** The dialog title; null = "Add <game> to container". */
     title: String? = null,
 ) {
+    // The XMB interface: option cards in an XMB dialog (same names, subtitles and notes as the stock rows below).
+    if (rememberXmbHome()) {
+        val choices = containers.map { container ->
+            XmbChoice(
+                title = container.name?.takeIf { it.isNotEmpty() } ?: "Container ${container.id}",
+                subtitle = listOf(container.wineVersion.orEmpty(), container.screenSize.orEmpty())
+                    .filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { null },
+                note = note(container),
+            )
+        }
+        XmbContainerPickerDialog(
+            title = title ?: "Select container",
+            subtitle = if (title == null) "Adding \"$gameName\"" else null,
+            choices = choices,
+            emptyText = "No containers yet — create one in the Containers screen first.",
+            onPick = { index -> containers.getOrNull(index)?.let(onSelected) },
+            onDismiss = onDismiss,
+        )
+        return
+    }
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title ?: "Add \"$gameName\" to container") },
@@ -139,6 +166,27 @@ fun AddResultDialog(
     onOpenShortcuts: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    if (rememberXmbHome()) {
+        if (result.success) {
+            XmbMessageDialog(
+                title = "Added to Shortcuts",
+                message = "\"${result.gameName}\" is ready in Shortcuts." + (result.note?.let { "\n\n$it" } ?: ""),
+                confirmText = "Open Shortcuts",
+                onConfirm = onOpenShortcuts,
+                onDismiss = onDismiss,
+                dismissText = "Close",
+            )
+        } else {
+            XmbMessageDialog(
+                title = "Couldn't add shortcut",
+                message = result.message,
+                confirmText = "OK",
+                onConfirm = onDismiss,
+                onDismiss = onDismiss,
+            )
+        }
+        return
+    }
     if (result.success) {
         OutlinedAlertDialog(
             onDismissRequest = onDismiss,

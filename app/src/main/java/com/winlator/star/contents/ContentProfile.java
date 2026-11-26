@@ -70,4 +70,6 @@ public class ContentProfile {
     // display label ("GE-Proton-11.0-6-arm64ec (v5)"). null for installed profiles and for rows
     // without the field - those never take part in layer-update matching.
     public String versionName;
+    // Catalog rows only (contents.json "recommended": true): the Wine / Proton pickers star it.
+    public boolean recommended;
 }

@@ -136,6 +136,7 @@ struct VkTable {
 
 namespace lsfg { class Engine; }
 namespace winfg { class Engine; }
+namespace wfg { class Engine; }
 
 static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -601,10 +602,13 @@ private:
     bool        lsfgEngineTried_ = false;
     std::unique_ptr<winfg::Engine> winfgEngine_;
     bool        winfgEngineTried_ = false;
-    std::atomic<int> fgEngineKind_{0};     // 0 = lsfg, 1 = win-fg
+    std::unique_ptr<wfg::Engine> wfgEngine_;
+    bool        wfgEngineTried_ = false;
+    std::atomic<int> fgEngineKind_{0};     // 0 = lsfg, 1 = win-fg, 2 = wfg
     std::atomic<int> fgModel_{4};
     std::atomic<int> fgPerfPreset_{1};
     bool ensureWinFgEngine();
+    bool ensureWfgEngine();
     // Capability gate for the SELECTED engine. win-fg's shaders need only a
     // storage-capable swapchain format; the LSFG chain also needs the fp16 /
     // memory-model feature set, which some otherwise capable GPUs lack.
@@ -627,6 +631,19 @@ private:
     // do not measure it themselves (win-fg).
     float    fgSourceRate_      = 0.0f;
     uint32_t fgSourceAccum_     = 0;
+    // Present-queue guard (renderFrame): FIFO shows one image per refresh, so output even
+    // slightly above the display rate fills the swapchain queue and every frame - the game's
+    // own included - reaches the panel several refreshes late. Idea and model from
+    // qwertypower's WinNative PR #797.
+    uint64_t fgQueueEndNs_      = 0;   // when the last presented image would be shown
+    uint64_t fgTrimmed_         = 0;   // generated frames left out to drain the queue
+    uint64_t fgSameSource_      = 0;   // draws without a new game frame (nothing generated)
+    uint64_t fgSeenContent_     = 0;
+    uint32_t fgContentIdle_     = 0;   // draws since the content serial last moved
+    bool     fgContentLive_     = false;
+    uint32_t fgGuardLog_        = 0;
+    std::atomic<uint64_t> fgContentSerial_{0};   // bumped by every window content update
+    void     guardPresentQueue();
     uint32_t fgPresentAccum_    = 0;
     std::chrono::steady_clock::time_point fgRateWindowStart_{};
     bool     fgRateWindowOpen_  = false;
@@ -662,11 +679,68 @@ private:
     void destroyFgQueryPool();
     void readFgQueryResult();
 
+    // Upscaler/CAS shader set, picked once when the post pipelines are built,
+    // from debug.bannerlator.upscale.shaders: "old" = the fp32 shaders (cas.frag
+    // CAS), anything else = the half-precision set (*_half_frag.h, cas_ffx CAS).
+    bool halfShaders_ = true;
+
+    // GPU time of the upscale/effect passes: 4 timestamps per frame slot (start,
+    // after the composite, after the scaling stage, end), read back after the
+    // slot's fence like the frame-gen pair, summed and logged every ~10 s.
+    VkQueryPool upQueryPool_ = VK_NULL_HANDLE;
+    bool        upQueryPending_[MAX_FRAMES_IN_FLIGHT] = {};
+    bool        upQueryReused_[MAX_FRAMES_IN_FLIGHT]  = {};
+    struct UpTiming {
+        double   compositeMs = 0, scaleMs = 0, effectsMs = 0, reusedMs = 0;
+        uint32_t full = 0, reused = 0;
+        int64_t  startNs = 0;
+        int      mode = -1;
+        int      effects = 0;
+    } upTiming_;
+    void ensureUpQueryPool();
+    void destroyUpQueryPool();
+    void readUpQueryResult();
+    void upTimestamp(VkCommandBuffer cb, uint32_t q);
+
+    // Cursor-only frames on the upscale path. The last frame's final pass (the
+    // one into the swapchain) is kept here; when only the cursor moved, it is
+    // run again from the image it read - offscreen / mid / fx1 / fx2 are not
+    // touched in between - and the cursor is drawn on top, so the composite,
+    // the scaler and the earlier effects are not redone.
+    struct UpReuse {
+        bool            valid = false;
+        VkPipeline      pipeline = VK_NULL_HANDLE;
+        VkDescriptorSet srcDS = VK_NULL_HANDLE;
+        uint8_t         pc[sizeof(EasuPushConstants)] = {};   // largest post PC
+        uint32_t        pcSize = 0;
+        int             mode = 0, outX = 0, outY = 0, outW = 0, outH = 0;
+        uint32_t        extW = 0, extH = 0, fxMask = 0;
+    } upReuse_;
+    uint32_t upFxMask() const;
+    // A scene change taken from needsRender by a frame that bailed out before
+    // recording (resize, fence timeout, acquire failure): the next frame must not
+    // treat itself as cursor-only.
+    bool sceneDirtyCarry_ = false;
+
     VkFormat          offscreenFmt      = VK_FORMAT_R8G8B8A8_UNORM;
     VkRenderPass      offscreenRenderPass = VK_NULL_HANDLE; // CLEAR -> SHADER_READ_ONLY
     VkPipelineLayout  postPipeLayout    = VK_NULL_HANDLE;
     VkPipeline        sgsrPipeline      = VK_NULL_HANDLE;
     VkPipeline        nisPipeline       = VK_NULL_HANDLE; // NVIDIA Image Scaling (mode 7)
+    // Half set only: NIS prepass (nis_luma.frag, game rgb + luma in alpha) into nisSrc,
+    // which nisPipeline (nis3.frag) then gathers from. Null in the old set (nis.frag).
+    VkPipeline        nisLumaPipeline   = VK_NULL_HANDLE;
+    // nis3.frag's coefficient banks (nis_coef.h) in a uniform buffer at descriptor set 1;
+    // nisPipeLayout = {dsLayout, nisCoefDsl} with postPipeLayout's push-constant range, so
+    // set 0 and the push constants bound through postPipeLayout stay valid for it.
+    VkDescriptorSetLayout nisCoefDsl    = VK_NULL_HANDLE;
+    VkPipelineLayout      nisPipeLayout = VK_NULL_HANDLE;
+    VkDescriptorPool      nisCoefPool   = VK_NULL_HANDLE;
+    VkDescriptorSet       nisCoefDS     = VK_NULL_HANDLE;
+    VkBuffer              nisCoefBuf    = VK_NULL_HANDLE;
+    VkDeviceMemory        nisCoefMem    = VK_NULL_HANDLE;
+    bool createNisCoef();
+    void destroyNisCoef();
     VkPipeline        sgsrQualityPipeline = VK_NULL_HANDLE; // SGSR 1 edge-direction (mode 8)
     VkPipeline        easuPipeline      = VK_NULL_HANDLE;
     VkPipeline        rcasPipeline      = VK_NULL_HANDLE;
@@ -707,6 +781,14 @@ private:
     VkFramebuffer     midFB   = VK_NULL_HANDLE;
     VkDescriptorSet   midDS   = VK_NULL_HANDLE;
     int               midW = 0, midH = 0;
+
+    // NIS prepass output @ game resolution (half set): rgb = the composite, a = luma.
+    VkImage           nisSrcImg  = VK_NULL_HANDLE;
+    VkDeviceMemory    nisSrcMem  = VK_NULL_HANDLE;
+    VkImageView       nisSrcView = VK_NULL_HANDLE;
+    VkFramebuffer     nisSrcFB   = VK_NULL_HANDLE;
+    VkDescriptorSet   nisSrcDS   = VK_NULL_HANDLE;
+    int               nisSrcW = 0, nisSrcH = 0;
 
     // Effect-chain intermediates @ swapchain resolution. fx1 holds the scaled (or
     // composited) image fed into CAS/HDR; fx2 ping-pongs when both effects run.
@@ -791,17 +873,19 @@ private:
     void createUpscaleSampler();
     void createOffscreenRenderPass();
     void createPostPipelines();
-    VkPipeline createPostPipeline(const uint32_t* fragCode, size_t fragSz, VkRenderPass rp);
+    VkPipeline createPostPipeline(const uint32_t* fragCode, size_t fragSz, VkRenderPass rp,
+                                  VkPipelineLayout layout = VK_NULL_HANDLE);
     bool createColorTarget(int w, int h, VkImage& img, VkDeviceMemory& mem,
                            VkImageView& view, VkFramebuffer& fb, VkDescriptorSet& ds);
     void destroyColorTarget(VkImage& img, VkDeviceMemory& mem, VkImageView& view,
                             VkFramebuffer& fb, VkDescriptorSet& ds);
     bool ensureOffscreen(int w, int h);
     bool ensureMid(int w, int h);
+    bool ensureNisSrc(int w, int h);
     bool ensureFx1(int w, int h);
     bool ensureFx2(int w, int h);
     void recordUpscalePasses(VkCommandBuffer cb, uint32_t imgIdx,
-                             const std::vector<DrawEntry>& draws, bool cursorDrawn,
+                             const std::vector<DrawEntry>& draws, bool cursorDrawn, bool cursorOnly,
                              short ptrX, short ptrY, short curHotX, short curHotY,
                              short curW, short curH,
                              float ox, float oy, float sx, float sy,
@@ -831,7 +915,7 @@ private:
         VkBuffer cursorUpload, bool hasCursorUpload,
         float ox, float oy, float sx, float sy, float cw, float ch,
         short ptrX, short ptrY, short curHotX, short curHotY,
-        short curW, short curH, bool curVis);
+        short curW, short curH, bool curVis, bool cursorOnly);
     void renderLoop();
     void renderFrame();
 

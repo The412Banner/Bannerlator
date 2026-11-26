@@ -31,20 +31,22 @@ import com.winlator.star.store.EaSupport
 
 /**
  * XMB options column = a card's ⋮ menu, reordered for a D-pad (common first, Remove last). Items with
- * a `menu` open as nested XMB columns (XmbGameSettings.kt / XmbSettingsPhase2*.kt / XmbGameTools*.kt)
- * instead of pop-ups; the ones that hand off to Android or a full screen keep their handlers.
+ * a `menu` open as nested XMB columns (XmbGameSettings.kt / XmbGameTools.kt) instead of pop-ups; the
+ * ones that hand off to Android or a full screen keep their handlers.
  * Shared by the Games screen's XMB view and the Deck home's XMB view.
  *
- * [openSettings] opens a game's settings outside the XMB: always for the Linux Steam entry (the XMB
- * settings columns are Wine rows), and for every game when [settingsAsColumns] is false (the Deck,
- * whose own settings editor is the one place a game's settings live).
+ * [openSettings] opens a game's settings page outside the XMB: the Shortcut Settings page inside the Deck shell, the classic
+ * settings dialog elsewhere. The Linux Steam entry's settings are the same page.
+ *
+ * [communityThird] puts a Wine game's Community configs right after Settings (the XMB Home's order: Play, Settings, Community configs,
+ * Game Details, ...) instead of after the saves actions.
  */
 internal fun xmbGameActions(
     context: Context,
     shortcut: Shortcut,
     host: XmbGameHost,
     openSettings: (Shortcut) -> Unit,
-    settingsAsColumns: Boolean = true,
+    communityThird: Boolean = false,
 ): List<XmbAction> = buildList {
     // An Android game has no Wine side: no settings, saves, configs, logs or container moves.
     if (AndroidGames.isAndroidEntry(shortcut)) {
@@ -54,8 +56,7 @@ internal fun xmbGameActions(
         add(XmbAction("Remove", Icons.Filled.Delete, "Asks to confirm first", danger = true, menu = { xmbRemoveMenu(it, shortcut, host) }))
         return@buildList
     }
-    // The Linux Steam entry: its settings are the Linux-side ones only, which the pop-up editor
-    // already knows (the XMB settings columns are Wine rows), and none of the Wine actions apply.
+    // The Linux Steam entry: its settings page holds the Linux-side ones only, and none of the Wine actions apply.
     if (LinuxShortcuts.isLinuxEntry(shortcut)) {
         add(XmbAction("Settings", Icons.Filled.Settings, "Steam (Linux) display, driver, controls…") { openSettings(shortcut) })
         add(XmbAction("Game Details", Icons.Filled.Edit, "Name, genres, year, description", menu = { xmbGameDetailsMenu(it, shortcut) }))
@@ -65,10 +66,9 @@ internal fun xmbGameActions(
         add(XmbAction("Remove", Icons.Filled.Delete, "Asks to confirm first", danger = true, menu = { xmbRemoveMenu(it, shortcut, host) }))
         return@buildList
     }
-    if (settingsAsColumns) {
-        add(XmbAction("Settings", Icons.Filled.Settings, "Display, graphics, controller…", menu = { xmbSettingsMenu(it, shortcut, host) }))
-    } else {
-        add(XmbAction("Settings", Icons.Filled.Settings, "Display, graphics, controller…") { openSettings(shortcut) })
+    add(XmbAction("Settings", Icons.Filled.Settings, "Display, graphics, controller…") { openSettings(shortcut) })
+    if (communityThird) {
+        add(XmbAction("Community configs", Icons.Filled.Public, "Shared settings for this game", menu = { xmbCommunityConfigsMenu(it, shortcut) }))
     }
     add(XmbAction("Game Details", Icons.Filled.Edit, "Name, genres, year, description", menu = { xmbGameDetailsMenu(it, shortcut) }))
     if (isSteamOriginShortcut(shortcut)) {
@@ -78,7 +78,9 @@ internal fun xmbGameActions(
         add(XmbAction("Back up saves", Icons.Filled.Archive, menu = { xmbBackupSavesMenu(it, shortcut) }))
         add(XmbAction("Restore saves", Icons.Filled.Unarchive, menu = { xmbRestoreSavesMenu(it, shortcut) }))
     }
-    add(XmbAction("Community configs", Icons.Filled.Public, "Shared settings for this game", menu = { xmbCommunityConfigsMenu(it, shortcut) }))
+    if (!communityThird) {
+        add(XmbAction("Community configs", Icons.Filled.Public, "Shared settings for this game", menu = { xmbCommunityConfigsMenu(it, shortcut) }))
+    }
     add(XmbAction("Scrape cover", Icons.Filled.Search, menu = { xmbScrapeCoverMenu(it, shortcut) }))
     add(XmbAction("View logs", Icons.Filled.Description, menu = { xmbLogsMenu(it, shortcut) }))
     add(XmbAction("Share logs", Icons.Filled.Share) { shareGameLogs(context, shortcut.name) })

@@ -696,6 +696,23 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             ld_preload += localeFixDest.getAbsolutePath();
         }
 
+        // Hostname fix: Android's hostname is "localhost", so Epic Online Services resolved its own address
+        // to 127.0.0.1 and online play had no address for a peer. libhostname_fix.so answers the device's
+        // network address instead (not to wineboot, so the Windows computer name stays). HOSTNAME_FIX_DISABLE=1
+        // in the env vars turns it off.
+        File hostnameFixDest = new File(imageFs.getLibDir(), "libhostname_fix.so");
+        File hostnameFixSrc = new File(nativeLibDir, "libhostname_fix.so");
+        try {
+            if (hostnameFixSrc.exists()) FileUtils.copy(hostnameFixSrc, hostnameFixDest);
+            else if (!hostnameFixDest.exists()) Log.e("GuestLauncher", "libhostname_fix.so NOT FOUND in APK: " + hostnameFixSrc.getAbsolutePath());
+        } catch (Exception e) {
+            Log.e("GuestLauncher", "Failed to copy libhostname_fix.so: " + e.getMessage());
+        }
+        if (hostnameFixDest.exists()) {
+            if (!ld_preload.isEmpty()) ld_preload += ":";
+            ld_preload += hostnameFixDest.getAbsolutePath();
+        }
+
         // Force SSBS (arm64ec only): Wine's arm64 signal return rebuilds PSTATE from a Windows CONTEXT
         // and clears SSBS, so game threads run with speculative store bypass disabled. Rebuilt layers
         // honour WINE_FORCE_SSBS; libssbs.so sets the bit from outside for layers that predate it.
@@ -773,6 +790,30 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         if (DInputVibration.envOverride(container, shortcut) != null) {
             Log.i("GuestLauncher", "DirectInput vibration: " + DInputVibration.ENV + " in the env vars decides ("
                     + (DInputVibration.effective(container, shortcut) ? "on" : "off") + ")");
+        }
+
+        // Network games that stream (test, netdrive/NetStream.kt): the game sits in a stand-in folder of sparse files;
+        // libnetfs.so fetches each part from the network drive as the game reads it. Only for those games.
+        if (shortcut != null && container != null) {
+            java.util.Map<String, String> netEnv = com.winlator.star.netdrive.NetStream.launchEnv(environment.getContext(), container, shortcut.path);
+            if (netEnv != null) {
+                File netfsDest = new File(imageFs.getLibDir(), "libnetfs.so");
+                File netfsSrc = new File(nativeLibDir, "libnetfs.so");
+                try {
+                    if (netfsSrc.exists()) FileUtils.copy(netfsSrc, netfsDest);
+                    else if (!netfsDest.exists()) Log.e("GuestLauncher", "libnetfs.so NOT FOUND in APK: " + netfsSrc.getAbsolutePath());
+                } catch (Exception e) {
+                    Log.e("GuestLauncher", "Failed to copy libnetfs.so: " + e.getMessage());
+                }
+                if (netfsDest.exists()) {
+                    // First in line: libfakeinput.so's read() sends every non-controller read straight to
+                    // syscall(SYS_read), so a library after it never sees read() (11-15: Darksiders' Steam emulator
+                    // settings came back empty and the game stopped at a black screen).
+                    ld_preload = netfsDest.getAbsolutePath() + (ld_preload.isEmpty() ? "" : ":" + ld_preload);
+                    for (java.util.Map.Entry<String, String> e : netEnv.entrySet()) envVars.put(e.getKey(), e.getValue());
+                    Log.i("GuestLauncher", "Network game: streaming " + netEnv.get("BLNETFS_ROOT"));
+                }
+            }
         }
 
         Log.d("GuestLauncher", "Final LD_PRELOAD: " + ld_preload);
@@ -870,6 +911,8 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             synchronized (lock) {
                 pid = -1;
             }
+            // A streamed network game set to "Stream only" is emptied again once it has closed.
+            if (shortcut != null) com.winlator.star.netdrive.NetStream.onGameExit(environment.getContext(), container, shortcut.path);
 
             if (terminationCallback != null)
                 terminationCallback.call(status);

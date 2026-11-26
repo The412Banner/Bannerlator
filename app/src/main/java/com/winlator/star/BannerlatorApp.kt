@@ -97,6 +97,11 @@ class BannerlatorApp : Application() {
             Log.w("BannerlatorApp", "steam prefs init failed", t)
         }
         try {
+            com.winlator.star.sound.UiSoundPacks.init(this)
+        } catch (t: Throwable) {
+            Log.w("BannerlatorApp", "ui sounds init failed", t)
+        }
+        try {
             Thread {
                 try {
                     // Native Rust Steam engine (Phase 0): load libblsteam.so and bind one JNI export

@@ -36,16 +36,16 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
+import com.winlator.star.ui.screens.OutlinedAlertDialog as AlertDialog
 import com.winlator.star.ui.screens.OutlinedAlertDialog
-import androidx.compose.material3.Button
+import com.winlator.star.ui.theme.LabButton as Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.winlator.star.ui.theme.LabTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -78,6 +78,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
+import com.winlator.star.ui.deck.deckShape
 
 class AmazonGamesActivity : ComponentActivity() {
 
@@ -351,11 +352,7 @@ class AmazonGamesActivity : ComponentActivity() {
     // ── Card actions ──────────────────────────────────────────────────────
 
     private fun onCardClick(game: AmazonGame) {
-        if (expandedProductId == game.productId) {
-            openDetailScreen(game)
-        } else {
-            expandedProductId = game.productId
-        }
+        openDetailScreen(game)
     }
 
     private fun onInstallOrLaunch(game: AmazonGame) {
@@ -441,7 +438,13 @@ class AmazonGamesActivity : ComponentActivity() {
 
             var sanitized = game.title.replace("[^a-zA-Z0-9 \\-_]".toRegex(), "").trim()
             if (sanitized.isEmpty()) sanitized = "game_${game.productId.hashCode()}"
-            val installDir = File(File(filesDir, "imagefs/Amazon"), sanitized)
+            // An update reuses the game's folder; a fresh install from this list goes to the default Amazon location.
+            val installDir = prefs!!.getString("amazon_dir_${game.productId}", null)?.takeIf { it.isNotBlank() && File(it).exists() }
+                ?.let { File(it) } ?: run {
+                val locs = StoreInstallLocations.locations(applicationContext, StoreInstallLocations.Store.AMAZON)
+                val def = StoreInstallLocations.defaultId(applicationContext, StoreInstallLocations.Store.AMAZON, locs)
+                File(locs.firstOrNull { it.id == def }?.base ?: File(filesDir, "imagefs/Amazon"), sanitized)
+            }
 
             prefs!!.edit().putString(
                 "amazon_dir_${game.productId}",
@@ -564,7 +567,9 @@ class AmazonGamesActivity : ComponentActivity() {
         val installedDir = prefs!!.getString("amazon_dir_${game.productId}", null)
         if (installedDir == null) return
         lifecycleScope.launch(Dispatchers.IO) {
-            deleteDir(File(installedDir))
+            val refused = StoreShortcutCleanup.keptBySafeDelete(applicationContext, StoreInstallLocations.Store.AMAZON, File(installedDir))
+            val gone = StoreInstallLocations.safeDelete(applicationContext, StoreInstallLocations.Store.AMAZON, File(installedDir))
+            StoreShortcutCleanup.afterDelete(applicationContext, Store.AMAZON, game.productId, installedDir, gone, refused)
             // Purge the FULL native install record via the canonical helper, and clear the DL
             // manager's registry/library row — so uninstalling from the list keeps the detail
             // page and the cross-store Download Manager in sync (previously it left the DL card
@@ -793,7 +798,7 @@ private fun AmazonGamesScreen(
                 onClick = onBack,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 modifier = Modifier.height(40.dp),
-                shape = RoundedCornerShape(8.dp),
+                shape = deckShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
             ) { Text("\u2190", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp) }
 
@@ -809,7 +814,7 @@ private fun AmazonGamesScreen(
                 onClick = onViewModeToggle,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 modifier = Modifier.height(40.dp),
-                shape = RoundedCornerShape(8.dp),
+                shape = deckShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
             ) {
                 Text(
@@ -828,7 +833,7 @@ private fun AmazonGamesScreen(
                     containerColor = if (refreshEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                 ),
                 modifier = Modifier.height(40.dp),
-                shape = RoundedCornerShape(8.dp),
+                shape = deckShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
             ) { Text("\u21BA", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp) }
 
@@ -990,7 +995,7 @@ private fun GameCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant, deckShape(12.dp))
             .clickable(onClick = onCardClick)
             .padding(10.dp),
     ) {
@@ -1007,7 +1012,7 @@ private fun GameCard(
                 contentDescription = null,
                 modifier = Modifier
                     .size(width = 60.dp, height = 60.dp)
-                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp)),
+                    .background(MaterialTheme.colorScheme.surface, deckShape(8.dp)),
                 contentScale = ContentScale.Crop,
             )
 
@@ -1144,7 +1149,7 @@ private fun GameCard(
                     else MaterialTheme.colorScheme.primary,
                 ),
                 modifier = Modifier.fillMaxWidth().height(40.dp),
-                shape = RoundedCornerShape(8.dp),
+                shape = deckShape(8.dp),
             ) {
                 Text(
                     text = when {
@@ -1219,11 +1224,11 @@ private fun GameGridTile(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(deckShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline, deckShape(12.dp))
             .combinedClickable(
-                onClick = onToggleExpansion,
+                onClick = onLongPress,
                 onLongClick = onLongPress,
             ),
     ) {
@@ -1307,7 +1312,7 @@ private fun GameGridTile(
                         else MaterialTheme.colorScheme.primary,
                     ),
                     modifier = Modifier.fillMaxWidth().height(32.dp),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = deckShape(8.dp),
                     contentPadding = PaddingValues(0.dp),
                 ) {
                     Text(

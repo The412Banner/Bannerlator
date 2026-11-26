@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Save
@@ -31,6 +32,7 @@ import com.winlator.star.perf.PerfRevertRegistry
 import com.winlator.star.perf.PerfRootApplier
 import com.winlator.star.perf.PerformanceSettings
 import com.winlator.star.perf.RootManager
+import com.winlator.star.sound.UiSoundPacks
 import com.winlator.star.store.SteamFriendsStore
 import com.winlator.star.store.SteamPrefs
 import com.winlator.star.ui.components.GlobalControllerPrefs
@@ -45,14 +47,16 @@ import java.util.Locale
 // App-wide settings for the Deck Settings tab. Each one reads and writes the same preference the
 // classic screen that owns it uses (Settings, Performance, Input Controls › Device, the Save Manager,
 // Contents, Steam Friends), with the same side effects, and applies the moment it changes (there is
-// nothing to save). What is not ported (storage folders, logs, backups, Steam region, Lossless.dll,
-// the menu button) is one hand-off away.
+// nothing to save). The lists below (categories, handoffs, TARGET_*) are what Lab, the plain Deck and the Classic shell read and must stay as
+// they are; the XMB Settings tab re-files these rows into its own seven tabs (AppSettingsLayout), adds the rows of
+// AppSettingsRows and the page items of AppSettingsExtras, and does not use the hand-offs.
 
 internal object AppSettingsRegistry {
 
     val categories: List<SettingsCategory> = listOf(
         SettingsCategory("app.general", T("General"), T("Start-up screen and updates."), Icons.Filled.Tune),
         SettingsCategory("app.appearance", T("Appearance"), T("Theme, accent colour, size and orientation."), Icons.Filled.Palette),
+        SettingsCategory("app.sounds", T("Sounds"), T("Menu sounds and sound packs."), Icons.Filled.MusicNote),
         SettingsCategory("app.library", T("Games & library"), T("Cover art and the default MIDI sound bank."), Icons.AutoMirrored.Filled.LibraryBooks),
         SettingsCategory("app.performance", T("Performance"), T("Power defaults for every game and translator presets."), Icons.Filled.Speed),
         SettingsCategory("app.network", T("Downloads & network"), T("Store download engines, speed and Steam connection."), Icons.Filled.CloudDownload),
@@ -74,6 +78,8 @@ internal object AppSettingsRegistry {
     const val TARGET_INPUT_CONTROLS = "inputControls"
     const val TARGET_DEFAULTS = "containerDefaults"
     const val TARGET_CONTENTS = "contents"
+    /** The Sound pack row: Lab, Deck and Classic open its own list (installed / available, preview / apply / delete, a pack zip). */
+    const val SOUND_PACK_ID = "app.sounds.pack"
 
     val handoffs: Map<String, List<Handoff>> = mapOf(
         "app.general" to listOf(Handoff(T("Check for updates"), T("Version, release notes and Download & install (classic Settings)."), TARGET_CLASSIC)),
@@ -97,7 +103,63 @@ internal object AppSettingsRegistry {
         "app.advanced" to listOf(Handoff(T("Frame-gen training capture"), T("Contributing captures and the win-fg diagnostic log (classic Settings)."), TARGET_CLASSIC)),
     )
 
-    val defs: List<SettingDef> by lazy { buildDefs() }
+    /** Lab's hand-off targets: "lab:<route>" opens that Lab page, "url:<address>" a web page (DeckAppSettings). */
+    const val TARGET_LAB = "lab:"
+    const val TARGET_URL = "url:"
+
+    /**
+     * Lab's hand-offs: [handoffs] with every classic-Settings one (TARGET_CLASSIC) replaced by a Lab page of its own
+     * (ui/simple/LabSettingsPages.kt, LabPerformancePages.kt), so Lab never opens the classic Settings screen. The ones that
+     * already open a Lab page (appearance, logs, controls, contents, defaults, About) stay as they are. The download engines
+     * and the Steam region are rows of [labDefs] instead.
+     */
+    val labHandoffs: Map<String, List<Handoff>> by lazy {
+        fun lab(label: String, hint: String, route: String) = Handoff(label, hint, TARGET_LAB + route)
+        val r = com.winlator.star.ui.simple.LabSettingsRoutes
+        mapOf(
+            "app.general" to listOf(lab(T("Updates"), T("Installed and latest version, what's new, Download & install, Check for updates."), r.UPDATES)),
+            "app.appearance" to handoffs.getValue("app.appearance"),
+            "app.library" to listOf(
+                lab(T("Steam library locations"), T("Games folders on shared storage or an SD card."), r.STEAM_LIBRARIES),
+                lab(T("MIDI sound banks"), T("Add or remove .sf2 sound banks."), r.SOUND_BANKS),
+                Handoff(T("Get a SteamGridDB API key"), T("Opens steamgriddb.com."), TARGET_URL + "https://www.steamgriddb.com/profile/preferences/api"),
+            ),
+            "app.performance" to listOf(
+                lab(T("Root controls and heat safety"), T("CPU governor and frequency locks, free memory and the temperature watchdog."), r.PERFORMANCE),
+                lab(T("Lossless.dll for frame generation"), T("Detect, import or remove the DLL LSFG Native needs."), r.LOSSLESS),
+                lab(T("Translator presets"), T("New, edit, duplicate, remove, export or import Box64 and FEX presets."), r.PRESETS),
+            ) + handoffs.getValue("app.performance").filter { it.target == TARGET_DEFAULTS },
+            "app.network" to listOf(lab(T("Steam connection tests"), T("Test regions and the network; pick a datacenter by its ping."), r.STEAM_CONNECTION)),
+            "app.storage" to listOf(lab(T("Storage and folders"), T("Space used, the app data and shortcut export folders, and the base system (ImageFS)."), r.STORAGE)),
+            "app.logs" to handoffs.getValue("app.logs"),
+            "app.backup" to listOf(lab(T("Back up or restore all app data"), T("Containers, settings and prefix in one file."), r.BACKUP)),
+            "app.controllers" to handoffs.getValue("app.controllers"),
+            "app.contents" to handoffs.getValue("app.contents"),
+            "app.about" to handoffs.getValue("app.about"),
+            "app.advanced" to listOf(lab(T("Frame-gen training capture"), T("Contributing captures and the win-fg diagnostic log."), r.FG_CAPTURE)),
+        )
+    }
+
+    /**
+     * Lab's rows: [legacyDefs], File Provider with Classic's "?" text as its hint, and in Downloads & network the Steam
+     * connection region and the download engine rows (the XMB's AppSettingsRows, which Classic has in its Log Manager).
+     */
+    val labDefs: List<SettingDef> by lazy {
+        legacyDefs.map { d ->
+            if (d.id == "app.advanced.fileProvider") d.copyWith(hint = T("Lets Android's file manager open the app's data. Takes effect after the app restarts."))
+            else if (d.id == "app.general.landing") labLanding()
+            else d
+        } + AppSettingsRows.defs()
+            .filter { it.category == AppSettingsRows.CAT_STEAM || it.category == AppSettingsRows.CAT_DOWNLOADS }
+            .map { it.copyWith(category = "app.network") }
+    }
+
+    /** The rows of the categories above: what the plain Deck, Lab and Classic list, exactly as before. */
+    val legacyDefs: List<SettingDef> by lazy { buildDefs() }
+
+    // [legacyDefs] plus the rows only the XMB Settings tab has: they sit in "app.x.*" categories that are not in [categories],
+    // and AppSettingsLayout files all of them into its tabs. Only the XMB editor is given this list.
+    val defs: List<SettingDef> by lazy { legacyDefs + AppSettingsRows.defs() }
 
     private fun prefs(c: Context) = PreferenceManager.getDefaultSharedPreferences(c)
     private fun onOff(b: Boolean) = if (b) "1" else "0"
@@ -119,7 +181,49 @@ internal object AppSettingsRegistry {
     private fun toggle(id: String, category: String, group: String, label: String, level: SettingLevel, key: String, default: Boolean, hint: String? = null) =
         app(id, category, group, label, level, hint = hint, tech = key, control = { Control.Toggle }, binding = prefBool(key, default))
 
+    /**
+     * Lab's "Open the app on": its own pages, Home, Library or Containers (user 11-15: "Games" opened Home). The stored
+     * value is the one Classic uses: "games" is the Library (Classic's games list), "containers" the containers, and
+     * "home" (Lab only; Classic opens its games list for it) or never set is Home. Big Picture is not offered: Lab has none.
+     */
+    private fun labLanding() = app(
+        "app.general.landing", "app.general", T("Start-up"), T("Open the app on"), SIMPLE,
+        tech = T("default_landing_screen"),
+        control = { Control.Segmented(listOf(Opt("home", T("Home")), Opt("games", T("Library")), Opt("containers", T("Containers")))) },
+        binding = AppBinding(
+            get = { c ->
+                val p = prefs(c)
+                when (p.getString("default_landing_screen", null)) {
+                    "containers" -> "containers"
+                    "games" -> if (p.getBoolean("enable_big_picture_mode", false)) "home" else "games"
+                    else -> "home"
+                }
+            },
+            set = { c, v -> prefs(c).edit().putBoolean("enable_big_picture_mode", false).putString("default_landing_screen", v).apply() },
+        ),
+    )
+
+    private fun soundPackOptions(): List<Opt> = UiSoundPacks.choices().map { (id, label) -> Opt(id, label) }
+
     private fun buildDefs(): List<SettingDef> = listOf(
+        app(
+            "app.sounds.on", "app.sounds", T("Menu sounds"), T("Menu sounds"), SIMPLE, tech = UiSoundPacks.PREF_ON,
+            control = { Control.Toggle },
+            binding = AppBinding({ _ -> onOff(UiSoundPacks.state.value.on) }, { c, v -> UiSoundPacks.setOn(c, v == "1") }),
+        ),
+        app(
+            "app.sounds.volume", "app.sounds", T("Menu sounds"), T("Volume"), SIMPLE, tech = UiSoundPacks.PREF_VOLUME,
+            control = { Control.Slider(0f, 100f, 5f, { "${it.toInt()}%" }, { it.toInt().toString() }) },
+            binding = AppBinding(
+                { _ -> UiSoundPacks.state.value.volume.toString() },
+                { c, v -> UiSoundPacks.setVolume(c, v.toFloatOrNull()?.toInt() ?: UiSoundPacks.state.value.volume) },
+            ),
+        ),
+        app(
+            "app.sounds.pack", "app.sounds", T("Menu sounds"), T("Sound pack"), SIMPLE, tech = UiSoundPacks.PREF_PACK,
+            control = { Control.Select(soundPackOptions()) },
+            binding = AppBinding({ _ -> UiSoundPacks.state.value.selected }, { c, v -> UiSoundPacks.select(c, v) }),
+        ),
         app(
             "app.general.landing", "app.general", T("Start-up"), T("Open the app on"), SIMPLE,
             hint = T("In the Deck interface, Games and Big Picture both open on Home."),

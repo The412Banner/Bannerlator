@@ -106,6 +106,12 @@ object GameFolderScanner {
         }
     }
 
+    /** [folder] as ONE game (its subfolders are part of it, unlike [scan]): its best exe, or null when it has none. */
+    fun gameIn(folder: File, existingExePaths: Set<String> = emptySet()): Candidate? =
+        if (!folder.isDirectory) null else runCatching { candidateFor(folder, existingExePaths) }
+            .onFailure { Log.w(TAG, "scan failed for ${folder.name}", it) }
+            .getOrNull()
+
     private fun candidateFor(folder: File, existingExePaths: Set<String>): Candidate? {
         val declared = declaredExes(folder).map { canonical(it) }.toSet()
         val scored = collectExes(folder)
@@ -197,11 +203,14 @@ object GameFolderScanner {
      * How likely [exe] is to be the game in [folder]. Relative only — the numbers exist to rank
      * candidates against each other, and to decide whether anything won clearly enough to trust.
      */
-    private fun scoreExe(exe: File, folder: File): Int {
+    private fun scoreExe(exe: File, folder: File): Int =
+        scoreOf(exe.nameWithoutExtension, exe.absolutePath.lowercase(), depthBelow(folder, exe), exe.length(), folder.name)
+
+    /** [scoreExe] from the facts alone: the exe's base name, its path (lowercase), folders below the game folder, size. */
+    private fun scoreOf(base: String, path: String, depth: Int, size: Long, folderName: String): Int {
         var score = 0
-        val base = exe.nameWithoutExtension
         val exeKey = key(base)
-        val folderKey = key(folder.name)
+        val folderKey = key(folderName)
 
         // The exe named after its folder is the single strongest signal.
         if (exeKey.isNotEmpty() && folderKey.isNotEmpty()) {
@@ -212,7 +221,6 @@ object GameFolderScanner {
         }
         // Unreal ships as <Game>-Win64-Shipping.exe under Binaries/Win64.
         if (base.endsWith("-Win64-Shipping", true) || base.endsWith("-Win32-Shipping", true)) score += 70
-        val path = exe.absolutePath.lowercase()
         if (path.contains("/binaries/win64") || path.contains("/binaries/win32")) score += 30
         if (path.contains("/bin/") || path.contains("/bin64/")) score += 10
 
@@ -222,10 +230,37 @@ object GameFolderScanner {
         if (GameIdentifier.isJunkPeName(base)) score -= 30
 
         // Shallower is more likely to be the entry point; big binaries beat small helpers.
-        score -= depthBelow(folder, exe) * 8
-        score += (exe.length() / (8L * 1024 * 1024)).toInt().coerceAtMost(30)
+        score -= depth * 8
+        score += (size / (8L * 1024 * 1024)).toInt().coerceAtMost(30)
         return score
     }
+
+    /**
+     * The exes of a game folder known only from a listing (a network drive), best first, by the same rules as a
+     * local scan: [exes] are paths relative to the folder (with '/') and their sizes; [folderName] is its name.
+     */
+    fun rankListed(folderName: String, exes: List<Pair<String, Long>>): List<String> =
+        exes.asSequence()
+            .filter { (rel, _) -> rel.endsWith(".exe", ignoreCase = true) }
+            .filter { (rel, _) -> !JUNK_EXE_RE.matches(rel.substringAfterLast('/').substringBeforeLast('.')) }
+            .filter { (rel, _) ->
+                val dirs = rel.split('/').dropLast(1)
+                dirs.size <= MAX_DEPTH && dirs.indices.none { i ->
+                    val name = dirs[i].lowercase().trim()
+                    val sub = dirs.take(i + 1).joinToString("/").lowercase()
+                    name in SKIP_DIRS || SKIP_DIR_PREFIX.any { name.startsWith(it) } || SKIP_PATHS.any { sub == it || sub.endsWith("/$it") }
+                }
+            }
+            .map { (rel, size) ->
+                val base = rel.substringAfterLast('/').substringBeforeLast('.')
+                rel to scoreOf(base, "/" + rel.lowercase(), rel.count { it == '/' }, size, folderName)
+            }
+            .sortedWith(compareByDescending<Pair<String, Int>> { it.second }.thenBy { it.first.lowercase() })
+            .map { it.first }
+            .toList()
+
+    /** True for an exe name that is never the game (installers, uninstallers, crash reporters, redists…). */
+    fun isJunkExeName(base: String): Boolean = JUNK_EXE_RE.matches(base)
 
     private fun depthBelow(folder: File, exe: File): Int {
         val f = folder.absolutePath.trimEnd('/')

@@ -36,7 +36,7 @@ import com.winlator.star.ui.DeckDialogBars
 /**
  * Holds info about one downloadable vegas release from GitHub.
  */
-private data class VegasRelease(
+internal data class VegasRelease(
     val tagName: String,
     val displayName: String,
     val wcpAssetUrl: String?,
@@ -72,49 +72,9 @@ fun VegasDownloadSheet(
         isLoading = true
         errorMsg = null
         releases = emptyList()
-        val json = withContext(Dispatchers.IO) {
-            Downloader.downloadString("https://api.github.com/repos/isygold/vegas-releases/releases")
-        }
-        if (json != null) {
-            try {
-                val arr = JSONArray(json)
-                val list = mutableListOf<VegasRelease>()
-                for (i in 0 until arr.length()) {
-                    val rel = arr.getJSONObject(i)
-                    val tag = rel.getString("tag_name")
-                    val name = rel.optString("name", tag)
-                    val body = rel.optString("body", "").trim().takeIf { it.isNotBlank() }
-                    var wcpUrl: String? = null
-                    var zipUrl: String? = null
-                    var confUrl: String? = null
-                    val assets = rel.optJSONArray("assets")
-                    if (assets != null) {
-                        for (j in 0 until assets.length()) {
-                            val a = assets.getJSONObject(j)
-                            val aname = a.getString("name")
-                            if (aname.startsWith("vegas-") && aname.endsWith(".wcp")) {
-                                wcpUrl = a.getString("browser_download_url")
-                            } else if (aname.startsWith("dxvk-") && aname.endsWith(".zip")) {
-                                zipUrl = a.getString("browser_download_url")
-                            } else if (aname.endsWith(".conf") &&
-                                       (aname.startsWith("vegas-config-") || aname == "dxvk.conf")) {
-                                // Config is shipped ALONGSIDE the wcp (release asset), never inside it
-                                confUrl = a.getString("browser_download_url")
-                            }
-                        }
-                    }
-                    if (wcpUrl != null) {
-                        list.add(VegasRelease(tag, name, wcpUrl, zipUrl, confUrl, body))
-                    }
-                }
-                releases = list
-                if (list.isEmpty()) errorMsg = "No releases found — check GitHub status or retry."
-            } catch (e: Exception) {
-                errorMsg = "Failed to parse releases: ${e.message} — tap Retry."
-            }
-        } else {
-            errorMsg = "Failed to fetch releases from GitHub (rate limit 60/h or no network) — tap Retry."
-        }
+        val (list, err) = withContext(Dispatchers.IO) { fetchVegasReleases() }
+        releases = list
+        errorMsg = err
         isLoading = false
     }
 
@@ -235,35 +195,8 @@ Column(modifier = Modifier.weight(1f)) {
                                                         // <contentDir>/VEGAS/configs/. Record provenance (release
                                                         // tag + real asset name) in the .provenance.json sidecar so
                                                         // the stock prober never has to guess the asset shape.
-                                                        val confUrl = release.configAssetUrl
-                                                        val confName = profile?.verName
                                                         scope.launch {
-                                                            withContext(Dispatchers.IO) {
-                                                                if (confUrl != null && confName != null) {
-                                                                    val assetName = confUrl.substringAfterLast('/', confUrl)
-                                                                    val vegasDir = ContentsManager.getContentTypeDir(
-                                                                        context, ContentProfile.ContentType.CONTENT_TYPE_VEGAS)
-                                                                    val confDir = File(vegasDir, "configs")
-                                                                    if (!confDir.exists()) confDir.mkdirs()
-                                                                    val parked = File(confDir, "$confName.conf")
-                                                                    if (Downloader.downloadFile(confUrl, parked, null)) {
-                                                                        recordStockProvenance(
-                                                                            confDir, confName,
-                                                                            release.tagName, assetName, confUrl,
-                                                                        )
-                                                                    }
-                                                                } else if (confName != null) {
-                                                                    // Release ships NO config asset (repo reality: 2 of 5 builds
-                                                                    // none) — clear any stale parked config from an earlier tag of
-                                                                    // the same verName so the prober never surfaces a baseline
-                                                                    // that does not belong to the installed build.
-                                                                    val vegasDir = ContentsManager.getContentTypeDir(
-                                                                        context, ContentProfile.ContentType.CONTENT_TYPE_VEGAS)
-                                                                    val confDir = File(vegasDir, "configs")
-                                                                    File(confDir, "$confName.conf").delete()
-                                                                    removeStockProvenance(confDir, confName)
-                                                                }
-                                                            }
+                                                            withContext(Dispatchers.IO) { parkVegasReleaseConfig(context, release, profile?.verName) }
                                                             onContentChanged()
                                                             onDismiss()
                                                         }
@@ -320,6 +253,82 @@ Column(modifier = Modifier.weight(1f)) {
     }
 }
 
+/**
+ * The VEGAS releases of isygold/vegas-releases that ship a .wcp, and the message to show when there are none
+ * (no network, the GitHub limit, a feed that could not be read). Blocking (network): call off the main thread.
+ */
+internal fun fetchVegasReleases(): Pair<List<VegasRelease>, String?> {
+    val json = Downloader.downloadString("https://api.github.com/repos/isygold/vegas-releases/releases")
+        ?: return emptyList<VegasRelease>() to "Failed to fetch releases from GitHub (rate limit 60/h or no network) — tap Retry."
+    return try {
+        val arr = JSONArray(json)
+        val list = mutableListOf<VegasRelease>()
+        for (i in 0 until arr.length()) {
+            val rel = arr.getJSONObject(i)
+            val tag = rel.getString("tag_name")
+            val name = rel.optString("name", tag)
+            val body = rel.optString("body", "").trim().takeIf { it.isNotBlank() }
+            var wcpUrl: String? = null
+            var zipUrl: String? = null
+            var confUrl: String? = null
+            val assets = rel.optJSONArray("assets")
+            if (assets != null) {
+                for (j in 0 until assets.length()) {
+                    val a = assets.getJSONObject(j)
+                    val aname = a.getString("name")
+                    if (aname.startsWith("vegas-") && aname.endsWith(".wcp")) {
+                        wcpUrl = a.getString("browser_download_url")
+                    } else if (aname.startsWith("dxvk-") && aname.endsWith(".zip")) {
+                        zipUrl = a.getString("browser_download_url")
+                    } else if (aname.endsWith(".conf") &&
+                               (aname.startsWith("vegas-config-") || aname == "dxvk.conf")) {
+                        // Config is shipped ALONGSIDE the wcp (release asset), never inside it
+                        confUrl = a.getString("browser_download_url")
+                    }
+                }
+            }
+            if (wcpUrl != null) {
+                list.add(VegasRelease(tag, name, wcpUrl, zipUrl, confUrl, body))
+            }
+        }
+        list to (if (list.isEmpty()) "No releases found — check GitHub status or retry." else null)
+    } catch (e: Exception) {
+        emptyList<VegasRelease>() to "Failed to parse releases: ${e.message} — tap Retry."
+    }
+}
+
+/**
+ * After a VEGAS build from [release] installed as [confName]: parks the release's stock config next to it, or
+ * clears a stale one when the release ships none. Blocking (network, files): call off the main thread.
+ */
+internal fun parkVegasReleaseConfig(context: Context, release: VegasRelease, confName: String?) {
+    val confUrl = release.configAssetUrl
+    if (confUrl != null && confName != null) {
+        val assetName = confUrl.substringAfterLast('/', confUrl)
+        val vegasDir = ContentsManager.getContentTypeDir(
+            context, ContentProfile.ContentType.CONTENT_TYPE_VEGAS)
+        val confDir = File(vegasDir, "configs")
+        if (!confDir.exists()) confDir.mkdirs()
+        val parked = File(confDir, "$confName.conf")
+        if (Downloader.downloadFile(confUrl, parked, null)) {
+            recordStockProvenance(
+                confDir, confName,
+                release.tagName, assetName, confUrl,
+            )
+        }
+    } else if (confName != null) {
+        // Release ships NO config asset (repo reality: 2 of 5 builds
+        // none) — clear any stale parked config from an earlier tag of
+        // the same verName so the prober never surfaces a baseline
+        // that does not belong to the installed build.
+        val vegasDir = ContentsManager.getContentTypeDir(
+            context, ContentProfile.ContentType.CONTENT_TYPE_VEGAS)
+        val confDir = File(vegasDir, "configs")
+        File(confDir, "$confName.conf").delete()
+        removeStockProvenance(confDir, confName)
+    }
+}
+
 /** configs/.provenance.json — verName -> {tag, assetName, url, parkedAt}. Written by the
  *  downloader at park time so the stock prober (DXVKConfigDialog.loadVegasStockSources)
  *  never has to guess the asset shape from the filename. */
@@ -362,7 +371,7 @@ private fun removeStockProvenance(confDir: File, verName: String) {
 }
 
 /** Download a .wcp file to cache dir and return a content:// URI. */
-private fun downloadWcp(context: Context, url: String, tag: String, onProgress: ((Float) -> Unit)? = null): Uri? {
+internal fun downloadWcp(context: Context, url: String, tag: String, onProgress: ((Float) -> Unit)? = null): Uri? {
     val f = File(context.cacheDir, "vegas_${tag}.wcp")
     val listener = if (onProgress != null) object : Downloader.ProgressListener {
         override fun onProgress(fraction: Float) { onProgress(fraction) }
@@ -372,7 +381,7 @@ private fun downloadWcp(context: Context, url: String, tag: String, onProgress: 
 
 /** Install a .wcp content package via ContentsManager; reports the installed profile
  *  (needed to name the alongside config file after the package's verName). */
-private fun installWcp(
+internal fun installWcp(
     context: Context,
     cm: ContentsManager,
     uri: Uri,

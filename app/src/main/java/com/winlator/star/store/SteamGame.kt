@@ -54,6 +54,9 @@ data class SteamGame(
 
     /** Epoch seconds of the last review fetch; 0 = never fetched. */
     val reviewUpdated: Long = 0L,
+
+    /** Steam's untranslated name when [name] is a translated one, else ""; the library search matches both. */
+    val englishName: String = "",
 ) {
     /** Store header image URL — available for all apps, no hash needed. */
     val headerUrl: String
@@ -82,6 +85,7 @@ data class SteamGame(
                 developer      = row.developer,
                 metacriticScore = row.metacriticScore,
                 genres         = row.genres,
+                englishName    = row.englishName,
             )
         }
     }

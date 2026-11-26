@@ -52,6 +52,13 @@ object SteamLibraryImport {
     fun isImported(ctx: Context, appId: Int): Boolean = idSet(ctx, IMPORTED_KEY).contains(appId.toString())
 
     /**
+     * Records [appId] as a game whose folder the user brought ([SteamFolderAdopt]): like an imported game,
+     * uninstalling it keeps the folder. Never throws.
+     */
+    @JvmStatic
+    fun markImported(ctx: Context, appId: Int) = editSet(ctx, IMPORTED_KEY) { it.add(appId.toString()) }
+
+    /**
      * Uninstall bookkeeping for an imported game: forgets that it was imported and keeps the import from
      * marking it installed again (the folder stays on disk). The caller still marks it uninstalled. Never throws.
      */

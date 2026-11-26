@@ -81,7 +81,7 @@ import java.io.File
 
 /** The community calls ShortcutsViewModel makes for the sheet, on the same lower-level APIs. BLOCKING unless suspend. */
 private object XmbCommunityData {
-    // Same tie rule as the ViewModel: scores within this of the top one are a genuine tie (issue #167).
+    // Same tie rule as the ViewModel: scores within this of the top one are a genuine tie.
     private const val TIE_EPSILON = 1e-6
     private const val MAX_TIE_ALTERNATIVES = 6
 
@@ -283,6 +283,9 @@ private object XmbCommunityData {
 private const val K_MATCHING = "matching"
 private const val K_CFG_LOADING = "cfgloading"
 
+/** Where exported configs are saved and where the import browser starts, under Download/. */
+private const val XMB_CONFIGS_DIR = "bannerlator/game-configs"
+
 private fun xmbStoreLabel(isSteam: Boolean) = if (isSteam) "STEAM" else "TITLE"
 private fun xmbStoreIcon(isSteam: Boolean): ImageVector = if (isSteam) Icons.Filled.SportsEsports else Icons.Filled.Public
 
@@ -299,6 +302,28 @@ private fun xmbLabelValue(key: String, label: String, value: String, icon: Image
 /** Bulleted lines ("• …"), each wrapped if long; only the first line of the block carries [icon]. */
 private fun xmbBullets(key: String, items: List<String>, icon: ImageVector, context: Context): List<XmbRow> =
     items.flatMapIndexed { i, s -> XmbTools.para("$key$i", "• $s", if (i == 0) icon else XmbTools.blankIcon, context) }
+
+/** The blocks a pre-apply diff and an apply result share: components to install, GPU drivers to get, heads-ups. */
+private fun MutableList<XmbRow>.addApplyNotes(r: CommunityConfigApply.ConfigApplyResult, context: Context) {
+    if (r.missingComponents.isNotEmpty()) {
+        add(XmbRow.Header("needs", "Needs a component"))
+        addAll(xmbBullets("mc", r.missingComponents.map { it.label }, Icons.Filled.Download, context))
+    }
+    if (r.missingDrivers.isNotEmpty()) {
+        add(XmbRow.Header("drivers", "Needs a GPU driver"))
+        addAll(
+            xmbBullets(
+                "md",
+                r.missingDrivers.map { md -> "Turnip ${md.wanted}" + (md.current?.let { c -> " (you have $c)" } ?: "") },
+                Icons.Filled.Memory, context,
+            )
+        )
+    }
+    if (r.advisories.isNotEmpty()) {
+        add(XmbRow.Header("headsup", "Heads up"))
+        addAll(xmbBullets("adv", r.advisories, Icons.Filled.Warning, context))
+    }
+}
 
 /**
  * "Community configs" for one game — the sheet as a column. Your-config actions first (as in the
@@ -352,7 +377,7 @@ internal fun xmbCommunityConfigsMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu
         }
     }
 
-    // A tie or search pick: remembered per shortcut (issue #167), then the same suggest view.
+    // A tie or search pick: remembered per shortcut, then the same suggest view.
     fun pickGame(g: CanonicalGame) {
         xmb.scope.launch(Dispatchers.IO) {
             s.putExtra("communityGameIdentity", g.identity)
@@ -445,7 +470,7 @@ internal fun xmbCommunityConfigsMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu
 
     fun importBrowser(): XmbMenu {
         val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        val start = File(downloads, "bannerlator/game-configs").takeIf { it.isDirectory } ?: downloads
+        val start = File(downloads, XMB_CONFIGS_DIR).takeIf { it.isDirectory } ?: downloads
         return xmbFileBrowserMenu(
             xmb, "Select a config .json", start, XmbTools.storageRoots(ctx, null),
             accept = { it.isFile && it.name.lowercase().endsWith(".json") },
@@ -714,22 +739,7 @@ private fun xmbCommunityDetailMenu(xmb: XmbScope, s: Shortcut, pick: CommunityPi
                         rows += XmbRow.Header("would", "Would change")
                         rows += xmbBullets("ch", pre.changed, Icons.Filled.Tune, ctx)
                     }
-                    if (pre.missingComponents.isNotEmpty()) {
-                        rows += XmbRow.Header("needs", "Needs a component")
-                        rows += xmbBullets("mc", pre.missingComponents.map { it.label }, Icons.Filled.Download, ctx)
-                    }
-                    if (pre.missingDrivers.isNotEmpty()) {
-                        rows += XmbRow.Header("drivers", "Needs a GPU driver")
-                        rows += xmbBullets(
-                            "md",
-                            pre.missingDrivers.map { md -> "Turnip ${md.wanted}" + (md.current?.let { c -> " (you have $c)" } ?: "") },
-                            Icons.Filled.Memory, ctx,
-                        )
-                    }
-                    if (pre.advisories.isNotEmpty()) {
-                        rows += XmbRow.Header("headsup", "Heads up")
-                        rows += xmbBullets("adv", pre.advisories, Icons.Filled.Warning, ctx)
-                    }
+                    rows.addApplyNotes(pre, ctx)
                 }
 
                 // Live social layer — only when a worker /list entry matched this file.
@@ -832,24 +842,7 @@ private fun xmbCommunityApplyMenu(
                     add(XmbRow.Header("changed", "Changed"))
                     addAll(xmbBullets("ch", r.changed, Icons.Filled.Tune, ctx))
                 }
-                if (r.missingComponents.isNotEmpty()) {
-                    add(XmbRow.Header("needs", "Needs a component"))
-                    addAll(xmbBullets("mc", r.missingComponents.map { it.label }, Icons.Filled.Download, ctx))
-                }
-                if (r.missingDrivers.isNotEmpty()) {
-                    add(XmbRow.Header("drivers", "Needs a GPU driver"))
-                    addAll(
-                        xmbBullets(
-                            "md",
-                            r.missingDrivers.map { md -> "Turnip ${md.wanted}" + (md.current?.let { c -> " (you have $c)" } ?: "") },
-                            Icons.Filled.Memory, ctx,
-                        )
-                    )
-                }
-                if (r.advisories.isNotEmpty()) {
-                    add(XmbRow.Header("headsup", "Heads up"))
-                    addAll(xmbBullets("adv", r.advisories, Icons.Filled.Warning, ctx))
-                }
+                addApplyNotes(r, ctx)
             }
         }
     }
@@ -867,7 +860,7 @@ private fun xmbCommunityExportMenu(xmb: XmbScope, res: ShortcutExporter.ExportRe
                 try {
                     val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
                     // Exported configs live under Download/bannerlator/game-configs/ (created if absent).
-                    val exportDir = File(downloads, "bannerlator/game-configs")
+                    val exportDir = File(downloads, XMB_CONFIGS_DIR)
                     if (!exportDir.exists()) exportDir.mkdirs()
                     val out = File(exportDir, res.fileName)
                     out.writeText(res.json)

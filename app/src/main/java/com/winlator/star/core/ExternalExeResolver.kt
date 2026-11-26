@@ -4,6 +4,8 @@ import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
@@ -172,6 +174,26 @@ object ExternalExeResolver {
         }
         info.displayName?.let { out += Candidate("$PRIMARY_ROOT/Download/$it", weak = true) }
         return out
+    }
+
+    /**
+     * The folder a tree Uri picked through Android's Downloads entry stands for: `downloads` is the
+     * Download folder, `raw:<path>` the path itself, `msd:<id>` a MediaStore row of a folder in it.
+     * Null for other providers and for ids of any other shape.
+     */
+    @JvmStatic
+    fun downloadsFolderPath(context: Context?, uri: Uri, treeDocId: String): String? {
+        if (uri.authority != DOWNLOADS_DOCS) return null
+        return when {
+            treeDocId == "downloads" -> Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path
+            treeDocId.startsWith("raw:") -> treeDocId.removePrefix("raw:").takeIf { it.startsWith("/") }
+            context != null && treeDocId.startsWith("msd:") -> treeDocId.removePrefix("msd:").toLongOrNull()?.let { id ->
+                (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+                    queryDataColumn(context, MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL, id)) else null)
+                    ?: queryDataColumn(context, ContentUris.withAppendedId(MediaStore.Files.getContentUri("external"), id))
+            }
+            else -> null
+        }
     }
 
     /** Media provider ids look like `image:42` / `video:42` / `document:42`; the row is in MediaStore.Files. */

@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.key
-import com.winlator.star.core.HttpUtils
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Edit
@@ -94,6 +93,8 @@ import com.winlator.star.contents.DriverInstaller
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.core.GameSaveBackup
+import com.winlator.star.inputcontrols.CommunityProfiles
+import com.winlator.star.inputcontrols.CommunitySection
 import com.winlator.star.inputcontrols.ControlsProfile
 import com.winlator.star.inputcontrols.ExternalController
 import com.winlator.star.inputcontrols.InputControlsManager
@@ -155,7 +156,10 @@ internal fun OnResume(action: () -> Unit) {
     }
 }
 
-internal fun toast(ctx: android.content.Context, text: String) = Toast.makeText(ctx, text, Toast.LENGTH_SHORT).show()
+internal fun toast(ctx: android.content.Context, text: String) {
+    com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.TOAST)
+    Toast.makeText(ctx, text, Toast.LENGTH_SHORT).show()
+}
 
 /** A name to type (a new controls profile, a rename). */
 @Composable
@@ -172,7 +176,7 @@ private fun NameDialog(title: String, initial: String, onDismiss: () -> Unit, on
 
 // ───────────────────────────── Tools ─────────────────────────────
 
-/** Tools: the file manager, save backups, logs, wrappers and drivers, and the account, About and help. */
+/** Tools: the file manager, save backups, Winlator's saves, logs, wrappers and drivers, and the account, About and help. */
 @Composable
 internal fun SimpleToolsPage(onNavigate: (String) -> Unit, onBack: () -> Unit, onMyAccount: () -> Unit, onAbout: () -> Unit) {
     val context = LocalContext.current
@@ -188,8 +192,9 @@ internal fun SimpleToolsPage(onNavigate: (String) -> Unit, onBack: () -> Unit, o
                 entries = listOf(
                     MenuEntry("files", L("File manager"), L("Internal storage, SD card and every container's drives"), icon = Icons.Filled.FolderOpen, onA = { onNavigate(SimpleRoutes.FILES) }),
                     MenuEntry("saves", L("Save Manager"), L("Back up, restore and sync game saves"), icon = Icons.Filled.Save, onA = { onNavigate(SimpleRoutes.SAVES) }),
+                    MenuEntry("winsaves", L("Winlator saves"), L("Save slots kept with a container"), icon = Icons.Filled.Inventory2, onA = { onNavigate(LabToolRoutes.WINLATOR_SAVES) }),
                     MenuEntry("logs", L("Game logs"), L("What each game printed while it ran"), icon = Icons.Filled.Description, onA = { onNavigate(SimpleRoutes.LOGS) }),
-                    MenuEntry("wrappers", L("Wrappers"), L("Graphics wrappers"), icon = Icons.Filled.Layers, onA = { onNavigate(Screen.Wrappers.route) }),
+                    MenuEntry("wrappers", L("Wrappers"), L("Graphics wrappers"), icon = Icons.Filled.Layers, onA = { onNavigate(LabParityRoutes.WRAPPERS) }),
                     MenuEntry("drivers", L("GPU drivers"), L("Turnip and Qualcomm drivers"), icon = Icons.Filled.Memory, onA = { onNavigate(SimpleRoutes.contents("installed")) }),
                 ),
             ),
@@ -235,9 +240,9 @@ internal fun NavGraphBuilder.simpleRoutes(
         LabGameDetailsPage(path = e.arguments?.getString("path").orEmpty(), tab = e.arguments?.getInt("tab") ?: 0, onNavigate = open, onBack = back)
     }
     composable(SimpleRoutes.TOOLS) { SimpleToolsPage(onNavigate = open, onBack = back, onMyAccount = onMyAccount, onAbout = onAbout) }
-    composable(SimpleRoutes.FILES) { FileManagerScreen() }
+    composable(SimpleRoutes.FILES) { LabFileManagerPage(onBack = back) }
     composable(SimpleRoutes.SAVES) { SaveManagerScreen(onBack = back, lab = AppThemeState.simpleLook) }
-    composable(SimpleRoutes.LOGS) { LogManagerScreen(onClose = back) }
+    composable(SimpleRoutes.LOGS) { LabLogManagerPage(onOpen = open, onBack = back) }
     composable(SimpleRoutes.CONTAINERS) { SimpleContainersPage(onNavigate = open, onBack = back) }
     composable(SimpleRoutes.COMPONENT_SOURCE, arguments = listOf(navArgument("i") { type = NavType.IntType; defaultValue = 0 })) { e ->
         SimpleComponentSourcePage(index = e.arguments?.getInt("i") ?: 0, onBack = back)
@@ -248,6 +253,7 @@ internal fun NavGraphBuilder.simpleRoutes(
     }
     composable(SimpleRoutes.CONTROLS) { SimpleControlsPage(onBack = back) }
     composable(SimpleRoutes.APPEARANCE) { SimpleAppearancePage(onBack = back) }
+    labParityRoutes(open, back)
 }
 
 // ───────────────────────────── Appearance ─────────────────────────────
@@ -391,7 +397,7 @@ internal fun displayNameOf(ctx: android.content.Context, uri: Uri): String =
 @Composable
 internal fun SimpleControlsPage(onBack: () -> Unit) {
     // Classic's Controls screen as Lab lists: the same four tabs (On-screen, Controller, Assign, Device) on the same
-    // data (InputControlsManager, the profile's controllers); Assign and Device are Classic's own sections.
+    // data (InputControlsManager, the profile's controllers); Assign and Device are Lab rows (rememberLabControlsExtra).
     val context = LocalContext.current
     val manager = remember { InputControlsManager(context) }
     var tick by remember { mutableIntStateOf(0) }
@@ -412,6 +418,14 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
     var selId by androidx.compose.runtime.saveable.rememberSaveable { mutableIntStateOf(-1) }
     val sel = profiles.firstOrNull { it.id == selId } ?: profiles.firstOrNull()
     val layouts = remember(tick) { profiles.associate { it.id to runCatching { it.hasElementsOnDisk() }.getOrDefault(false) } }
+    // Profiles that turn a physical controller's buttons/sticks into keys or mouse.
+    val padMaps = remember(tick) {
+        profiles.associate { p ->
+            p.id to runCatching {
+                p.controllers.any { c -> (0 until c.controllerBindingCount).any { i -> c.getControllerBindingAt(i).binding.let { it.isKeyboard || it.isMouse } } }
+            }.getOrDefault(false)
+        }
+    }
     // As Classic: the profile's saved controllers plus the connected ones, the Default template on its own row.
     val loaded = remember(tick, sel?.id) { runCatching { sel?.loadControllers()?.toList() }.getOrNull().orEmpty() }
     val controllers = remember(tick, sel?.id) {
@@ -424,7 +438,7 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
     var renaming by remember { mutableStateOf<ControlsProfile?>(null) }
     var testOpen by remember { mutableStateOf(false) }
     // The online list, kept once it loaded; a failed fetch leaves it unset so opening it again retries.
-    var community by remember { mutableStateOf<List<String>?>(null) }
+    var community by remember { mutableStateOf<List<CommunitySection>?>(null) }
     var communityLoading by remember { mutableStateOf(false) }
     var communityOpen by remember { mutableStateOf(false) }
     fun importFrom(uri: Uri) {
@@ -440,9 +454,14 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
         importFrom(uri)
     }
     val systemImporter = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) importFrom(uri) }
-    fun editLayout(p: ControlsProfile) = context.startActivity(Intent(context, ControlsEditorActivity::class.java).putExtra("profile_id", p.id))
-    fun bindings(p: ControlsProfile, controllerId: String = ControlsProfile.DEFAULT_CONTROLLER_ID) =
+    // As Classic: the editors slide up over the page.
+    fun slideUp() = (context as? Activity)?.overridePendingTransition(com.winlator.star.R.anim.slide_in_up, com.winlator.star.R.anim.slide_out_down)
+    fun editLayout(p: ControlsProfile) { context.startActivity(Intent(context, ControlsEditorActivity::class.java).putExtra("profile_id", p.id)); slideUp() }
+    fun bindings(p: ControlsProfile, controllerId: String = ControlsProfile.DEFAULT_CONTROLLER_ID) {
         context.startActivity(Intent(context, ExternalControllerBindingsActivity::class.java).putExtra("profile_id", p.id).putExtra("controller_id", controllerId))
+        slideUp()
+    }
+    val extra = rememberLabControlsExtra(tick)
     fun copyBindings(fromId: String, to: ExternalController) {
         val p = sel ?: return
         p.loadControllers()
@@ -458,7 +477,12 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
         val on = p.id == sel?.id
         MenuEntry(
             key = "p${p.id}", title = p.name,
-            subtitle = if (layouts[p.id] == true) L("On-screen layout") else L("No on-screen layout yet"),
+            subtitle = when {
+                layouts[p.id] == true && padMaps[p.id] == true -> L("On-screen + controller")
+                layouts[p.id] == true -> L("On-screen layout")
+                padMaps[p.id] == true -> L("Controller → keyboard/mouse")
+                else -> L("No on-screen layout yet")
+            },
             trailing = if (on) L("Selected") else null, current = on,
             icon = Icons.Filled.Gamepad, group = L("Profiles"),
             thumb = if (layouts[p.id] == true) ({ LabProfileThumb(p.id, tick) { selId = p.id; editLayout(p) } }) else null,
@@ -484,10 +508,10 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
                 communityOpen = true
                 if (community == null && !communityLoading) {
                     communityLoading = true
-                    HttpUtils.download(COMMUNITY_PROFILES_URL + "index.txt") { content ->
+                    CommunityProfiles.load { sections ->
                         (context as? Activity)?.runOnUiThread {
                             communityLoading = false
-                            if (content != null) community = content.split("\n").map { it.trim() }.filter { it.isNotBlank() }
+                            if (sections != null) community = sections
                             else { communityOpen = false; toast(context, L("Could not load the list")) }
                         }
                     }
@@ -495,8 +519,13 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
             }),
     )
 
-    // ── Controller: the selected profile's bindings for each controller ──
-    val controllerTab = if (sel == null) emptyList() else buildList {
+    // ── Controller: the controller test (no profile needed, as in Classic), then the selected profile's bindings ──
+    val controllerTab = buildList {
+        if (sel == null) {
+            add(MenuEntry("test", L("Test and bind controllers"), L("Remap buttons and check every input"), icon = Icons.Filled.SportsEsports, onA = { testOpen = true }))
+            add(MenuEntry("noprof", L("No profile yet"), L("Make one to bind controllers (On-screen tab)."), icon = Icons.Filled.Add, onA = { creating = true }))
+            return@buildList
+        }
         add(MenuEntry("prof", L("Profile: %1\$s", sel.name), L("The bindings below belong to this profile"), icon = Icons.Filled.Gamepad,
             actions = profiles.map { p -> MenuAction(p.name, { selId = p.id }) }))
         add(MenuEntry("test", L("Test and bind controllers"), L("Remap buttons and check every input"), icon = Icons.Filled.SportsEsports, onA = { testOpen = true }))
@@ -536,27 +565,16 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
         title = L("Controls"),
         sections = listOf(
             MenuSection("onscreen", L("On-screen"), Icons.Filled.TouchApp, onScreen, empty = L("No profiles yet."), primary = MenuAction(L("New profile"), { creating = true })),
-            MenuSection("controller", L("Controller"), Icons.Filled.SportsEsports, controllerTab, empty = L("Make a profile first (On-screen tab).")),
-            MenuSection("assign", L("Assign"), Icons.Filled.People, emptyList(), content = {
-                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-                    com.winlator.star.ui.screens.GlobalPlayerSlotsSection()
-                }
-            }),
-            MenuSection("device", L("Device"), Icons.Filled.Build, emptyList(), content = {
-                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-                    com.winlator.star.ui.screens.GyroscopeSection()
-                    Spacer(Modifier.height(16.dp))
-                    com.winlator.star.ui.screens.SteamControllerSection()
-                    Spacer(Modifier.height(16.dp))
-                    com.winlator.star.ui.screens.MenuButtonSection()
-                }
-            }),
+            MenuSection("controller", L("Controller"), Icons.Filled.SportsEsports, controllerTab),
+            MenuSection("assign", L("Assign"), Icons.Filled.People, extra.assign),
+            MenuSection("device", L("Device"), Icons.Filled.Build, extra.device),
         ),
         onBack = onBack,
     )
-    if (creating) NameDialog(L("New profile"), L("Profile %1\$s", profiles.size + 1), onDismiss = { creating = false }) { name -> creating = false; manager.createProfile(name)?.let { selId = it.id }; tick++ }
-    renaming?.let { p -> NameDialog(L("Rename"), p.name, onDismiss = { renaming = null }) { name -> renaming = null; p.name = name; p.save(); tick++ } }
-    if (communityOpen) LabCommunityProfilesDialog(items = community, manager = manager, onDismiss = { communityOpen = false }, onImported = { tick++ })
+    extra.dialogs()
+    if (creating) LabTextEntryDialog(L("New profile"), L("Profile %1\$s", profiles.size + 1), L("OK"), onDismiss = { creating = false }) { name -> creating = false; manager.createProfile(name)?.let { selId = it.id }; tick++ }
+    renaming?.let { p -> LabTextEntryDialog(L("Rename"), p.name, L("OK"), onDismiss = { renaming = null }) { name -> renaming = null; p.name = name; p.save(); tick++ } }
+    if (communityOpen) LabCommunityProfilesDialog(sections = community, manager = manager, onDismiss = { communityOpen = false }, onImported = { tick++ })
     if (testOpen) {
         SettingsControllerTestDialog(
             onDismiss = { testOpen = false; tick++ },
@@ -566,7 +584,8 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
             onCreateProfile = { name -> manager.createProfile(name); tick++ },
             onRenameProfile = { sel?.let { renaming = it } },
             onBindingsChanged = { tick++ },
-            onOpenAllBindings = { sel?.let { bindings(it) } },
+            // As Classic: the first connected controller's bindings, else Default / Any controller.
+            onOpenAllBindings = { sel?.let { bindings(it, ExternalController.getControllers().firstOrNull()?.id ?: ControlsProfile.DEFAULT_CONTROLLER_ID) } },
         )
     }
 }

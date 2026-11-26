@@ -489,7 +489,7 @@ public final class WaylandCompositor {
     // the X11 VulkanRenderer hosts. Every setter only stores a value; the compositor thread applies
     // it on its next frame, so they are safe from any thread and before the compositor starts.
     // bionic-fg (the guest-side win-fg layer) is X11-only and has no Wayland counterpart.
-    public static final int FG_ENGINE_LSFG = 0, FG_ENGINE_WINFG = 1;
+    public static final int FG_ENGINE_LSFG = 0, FG_ENGINE_WINFG = 1, FG_ENGINE_WFG = 2;
 
     /** Which native engine generates: {@link #FG_ENGINE_LSFG} or {@link #FG_ENGINE_WINFG}. */
     public static native void nativeSetFrameGenEngine(int kind);

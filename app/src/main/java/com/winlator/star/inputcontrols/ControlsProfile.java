@@ -86,6 +86,11 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         return previewData != null;
     }
 
+    /** A preview's embedded custom icons ([{id, png}] from an .icpx), or null. */
+    public JSONArray getPreviewCustomIcons() {
+        return previewData != null ? previewData.optJSONArray("customIcons") : null;
+    }
+
     /** The profile's JSON document: the in-memory preview data, or the on-disk file (null if absent). */
     private JSONObject readProfileJSON() throws JSONException, IOException {
         if (previewData != null) return previewData;
@@ -220,6 +225,11 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     }
 
     public ExternalController getController(int deviceId) {
+        // Only a real game controller has bindings here. Without this, soft-keyboard keys
+        // (deviceId -1) matched the Default entry or a disconnected pad's entry, whose
+        // getDeviceId() is -1 as well.
+        android.view.InputDevice device = android.view.InputDevice.getDevice(deviceId);
+        if (!ExternalController.isGameController(device)) return null;
         if (!controllersLoaded) loadControllers();
         
         // First try direct deviceId match
@@ -228,7 +238,6 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         }
         
         // If no match, try to find by descriptor
-        android.view.InputDevice device = android.view.InputDevice.getDevice(deviceId);
         if (device != null) {
             String descriptor = device.getDescriptor();
             for (ExternalController controller : controllers) {

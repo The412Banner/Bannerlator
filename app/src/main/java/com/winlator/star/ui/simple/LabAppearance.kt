@@ -3,6 +3,7 @@ package com.winlator.star.ui.simple
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SdCard
 import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -16,12 +17,20 @@ internal fun labScaleSteps(current: Float): List<Float> {
     return if (steps.any { (it * 100).roundToInt() == p }) steps else (steps + current).sorted()
 }
 
-/** The storage bars in Lab's side menu (Classic's Appearance › Side Menu switches). */
+/**
+ * Classic's Appearance › Side Menu switches for Lab: Show game stores (the Stores section of the rail and the drawer, and
+ * the Stores page's list) and the storage bars in Lab's side menu.
+ */
 @Composable
 internal fun labDrawerEntries(): List<MenuEntry> {
+    val showStores by AppThemeState.showStores.collectAsState()
     val showInternal by AppThemeState.showInternalStorage.collectAsState()
     val showSd by AppThemeState.showSdStorage.collectAsState()
     return listOf(
+        MenuEntry(
+            "drawer-stores", L("Show game stores"), icon = Icons.Filled.Storefront, group = L("Side menu"),
+            toggle = showStores, onA = { AppThemeState.setShowStores(!showStores) },
+        ),
         MenuEntry(
             "drawer-internal", L("Show internal storage"), icon = Icons.Filled.Storage, group = L("Side menu"),
             toggle = showInternal, onA = { AppThemeState.setShowInternalStorage(!showInternal) },

@@ -1,0 +1,31 @@
+{
+  "id": "2026-11-20T09-19-17-046b11",
+  "created": "2026-11-20T09:19:17.411Z",
+  "ip_hash": "rr2OIOJMWA",
+  "fields": {
+    "reporter_name": "",
+    "device_model": "Samsung 17LTE",
+    "soc": "Mediatek helio g99",
+    "gpu": "ARM Mali-G57 MC2",
+    "android": "16",
+    "ram": "",
+    "app_version": "2.8.2",
+    "install_source": "",
+    "game_name": "Hades",
+    "steam_appid": "",
+    "store": "",
+    "exe": "",
+    "symptom": "Black screen (no image)",
+    "when": "",
+    "graphics_driver": "",
+    "dx_wrapper": "",
+    "dxvk": "",
+    "proton": "",
+    "box64": "",
+    "resolution": "",
+    "framegen": "",
+    "repro": "",
+    "tried": ""
+  },
+  "logs": []
+}

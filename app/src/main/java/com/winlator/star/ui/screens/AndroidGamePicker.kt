@@ -51,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.winlator.star.androidgames.AndroidGames
+import com.winlator.star.ui.deck.rememberXmbHome
 import com.winlator.star.ui.theme.OnSurface
 import com.winlator.star.ui.theme.OnSurfaceVariant
 import com.winlator.star.ui.theme.SurfaceVariant
@@ -88,6 +89,57 @@ internal fun AndroidGamePickerDialog(
         }
     }
     val chosen = all.filter { it.packageName in selected }
+
+    // The XMB interface: the same state and handlers in an XMB dialog (see XmbAndroidGamePickerDialog).
+    if (rememberXmbHome()) {
+        val n = shown.size
+        XmbAndroidGamePickerDialog(
+            loading = apps == null,
+            subtitle = if (gamesOnly) "${xmbCountLabel(n, "game")} found (apps Android marks as games)"
+            else "${xmbCountLabel(n, "app")} installed",
+            shown = shown,
+            query = query,
+            onQueryChange = { query = it },
+            gamesOnly = gamesOnly,
+            onGamesOnlyChange = { gamesOnly = it },
+            selected = selected,
+            alreadyAdded = alreadyAdded,
+            adding = adding,
+            chosenCount = chosen.size,
+            onToggle = { app ->
+                selected = if (app.packageName in selected) selected - app.packageName
+                else selected + app.packageName
+            },
+            onAdd = { onAdd(chosen) },
+            onDismiss = onDismiss,
+        )
+        return
+    }
+    // Lab: the same state and handlers in a Lab dialog (LabAndroidGamePickerDialog).
+    if (com.winlator.star.ui.theme.AppThemeState.simpleLook) {
+        val n = shown.size
+        com.winlator.star.ui.simple.LabAndroidGamePickerDialog(
+            loading = apps == null,
+            countLine = if (gamesOnly) com.winlator.star.ui.simple.labCount(n, "1 game found (apps Android marks as games)", "%1\$s games found (apps Android marks as games)")
+            else com.winlator.star.ui.simple.labCount(n, "1 app installed", "%1\$s apps installed"),
+            shown = shown,
+            query = query,
+            onQueryChange = { query = it },
+            gamesOnly = gamesOnly,
+            onGamesOnlyChange = { gamesOnly = it },
+            selected = selected,
+            alreadyAdded = alreadyAdded,
+            adding = adding,
+            chosenCount = chosen.size,
+            onToggle = { app ->
+                selected = if (app.packageName in selected) selected - app.packageName
+                else selected + app.packageName
+            },
+            onAdd = { onAdd(chosen) },
+            onDismiss = onDismiss,
+        )
+        return
+    }
 
     OutlinedAlertDialog(
         modifier = Modifier.fillMaxWidth(0.94f),

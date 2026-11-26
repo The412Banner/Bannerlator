@@ -1,5 +1,6 @@
 package com.winlator.star.ui.theme
 
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
@@ -8,14 +9,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import com.winlator.star.R
+import com.winlator.star.ui.deck.LocalXmbScale
+import com.winlator.star.ui.deck.rememberXmbScale
 
 private val DefaultColorScheme = darkColorScheme(
     primary          = Primary,
@@ -61,6 +67,8 @@ val LocalAccentDim = staticCompositionLocalOf { Color(0xFF002277) }
 
 @Composable
 fun WinlatorTheme(content: @Composable () -> Unit) {
+    val context = LocalContext.current
+    remember { AppThemeState.ensureInit(context) }
     val colorScheme by AppThemeState.colorScheme.collectAsState(initial = AppThemeState.currentColorSchemeSnapshot())
     val accentDim by AppThemeState.accentDim.collectAsState(initial = AppThemeState.currentAccentDimSnapshot())
     val uiScale by AppThemeState.uiScale.collectAsState()
@@ -68,16 +76,47 @@ fun WinlatorTheme(content: @Composable () -> Unit) {
     // Fold the user's interface-scale prefs into the ambient density so every WinlatorTheme
     // surface — including the in-game drawer/dialogs — scales together. The native OSC and
     // perf HUD aren't Compose, so they stay fixed on their own.
+    // The XMB style does not start from the phone's Display size and Font size: its own fixed scale and its own saved sliders
+    // (XmbScale.kt) replace them, in the density and in the configuration's dp.
     val base = LocalDensity.current
-    val scaledDensity = Density(base.density * uiScale, base.fontScale * fontScale)
+    val xmbUiScale by AppThemeState.xmbUiScale.collectAsState()
+    val xmbFontScale by AppThemeState.xmbFontScale.collectAsState()
+    val xmb = rememberXmbScale(xmbUiScale, xmbFontScale)
+    val scaledDensity = xmb?.density ?: Density(base.density * uiScale, base.fontScale * fontScale)
+    val configuration = xmb?.configuration ?: LocalConfiguration.current
+    // Lab: Lab's Material layer (LabMaterial.kt) for every Material screen and pop-up below. Off Lab the values are the ones
+    // this theme always gave, so Classic, Deck and XMB are untouched.
+    val lab = AppThemeState.simpleLook
+    val labLight = AppThemeState.labLight
+    val labLayer = remember(lab, labLight, colorScheme) {
+        if (lab) LabMaterialLayer(labMaterialScheme(colorScheme, labLight), colorScheme, labLight) else null
+    }
     CompositionLocalProvider(
         LocalAccentDim provides accentDim,
         LocalDensity provides scaledDensity,
+        LocalConfiguration provides configuration,
+        LocalXmbScale provides xmb,
+        LocalLabMaterialLayer provides labLayer,
     ) {
         MaterialTheme(
-            colorScheme = colorScheme,
-            typography = AppTypography,
-            content = content
-        )
+            colorScheme = labLayer?.scheme ?: colorScheme,
+            typography = if (lab) LabTypography else AppTypography,
+            shapes = if (lab) LabShapes else MaterialTheme.shapes,
+        ) {
+            // Lab: Lab's dialog and menu frames (OutlinedAlertDialog, MenuStyle) and its focus tint and outline on plain
+            // clickables. A screen that sets a MaterialTheme of its own gets Material's indication back.
+            val accent = MaterialTheme.colorScheme.primary
+            val labIndication = remember(accent) { com.winlator.star.ui.simple.LabFocusIndication(accent) }
+            val outerLabLook = com.winlator.star.ui.screens.LocalLabLook.current
+            val materialIndication = LocalIndication.current
+            CompositionLocalProvider(
+                com.winlator.star.ui.screens.LocalLabLook provides (lab || outerLabLook),
+                LocalIndication provides (if (lab) labIndication else materialIndication),
+                content = content,
+            )
+        }
     }
 }
+
+/** Lab's type on this theme's sizes (see labTypography). */
+private val LabTypography = labTypography(AppTypography)

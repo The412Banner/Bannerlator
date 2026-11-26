@@ -140,7 +140,8 @@ private val OVERRIDE_KEYS = listOf(
     "graphicsDriver", "dxwrapper", "displayBackend", "renderer", "screenSize", "audioDriver", "emulator",
     "box64Version", "box64Preset", "fexcoreVersion", "fexcorePreset", "wincomponents", "envVars",
     "controlsProfile", "frameGenEngine", "fpsLimiterEnabled", "execArgs", "cpuList", "midiSoundFont",
-    "lc_all", "startupSelection", "reshadeMode", "presentMode", "renderScale", "inputType",
+    "lc_all", "startupSelection", "reshadeMode", "presentMode", "renderScale", "inputType", "syncCpuTopology",
+    "sleep0ThrottleSkip",
 )
 
 internal fun overrideCount(s: Shortcut): Int = OVERRIDE_KEYS.count { s.getExtra(it, "").isNotBlank() }

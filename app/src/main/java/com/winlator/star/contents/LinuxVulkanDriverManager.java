@@ -125,13 +125,46 @@ public class LinuxVulkanDriverManager {
      *         Linux driver; {@link IOException} on read/extract failures.
      */
     public String installDriver(Uri zipUri, String displayName) throws IOException {
+        return installDriver(zipUri, displayName, null);
+    }
+
+    /** A driver with the zip's name is installed already ({@link #installDriver(Uri, String, Boolean)} with FALSE). */
+    public static final class SameNameException extends IOException {
+        public final String id;
+        public final String name;
+
+        SameNameException(String id, String name) {
+            super(name + " is already installed");
+            this.id = id;
+            this.name = name;
+        }
+    }
+
+    /** The id of an installed driver called [name], or null. */
+    public String findByName(String name) {
+        for (String id : enumerateInstalledDrivers()) if (getDriverName(id).equals(name)) return id;
+        return null;
+    }
+
+    /**
+     * {@link #installDriver(Uri, String)}, with what to do when a driver of the same name is installed:
+     * null adds this one beside it (a new id), FALSE refuses with {@link SameNameException}, TRUE replaces
+     * it under the same id. A zip with several libvulkan_freedreno*.so (DroidDeck's android/ + linux/)
+     * gives its glibc one, with the meta.json from the same folder.
+     */
+    public String installDriver(Uri zipUri, String displayName, Boolean replace) throws IOException {
         File tmpDir = new File(rootDir, ".tmp-" + System.currentTimeMillis());
         FileUtils.delete(tmpDir);
         if (!tmpDir.mkdirs()) throw new IOException("cannot create " + tmpDir);
         boolean keep = false;
         try {
             String soName = null;
+            String soDir = null;
+            // A libvulkan_freedreno*.so that links Android's libc, kept only to say so when no glibc one comes.
+            String bionicSo = null;
             JSONObject zipMeta = null;
+            java.util.Map<String, JSONObject> metaByDir = new java.util.HashMap<>();
+            File so = new File(tmpDir, LIB_NAME);
             try (InputStream is = context.getContentResolver().openInputStream(zipUri);
                  ZipInputStream zis = new ZipInputStream(is)) {
                 if (is == null) throw new IOException("cannot open " + zipUri);
@@ -141,15 +174,29 @@ public class LinuxVulkanDriverManager {
                     // Flatten: only the base name matters, and it also defeats zip-slip paths.
                     String base = new File(entry.getName()).getName();
                     if (base.isEmpty()) continue;
+                    String dir = entry.getName().contains("/") ? entry.getName().substring(0, entry.getName().lastIndexOf('/')) : "";
                     if (base.startsWith("libvulkan_freedreno") && base.endsWith(".so")) {
-                        if (soName != null) Log.w(TAG, "zip has several libvulkan_freedreno*.so; using the first (" + soName + ")");
-                        else {
-                            Files.copy(zis, new File(tmpDir, LIB_NAME).toPath(), StandardCopyOption.REPLACE_EXISTING);
+                        if (soName != null) {
+                            Log.w(TAG, "zip has several libvulkan_freedreno*.so; using the first glibc one (" + soName + ")");
+                            continue;
+                        }
+                        File part = new File(tmpDir, LIB_NAME + ".part");
+                        Files.copy(zis, part.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                        // The one check that actually separates this from the two bionic builds. Both sonames
+                        // are in the driver's .dynstr, so a byte scan is enough and needs no ELF parsing:
+                        // glibc's is versioned ("libc.so.6"), bionic's is not ("libc.so").
+                        if (containsAscii(part, "libc.so.6")) {
+                            if (!part.renameTo(so)) throw new IOException("cannot keep " + base);
                             soName = base;
+                            soDir = dir;
+                        } else {
+                            if (bionicSo == null) bionicSo = base;
+                            FileUtils.delete(part);
                         }
                     } else if (base.equals(META_NAME)) {
                         try {
                             zipMeta = new JSONObject(new String(readAll(zis), StandardCharsets.UTF_8));
+                            metaByDir.put(dir, zipMeta);
                         } catch (Exception e) {
                             Log.w(TAG, "meta.json unreadable, ignoring: " + e.getMessage());
                         }
@@ -158,22 +205,20 @@ public class LinuxVulkanDriverManager {
                     // library_path is relative to itself, and we write an absolute one below.
                 }
             }
+            if (soName == null && bionicSo != null) {
+                throw new IllegalArgumentException(bionicSo + " is not a glibc driver — it links Android's libc. "
+                        + "The Linux runtime needs a \"-Linux\" zip; a plain or \"-Wayland\" Turnip cannot be "
+                        + "loaded by the Steam client at all.");
+            }
             if (soName == null) {
                 throw new IllegalArgumentException("No libvulkan_freedreno*.so in this zip. An Android "
                         + "(AdrenoTools) or -Wayland Turnip zip is not a Linux runtime driver.");
             }
-            File so = new File(tmpDir, LIB_NAME);
             if (!WaylandGameDriverManager.isAarch64Elf(so)) {
                 throw new IllegalArgumentException(soName + " is not a 64-bit AArch64 ELF shared library.");
             }
-            // The one check that actually separates this from the two bionic builds. Both sonames
-            // are in the driver's .dynstr, so a byte scan is enough and needs no ELF parsing:
-            // glibc's is versioned ("libc.so.6"), bionic's is not ("libc.so").
-            if (!containsAscii(so, "libc.so.6")) {
-                throw new IllegalArgumentException(soName + " is not a glibc driver — it links Android's libc. "
-                        + "The Linux runtime needs a \"-Linux\" zip; a plain or \"-Wayland\" Turnip cannot be "
-                        + "loaded by the Steam client at all.");
-            }
+            // The meta.json beside the library (a zip with several drivers has one per folder).
+            if (metaByDir.containsKey(soDir)) zipMeta = metaByDir.get(soDir);
             String kind = zipMeta != null ? zipMeta.optString("kind", "") : "";
             if (!kind.isEmpty() && !"linux-vulkan-icd".equals(kind)) {
                 Log.w(TAG, "meta.json says kind=" + kind + ", importing anyway (the binary is glibc)");
@@ -186,7 +231,9 @@ public class LinuxVulkanDriverManager {
                 name = displayName != null ? displayName : "linux-driver";
                 if (name.toLowerCase().endsWith(".zip")) name = name.substring(0, name.length() - 4);
             }
-            String id = uniqueId(WaylandGameDriverManager.sanitizeId(name));
+            String existing = replace != null ? findByName(name) : null;
+            if (existing != null && !replace) throw new SameNameException(existing, name);
+            String id = existing != null ? existing : uniqueId(WaylandGameDriverManager.sanitizeId(name));
             File dir = getDriverDir(id);
 
             // ICD manifest: absolute library_path, so the loader never depends on cwd and the guest
@@ -210,6 +257,10 @@ public class LinuxVulkanDriverManager {
             meta.put("importedAt", System.currentTimeMillis());
             if (!FileUtils.writeString(new File(tmpDir, META_NAME), meta.toString(2))) throw new IOException("cannot write meta.json");
 
+            if (existing != null) {
+                Log.i(TAG, "replacing Linux Vulkan driver " + id);
+                FileUtils.delete(dir);
+            }
             if (!tmpDir.renameTo(dir)) throw new IOException("cannot move into " + dir);
             keep = true;
             Log.i(TAG, "imported Linux Vulkan driver " + id + " (" + soName + ", minGlibc=" + minGlibc + ") -> " + dir);
@@ -236,7 +287,7 @@ public class LinuxVulkanDriverManager {
         return bos.toByteArray();
     }
 
-    private static boolean containsAscii(File f, String needle) {
+    static boolean containsAscii(File f, String needle) {
         byte[] nb = needle.getBytes(StandardCharsets.US_ASCII);
         try (InputStream in = new java.io.FileInputStream(f)) {
             byte[] buf = new byte[1 << 16];

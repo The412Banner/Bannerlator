@@ -1,5 +1,7 @@
 package com.winlator.star.store
 
+import com.winlator.star.ui.simple.SimpleShape
+import com.winlator.star.ui.simple.labTile
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
@@ -12,10 +14,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,7 +36,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Help
 import com.winlator.star.R
 import com.winlator.star.core.CopyGameToDriveC
@@ -44,10 +46,10 @@ import com.winlator.star.ui.screens.MenuItemDivider
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import com.winlator.star.ui.screens.outlinedMenuCard
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
+import com.winlator.star.ui.theme.LabOutlinedButton as OutlinedButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.material3.Button
+import com.winlator.star.ui.theme.LabButton as Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -60,7 +62,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.winlator.star.ui.theme.LabTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -76,6 +78,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -98,17 +102,28 @@ import com.winlator.star.store.compose.AddToShortcutsRequest
 import com.winlator.star.store.compose.ContainerPickerDialog
 import com.winlator.star.store.compose.openShortcutsScreen
 import com.winlator.star.store.download.DownloadRegistry
-import com.winlator.star.store.download.DownloadsButton
 import com.winlator.star.store.download.MediaTab
 import com.winlator.star.store.download.Store
+import com.winlator.star.store.download.StoreActionTile
+import com.winlator.star.store.download.StoreBackTile
+import com.winlator.star.store.download.StoreChipStyle
+import com.winlator.star.store.download.StoreDownloadsTile
 import com.winlator.star.store.download.StoreMedia
+import com.winlator.star.store.download.StorePage
+import com.winlator.star.store.download.StorePageLayout
+import com.winlator.star.store.download.StoreTab
+import com.winlator.star.store.download.StoreTabChips
+import com.winlator.star.store.download.rememberStorePageGeometry
+import com.winlator.star.store.download.storeTabIcon
 import com.winlator.star.store.download.formatDownloadSpeed
 import com.winlator.star.store.download.formatEta
 import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.URL
+import com.winlator.star.ui.deck.deckShape
 
 /** Semantic action carried by the install button; the colour resolves inside the composable
  *  (install/retry = primary, cancel/uninstall = error) so theme presets recolor it live. */
@@ -210,6 +225,17 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
     private var branches by mutableStateOf<List<BranchDisplay>>(emptyList())
     private var selectedBranch by mutableStateOf("public")
     private var showBranchSheet by mutableStateOf(false)
+    // Game language (SteamGameLanguage): the languages Steam lists, the pick ("" = follow the app), the one in use.
+    private var gameLanguages by mutableStateOf<List<String>>(emptyList())
+    private var pickedLanguage by mutableStateOf("")
+    private var showLanguageSheet by mutableStateOf(false)
+    // An installed game whose language asks for files it does not have: that pack, the "download now?"
+    // prompt, and the running download (its own progress window; Stop keeps the installed files).
+    private var languageMissing by mutableStateOf<String?>(null)
+    private var showLanguageAsk by mutableStateOf(false)
+    private var languageRun by mutableStateOf<SteamGameUpdater.UpdateHandle?>(null)
+    private var languageProgress by mutableFloatStateOf(-1f)
+    private var languageProgressText by mutableStateOf("")
     private var branchCheckBusy by mutableStateOf(false)
     private var branchCheckMessage by mutableStateOf<String?>(null)
     // One-shot guard so the manifest-true size resolve fires at most once per detail view.
@@ -283,8 +309,6 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
     private var goldbergCatalogVersion by mutableIntStateOf(0)
     private var goldbergOutdated by mutableStateOf(false)
 
-    private var steamStatus by mutableStateOf(SteamRepository.getInstance().status)
-
     // Steam Cloud saves — three-tier save library (Cloud ⇄ Library ⇄ Container). Only meaningful
     // once the game is installed AND a Steam session is live (SteamRepository.getSteamCloud() != null).
     private var cloudVisible by mutableStateOf(false)
@@ -320,9 +344,9 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         // the on-disk mirror — no snapshot read, no network — so it's safe on the main thread.
         SteamLibraryArt.init(this)
         // Lazy-connect: opening a detail page directly (e.g. drawer → Save Manager → tap a card) skips
-        // the store home that starts SteamForegroundService, so the CM connection would stay down and
-        // the status badge read offline. Ensure it here when signed in — idempotent (start/connect
-        // guard double-connect), and a no-op for users without a saved Steam account.
+        // the store home that starts SteamForegroundService, so the CM connection would stay down. Ensure
+        // it here when signed in — idempotent (start/connect guard double-connect), and a no-op for users
+        // without a saved Steam account.
         if (SteamPrefs.isLoggedIn) SteamForegroundService.start(this)
 
         setContent {
@@ -330,8 +354,6 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                 SteamGameDetailScreen(
                     appId = appId,
                     signedIn = SteamPrefs.isLoggedIn,
-                    steamStatus = steamStatus,
-                    onReconnect = { SteamRepository.getInstance().reconnectNow() },
                     nameText = nameText,
                     typeText = typeText,
                     sizeText = sizeText,
@@ -352,6 +374,14 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                     onSelectBranch = { selectBranch(it) },
                     onCheckBranchPassword = { submitBranchPassword(it) },
                     onDismissBranchSheet = { showBranchSheet = false; branchCheckMessage = null },
+                    gameLanguages = gameLanguages,
+                    pickedLanguage = pickedLanguage,
+                    showLanguageSheet = showLanguageSheet,
+                    onLanguageLineClick = { showLanguageSheet = true },
+                    onSelectLanguage = { selectLanguage(it) },
+                    onDismissLanguageSheet = { showLanguageSheet = false },
+                    languageMissing = languageMissing,
+                    onLanguageDownloadClick = { showLanguageAsk = true },
                     statusText = statusText,
                     gameStatus = gameStatus,
                     installBtnText = installBtnText,
@@ -456,6 +486,7 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                         installBytes = installSizeBytes,
                         onManageLocations = { showLibraryManager = true },
                         onDismiss = { showSpeedPicker = false },
+                        onLocationsChanged = { reloadInstallLocations() },
                         onDownload = { tier, debugLog, installRoot ->
                             showSpeedPicker = false
                             lastSpeedTier = tier
@@ -490,10 +521,66 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                     )
                 }
 
+                // Language files of an installed game: ask first, then a progress window whose Stop only
+                // stops the download (the installed game and its files are kept).
+                val askPack = languageMissing
+                if (showLanguageAsk && askPack != null && languageRun == null) {
+                    val gName = game?.name?.takeIf { it.isNotBlank() } ?: "this game"
+                    OutlinedAlertDialog(
+                        onDismissRequest = { showLanguageAsk = false },
+                        title = { Text("Download language files?") },
+                        text = {
+                            Text(
+                                "Downloads the ${SteamGameLanguage.label(askPack)} files for \"$gName\". " +
+                                    "Until that finishes the game stays in its current language."
+                            )
+                        },
+                        confirmButton = { TextButton(onClick = { startLanguageDownload() }) { Text("Download") } },
+                        dismissButton = { TextButton(onClick = { showLanguageAsk = false }) { Text("Later") } },
+                    )
+                }
+                languageRun?.let { run ->
+                    OutlinedAlertDialog(
+                        onDismissRequest = { },
+                        title = { Text("Language files") },
+                        text = {
+                            Column {
+                                Text(languageProgressText)
+                                Spacer(Modifier.height(10.dp))
+                                if (languageProgress < 0f) {
+                                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                } else {
+                                    LinearProgressIndicator(
+                                        progress = { languageProgress.coerceIn(0f, 1f) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
+                            }
+                        },
+                        confirmButton = { TextButton(onClick = { run.cancel() }) { Text("Stop") } },
+                    )
+                }
+
                 // Destructive confirm for the gear's "Cancel & delete download". Names the game and
                 // spells out that this stops the download, deletes every downloaded file and resets it
                 // for a fresh, full download. The wipe runs ONLY on confirm; dismiss keeps the partial.
-                if (showCancelDeleteConfirm) {
+                if (showCancelDeleteConfirm && game?.isInstalled == true) {
+                    // An update / verify / language download of the INSTALLED game: stopping it keeps the files.
+                    OutlinedAlertDialog(
+                        onDismissRequest = { showCancelDeleteConfirm = false },
+                        title = { Text("Stop the download?") },
+                        text = { Text("The installed game and its files are kept.") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                showCancelDeleteConfirm = false
+                                performCancelDeleteReset()
+                            }) { Text("Stop") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showCancelDeleteConfirm = false }) { Text("Keep downloading") }
+                        },
+                    )
+                } else if (showCancelDeleteConfirm) {
                     val gName = game?.name?.takeIf { it.isNotBlank() } ?: "this game"
                     OutlinedAlertDialog(
                         onDismissRequest = { showCancelDeleteConfirm = false },
@@ -607,10 +694,13 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
     }
 
     override fun onEvent(event: String) {
+        // The language download window shows this game's run itself (and its Stop keeps the files).
+        if (languageRun != null && event.startsWith("Download") &&
+            event.split(":").getOrNull(1)?.toIntOrNull() == appId) return
         when {
-            event.startsWith("SteamStatus:") -> {
-                val name = event.substringAfter("SteamStatus:")
-                steamStatus = try { SteamRepository.SteamStatus.valueOf(name) } catch (e: Exception) { steamStatus }
+            // Steam came online after the page opened: show the Cloud saves manager now.
+            event == "SteamStatus:${SteamRepository.SteamStatus.ONLINE.name}" && game?.isInstalled == true && !cloudVisible -> {
+                runOnUiThread { if (!isFinishing && !isDestroyed) refreshUI() }
             }
             event.startsWith("DownloadProgress:") -> {
                 // Format: DownloadProgress:appId:installDone:installTotal:downloadDone:downloadTotal:etaSec:speedBps
@@ -690,6 +780,15 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             event.startsWith("DownloadCancelled:") -> {
                 val id = event.substringAfter("DownloadCancelled:").toIntOrNull() ?: return
                 if (id != appId) return
+                if (game?.isInstalled == true) {
+                    // An update / verify / language pass of the installed game stopped: it stays installed.
+                    downloadHandle = null
+                    progressVisible = false
+                    progressTextVisible = false
+                    resetPauseBtn()
+                    loadGame()
+                    return
+                }
                 // Cancel now means "delete + fresh restart" (performCancelDeleteReset). This async
                 // engine event lands AFTER that reset for the live-download case, so settle on the same
                 // pristine NOT_INSTALLED state rather than overriding it with a lingering "cancelled".
@@ -712,6 +811,19 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                 val id = parts.getOrNull(1)?.toIntOrNull() ?: return
                 if (id != appId) return
                 val reason = parts.drop(2).joinToString(":")
+                if (game?.isInstalled == true) {
+                    // A failed update / verify / language pass leaves the installed game as it was; no "Retry"
+                    // here (on an installed game that button means uninstall).
+                    downloadHandle = null
+                    progressVisible = false
+                    progressTextVisible = false
+                    resetPauseBtn()
+                    loadGame()
+                    runOnUiThread {
+                        android.widget.Toast.makeText(this, "Download failed: $reason", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                    return
+                }
                 val logPath = SteamDepotDownloader.debugLogPath
                 downloadHandle = null
                 progressVisible = false
@@ -845,12 +957,62 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             }
         } catch (_: Throwable) { emptyList() }
         selectedBranch = try { SteamPrefs.getSelectedBranch(g.appId) } catch (_: Throwable) { "public" }
+        loadLanguages()
         // If the stored branch is no longer selectable (lost unlock / removed branch), fall back to
         // public so we never try to install a branch the user can't currently access.
         if (selectedBranch != "public" && branches.none { it.name == selectedBranch && it.unlocked }) {
             selectedBranch = "public"
             try { SteamPrefs.setSelectedBranch(g.appId, "public") } catch (_: Throwable) {}
         }
+    }
+
+    /** Reads the game's languages and the pick; off the main thread (database). */
+    private fun loadLanguages() {
+        Thread {
+            val list = SteamGameLanguage.supported(appId)
+            val pick = SteamGameLanguage.picked(appId).takeIf { it in list } ?: ""
+            val missing = SteamGameLanguage.missingPack(appId, isInstalledInDb())
+            runOnUiThread { gameLanguages = list; pickedLanguage = pick; languageMissing = missing }
+        }.start()
+    }
+
+    private fun isInstalledInDb(): Boolean =
+        runCatching { SteamRepository.getInstance().database.getGame(appId)?.isInstalled == true }.getOrDefault(false)
+
+    /** Keeps the pick ("" = follow the app's language) and re-reads the game's depots for it. */
+    private fun selectLanguage(code: String) {
+        try { SteamPrefs.setGameLanguage(appId, code) } catch (_: Throwable) {}
+        pickedLanguage = code
+        showLanguageSheet = false
+        Thread {
+            val installed = isInstalledInDb()
+            // Not installed: the install takes the language; re-read the depot list (and size) for it now.
+            if (!installed) runCatching { SteamRepository.getInstance().refreshAppProductInfo(appId, 15_000L) }
+            val missing = SteamGameLanguage.missingPack(appId, installed)
+            runOnUiThread {
+                languageMissing = missing
+                if (missing != null) showLanguageAsk = true
+            }
+        }.start()
+    }
+
+    /** Runs the language download of the installed game (the user said Download). */
+    private fun startLanguageDownload() {
+        showLanguageAsk = false
+        if (languageRun != null) return
+        languageProgress = -1f
+        languageProgressText = "Preparing…"
+        languageRun = SteamGameUpdater.downloadLanguage(
+            this, appId,
+            { fraction, label -> languageProgress = fraction; languageProgressText = label },
+            { result, message ->
+                languageRun = null
+                val text = if (result == SteamGameUpdater.Result.UPDATED) "Language files downloaded" else message
+                android.widget.Toast.makeText(this, text, android.widget.Toast.LENGTH_LONG).show()
+                loadGame()
+                loadLanguages()
+            },
+        )
     }
 
     /** Persist + reflect the chosen branch. */
@@ -1046,8 +1208,9 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             installAction = InstallAction.UNINSTALL
             installBtnEnabled = true
             launchBtnEnabled = true
-            // Cloud saves need a live Steam session (the SteamCloud handle is only bound after login).
-            cloudVisible = SteamRepository.getInstance().steamCloud != null
+            // Cloud saves need a live Steam session. SteamCloudBackend covers both engines: the old
+            // JavaSteam handle (repo.steamCloud) is always null on the Rust engine (the default).
+            cloudVisible = SteamCloudBackend.current() != null
             // Resolve the game's launch container off the UI thread AFTER the game row is bound —
             // drives the Apply/Collect tier and the "set up first" gate.
             if (cloudVisible) resolveCloudContainer(g)
@@ -1187,6 +1350,12 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             DownloadQueue.cancel(appId); return
         }
 
+        // An update / verify / language download of the installed game is running (started elsewhere, or the
+        // page was reopened onto it): the button reads "Cancel" — stop the download, never uninstall.
+        if (g.isInstalled && (SteamDepotDownloader.isDownloading(appId) || DownloadQueue.isQueued(appId))) {
+            showCancelDeleteConfirm = true; return
+        }
+
         if (g.isInstalled) {
             uninstallingName = g.name
             val installDir = g.installDir
@@ -1204,6 +1373,8 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                         if (imported) SteamLibraryImport.releaseImported(this, appId)
                         else SteamAppManifest.removeFor(installDir, appId)
                         SteamRepository.getInstance().database.markUninstalled(appId)
+                        // The Downloads & Library list too, or it keeps showing the game as installed.
+                        com.winlator.star.store.download.StoreDownloadHooks.markUninstalled(Store.STEAM, appId.toString())
                     },
                     // Another game (a demo / server sharing this installdir) still uses the folder: keep it.
                     keepFolder = { imported || SteamInstallPaths.folderSharedWithOtherGame(this, File(installDir), appId) },
@@ -1294,6 +1465,13 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
      *      entry state, so the next tap routes to onInstallClicked's fresh installApp(isResume=false).
      */
     private fun performCancelDeleteReset() {
+        if (game?.isInstalled == true) {
+            // The installed game's update / verify / language pass: stop it, never delete the installed files.
+            downloadHandle?.let { try { it.cancel.run() } catch (_: Throwable) {} }
+            downloadHandle = null
+            try { DownloadQueue.cancel(appId) } catch (_: Throwable) {}
+            return
+        }
         val db = SteamRepository.getInstance().database
 
         // (2, read-first) Authoritative on-disk location for THIS download (internal or SD), captured
@@ -1427,6 +1605,10 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             exeFiles.sortWith { a, b ->
                 AmazonLaunchHelper.scoreExe(b, lowerTitle) - AmazonLaunchHelper.scoreExe(a, lowerTitle)
             }
+            // Steam's own launch exe first (its launch entries; also kept for the launch's arguments).
+            val ranked = SteamLaunchEntries.rankCandidates(this, g.appId, installDir, exeFiles).toList()
+            exeFiles.clear()
+            exeFiles.addAll(ranked)
             // Prefer the app's PUBLISHED portrait cover from PICS; the constructed URL is the
             // fallback for anything the library snapshot doesn't carry.
             val coverUrl = SteamLibraryArt.libraryCapsule(g.appId)
@@ -1621,7 +1803,7 @@ private enum class DetailTab(val label: String) {
     DETAILS("Details"),
     ACHIEVEMENTS("Achievements"),
     DLC("DLC"),
-    CLOUD("Cloud saves"),
+    CLOUD("Cloud"),
     /** Store screenshots + trailers; only in the strip once the appdetails fetch found any. */
     MEDIA("Media"),
 }
@@ -1636,7 +1818,6 @@ private val AchvAccent: Color          @Composable get() = MaterialTheme.colorSc
 private val AchvTabActiveBg: Color     @Composable get() = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
 private val AchvTabActiveText: Color   @Composable get() = MaterialTheme.colorScheme.primary
 private val AchvTabActiveBorder: Color @Composable get() = MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
-private val AchvTabActiveBadge: Color  @Composable get() = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
 private val AchvInk: Color             @Composable get() = MaterialTheme.colorScheme.onSurface
 private val AchvInk2: Color            @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
 private val AchvInk3: Color            @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
@@ -1667,8 +1848,6 @@ private val AchvPillOnBorder    = Color(0x66E8B652) // rgba(232,182,82,.40)
 private fun SteamGameDetailScreen(
     appId: Int,
     signedIn: Boolean,
-    steamStatus: SteamRepository.SteamStatus,
-    onReconnect: () -> Unit,
     nameText: String,
     typeText: String,
     sizeText: String,
@@ -1689,6 +1868,14 @@ private fun SteamGameDetailScreen(
     onSelectBranch: (String) -> Unit,
     onCheckBranchPassword: (String) -> Unit,
     onDismissBranchSheet: () -> Unit,
+    gameLanguages: List<String>,
+    pickedLanguage: String,
+    showLanguageSheet: Boolean,
+    onLanguageLineClick: () -> Unit,
+    onSelectLanguage: (String) -> Unit,
+    onDismissLanguageSheet: () -> Unit,
+    languageMissing: String?,
+    onLanguageDownloadClick: () -> Unit,
     statusText: String,
     gameStatus: GameStatus,
     installBtnText: String,
@@ -1743,6 +1930,39 @@ private fun SteamGameDetailScreen(
     var gearMenuExpanded by remember { mutableStateOf(false) }
     // Goldberg (Steam emulator) popup — opened from the gear menu (installed games only).
     var goldbergDialogOpen by remember { mutableStateOf(false) }
+    // Gear → "Use a folder I already have": the game's files from a PC copy, another app or a backup
+    // (SteamFolderAdopt: installs into that folder, keeping what is already there).
+    var adoptFolder by remember { mutableStateOf<File?>(null) }
+    val adoptPick = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+    ) { r ->
+        val path = if (r.resultCode == android.app.Activity.RESULT_OK) com.winlator.star.util.InAppFilePicker.pickedPath(r.data) else null
+        if (path != null) adoptFolder = File(path)
+    }
+    adoptFolder?.let { folder ->
+        var looksRight by remember(folder) { mutableStateOf<Boolean?>(null) }
+        LaunchedEffect(folder) { looksRight = withContext(Dispatchers.IO) { SteamFolderAdopt.looksLike(context, folder, appId) } }
+        val start = {
+            adoptFolder = null
+            Thread {
+                val err = SteamFolderAdopt.adopt(context, appId, folder)
+                (context as? android.app.Activity)?.runOnUiThread {
+                    android.widget.Toast.makeText(context, err ?: "Using ${folder.name} — checking its files, see Downloads.", android.widget.Toast.LENGTH_LONG).show()
+                }
+            }.start()
+        }
+        when (looksRight) {
+            true -> LaunchedEffect(folder) { start() }
+            false -> OutlinedAlertDialog(
+                onDismissRequest = { adoptFolder = null },
+                confirmButton = { TextButton(onClick = { start() }) { Text("Use it") } },
+                dismissButton = { TextButton(onClick = { adoptFolder = null }) { Text("Cancel") } },
+                title = { Text(nameText) },
+                text = { Text("\"${folder.name}\" doesn't look like this game's folder. Use it anyway? The game's files will be added there.") },
+            )
+            null -> {}
+        }
+    }
 
     // Achievements are loaded ONCE at the screen level so the tab count badge (done/total) and the
     // Achievements tab body share a single source of truth. Same strategy as the old section: fetch
@@ -1831,65 +2051,48 @@ private fun SteamGameDetailScreen(
     val showPinnedCaption =
         selectedTab == DetailTab.ACHIEVEMENTS && signedIn && !achLoading && achievements.isNotEmpty()
 
-    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-    ) {
-        // Header bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.onBackground,
-                )
-            }
-            Spacer(Modifier.weight(1f))
-            SteamStatusPill(status = steamStatus, onReconnect = onReconnect)
-            DownloadsButton()
-        }
-
-        // Hero image with a subtle gradient into the background at the bottom
-        Box(
-            modifier = Modifier.fillMaxWidth().height(180.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            // The SAME resolve chain the storefront cards use: PICS published art -> constructed
-            // CDN hosts -> appdetails -> SteamGridDB -> themed placeholder.
-            //
-            // Previously this page built ONE constructed URL of its own, so a game that showed art
-            // in the Library showed nothing here — and when that URL 404'd the `else` branch left a
-            // spinner running forever, which is the one failure mode the chain must never produce.
-            // aspectRatio = null because this hero is a fixed-height band, not a 92:43 card.
-            StoreCapsule(
-                appId = appId,
-                title = nameText,
-                modifier = Modifier.fillMaxSize(),
-                aspectRatio = null,
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color.Transparent, xmbSolidBackground()),
-                        ),
-                    ),
-            )
-        }
-
-        // Game name — persistent header. Stays above the action row + tab strip (mirrors the
-        // mockup's fixed game header, which doesn't change as the tab body below it swaps).
-        Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp)) {
+    val pageBg = xmbSolidBackground()
+    // The tab bodies pad themselves this much: the scrolling column is that much wider on each side, so their text lines up
+    // with the action row.
+    val pageInset = 16.dp
+    // The game's landscape cover beside its name: the store capsule chain, the published one first once the art map has it.
+    val publishedHeader = SteamLibraryArt.header(appId)
+    val coverUrls = remember(appId, publishedHeader) { capsuleCandidates(appId) }
+    val downloading = progressVisible   // installAction == CANCEL (active or paused download)
+    val entryTarget = storeEntryTarget(primaryActionable = !downloading, hasGear = true)
+    val entry = rememberStoreEntryFocus(entryTarget)
+    BoxWithConstraints(modifier = Modifier.fillMaxSize().background(pageBg).storeBackKey(onBack)) {
+    val geometry = rememberStorePageGeometry(maxWidth, maxHeight, hasSettings = true)
+    val sideBySide = geometry.layout == StorePageLayout.SIDE_BY_SIDE
+    // The game's art fills the screen behind the page, like every other store's page: the wide library hero, and
+    // under it the capsule chain (PICS art -> CDN hosts -> appdetails -> SteamGridDB) for games without one.
+    StoreCapsule(appId = appId, title = nameText, modifier = Modifier.fillMaxSize(), aspectRatio = null)
+    com.winlator.star.ui.simple.LabPicture(
+        pics = listOf(
+            com.winlator.star.ui.simple.LabArt.Pic("https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/$appId/library_hero.jpg"),
+            com.winlator.star.ui.simple.LabArt.Pic("https://cdn.cloudflare.steamstatic.com/steam/apps/$appId/library_hero.jpg"),
+        ),
+        modifier = Modifier.fillMaxSize(),
+    )
+    Box(
+        Modifier.fillMaxSize().background(
+            if (sideBySide) Brush.horizontalGradient(0f to pageBg.copy(alpha = 0.95f), 0.5f to pageBg.copy(alpha = 0.82f), 0.8f to pageBg.copy(alpha = 0.3f), 1f to pageBg.copy(alpha = 0.45f))
+            else Brush.verticalGradient(0f to pageBg.copy(alpha = 0.25f), 0.30f to pageBg.copy(alpha = 0.35f), 0.55f to pageBg.copy(alpha = 0.93f), 0.75f to pageBg),
+        ),
+    )
+    // Primary action + gear menu: a single state-driven button drives install / retry / add-to-shortcuts (and shows
+    // download progress read-only), while the gear dropdown carries pause/resume, cancel, uninstall, branch, DLC and Goldberg.
+    val primaryShape = deckShape(10.dp)
+    var freeMessage by remember(appId) { mutableStateOf<String?>(null) }
+    StorePage(
+        geometry = geometry,
+        coverUrls = coverUrls,
+        coverShape = primaryShape,
+        inset = pageInset,
+        back = { m ->
+            StoreBackTile(onBack, primaryShape, AchvCard, AchvLine, MaterialTheme.colorScheme.onBackground, m)
+        },
+        name = {
             Text(
                 text = nameText,
                 style = MaterialTheme.typography.headlineSmall,
@@ -1897,25 +2100,8 @@ private fun SteamGameDetailScreen(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-        }
-
-        // (Download progress is shown ON the large primary button below — 2-layer fill + an info
-        // line beneath it — so there's a single progress indicator, not a separate under-title bar.)
-
-        // Primary action + gear menu — a single state-driven button (per the mockup) replacing the
-        // old Install/Pause/Launch trio. EVERY former action stays reachable: the button drives
-        // install / retry / add-to-shortcuts (and shows download progress read-only), while the gear
-        // dropdown carries pause/resume, cancel, uninstall, branch, DLC and Goldberg. The underlying
-        // handlers (onInstallClick/onPauseResumeClick/onLaunchClick) are UNCHANGED — only the trigger.
-        val downloading = progressVisible   // installAction == CANCEL (active or paused download)
-        val primaryShape = RoundedCornerShape(10.dp)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            // ── Primary button ──────────────────────────────────────────────────────────────────
+        },
+        primary = { m ->
             if (downloading) {
                 // Read-only download button: the SINGLE progress indicator. Same 2-layer fill the old
                 // under-title bar used — lighter back layer = bytes fetched (downloadProgressValue),
@@ -1926,9 +2112,7 @@ private fun SteamGameDetailScreen(
                 val label = if (pauseAction == PauseAction.RESUME) "Paused — $progressValue%"
                             else "Downloading… $progressValue%"
                 Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(46.dp)
+                    modifier = m
                         .clip(primaryShape)
                         .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                         .border(1.dp, AchvLine, primaryShape),
@@ -1957,17 +2141,68 @@ private fun SteamGameDetailScreen(
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                     )
+                    // The fill is the ink colour in the stores, so over the solid fill the label is redrawn in
+                    // onPrimary, clipped to the filled part.
+                    val rtl = androidx.compose.ui.platform.LocalLayoutDirection.current ==
+                        androidx.compose.ui.unit.LayoutDirection.Rtl
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .drawWithContent {
+                                val w = size.width * installFrac
+                                clipRect(
+                                    left = if (rtl) size.width - w else 0f,
+                                    right = if (rtl) size.width else w,
+                                ) { this@drawWithContent.drawContent() }
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = label,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                        )
+                    }
                 }
             } else {
                 // Accent action button: Add to shortcuts (installed) / Retry / Install.
-                val (label, enabled, onPrimary) = when (installAction) {
-                    InstallAction.UNINSTALL -> Triple("Add to shortcuts", launchBtnEnabled, onLaunchClick)
-                    else                    -> Triple(installBtnText, installBtnEnabled, onInstallClick) // INSTALL / RETRY / transient
+                // A free game opened from the Store that the account does not own yet: the button adds it to the
+                // library first; once granted it becomes the normal Install button.
+                val freeScope = androidx.compose.runtime.rememberCoroutineScope()
+                var freeOwned by remember(appId) { mutableStateOf(true) }
+                var freeBusy by remember(appId) { mutableStateOf(false) }
+                LaunchedEffect(appId) {
+                    if (appId in SteamFreeOffers.ids) freeOwned = withContext(Dispatchers.IO) {
+                        runCatching { SteamRepository.getInstance().getCachedGameRows().any { it.appId == appId } }.getOrDefault(true)
+                    }
+                }
+                val addFree: () -> Unit = {
+                    freeBusy = true
+                    freeScope.launch {
+                        when (val r = SteamFreeLicense.request(appId)) {
+                            is SteamFreeLicense.Result.Failed -> freeMessage = r.message
+                            else -> { freeOwned = true; SteamFreeOffers.ids.remove(appId); freeMessage = "Added to your library" }
+                        }
+                        freeBusy = false
+                    }
+                }
+                val (label, enabled, onPrimary) = when {
+                    installAction == InstallAction.UNINSTALL -> Triple("Add to shortcuts", launchBtnEnabled, onLaunchClick)
+                    !freeOwned -> Triple(if (freeBusy) "Adding…" else "Add to Library", !freeBusy, addFree)
+                    else -> Triple(installBtnText, installBtnEnabled, onInstallClick) // INSTALL / RETRY / transient
                 }
                 Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(46.dp)
+                    modifier = m
+                        // Filled with the accent: the outline takes the ink on it.
+                        .then(
+                            if (enabled) {
+                                Modifier.storeFocus(primaryShape, onPrimary, tint = MaterialTheme.colorScheme.onPrimary, entry = entry.takeIf { entryTarget == StoreEntry.PRIMARY })
+                            } else {
+                                Modifier
+                            },
+                        )
                         .clip(primaryShape)
                         .background(if (enabled) AchvAccent else AchvAccent.copy(alpha = 0.4f))
                         .clickable(enabled = enabled) { onPrimary() },
@@ -1982,24 +2217,23 @@ private fun SteamGameDetailScreen(
                     )
                 }
             }
-
-            // ── Gear (⚙) dropdown ───────────────────────────────────────────────────────────────
+        },
+        settings = { m ->
             Box {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(primaryShape)
-                        .background(AchvCard)
-                        .border(1.dp, AchvLine, primaryShape)
-                        .clickable { gearMenuExpanded = true },
-                    contentAlignment = Alignment.Center,
+                StoreActionTile(
+                    onClick = { gearMenuExpanded = true },
+                    shape = primaryShape,
+                    fill = AchvCard,
+                    line = AchvLine,
+                    modifier = m,
+                    entry = entry.takeIf { entryTarget == StoreEntry.GEAR },
                 ) {
                     Text("⚙", fontSize = 18.sp, color = AchvAccent)
                 }
                 DropdownMenu(
                     expanded = gearMenuExpanded,
                     onDismissRequest = { gearMenuExpanded = false },
-                    modifier = Modifier.outlinedMenuCard(),
+                    modifier = Modifier.outlinedMenuCard().storeBackKey { gearMenuExpanded = false },
                 ) {
                     // Downloading → pause/resume + cancel lead, then the common items; a divider sits
                     // between every option (matching the app's other outlined menus).
@@ -2017,6 +2251,14 @@ private fun SteamGameDetailScreen(
                     MenuItemDivider()
                     GearMenuItem("🧩", "Manage DLC", enabled = dlcEntries.isNotEmpty(),
                         onClick = { gearMenuExpanded = false; onDlcLineClick() })
+                    if (installAction == InstallAction.INSTALL && !downloading) {
+                        MenuItemDivider()
+                        GearMenuItem("📁", "Use a folder I already have",
+                            onClick = {
+                                gearMenuExpanded = false
+                                adoptPick.launch(com.winlator.star.util.InAppFilePicker.buildDirIntent(context, nameText))
+                            })
+                    }
                     // Storage move — only for an installed game that has somewhere to go. Hidden
                     // (not greyed) otherwise, since "no SD card" isn't a state the user can act on.
                     if (moveStorageLabel != null) {
@@ -2034,6 +2276,14 @@ private fun SteamGameDetailScreen(
                     }
                 }
             }
+        },
+        downloads = { m ->
+            StoreDownloadsTile(primaryShape, AchvCard, AchvLine, AchvAccent, m)
+        },
+    ) {
+        freeMessage?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp))
         }
 
         // Download info line — moved out from under the (removed) small bar to directly under the
@@ -2047,8 +2297,7 @@ private fun SteamGameDetailScreen(
             )
         }
 
-        // Tab strip — Details · Achievements (done/total) · DLC · Cloud saves. Styled like the
-        // action buttons and horizontally scrollable, per the mockup.
+        // Tab chips — Details · Achievements (done/total) · DLC · Cloud · Media; they wrap onto another row when they do not fit.
         SteamDetailTabs(
             tabs = detailTabs,
             selected = selectedTab,
@@ -2105,9 +2354,38 @@ private fun SteamGameDetailScreen(
                         )
                         OutlinedButton(
                             onClick = onBranchLineClick,
-                            modifier = Modifier.padding(top = 6.dp),
+                            modifier = Modifier.padding(top = 6.dp).storeFocus(com.winlator.star.ui.theme.labPillShape(), onBranchLineClick),
                         ) {
                             Text("Change branch")
+                        }
+                    }
+                    // Game language — only when Steam lists more than one for this game.
+                    if (gameLanguages.size > 1) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = "Language: " + SteamGameLanguage.label(SteamGameLanguage.resolve(pickedLanguage, gameLanguages)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        OutlinedButton(
+                            onClick = onLanguageLineClick,
+                            modifier = Modifier.padding(top = 6.dp).storeFocus(com.winlator.star.ui.theme.labPillShape(), onLanguageLineClick),
+                        ) {
+                            Text("Change language")
+                        }
+                        if (languageMissing != null) {
+                            Text(
+                                text = SteamGameLanguage.label(languageMissing) + " files not installed",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 6.dp),
+                            )
+                            OutlinedButton(
+                                onClick = onLanguageDownloadClick,
+                                modifier = Modifier.padding(top = 6.dp).storeFocus(com.winlator.star.ui.theme.labPillShape(), onLanguageDownloadClick),
+                            ) {
+                                Text("Download language files")
+                            }
                         }
                     }
                     Spacer(Modifier.height(8.dp))
@@ -2192,7 +2470,7 @@ private fun SteamGameDetailScreen(
                             )
                             OutlinedButton(
                                 onClick = onDlcLineClick,
-                                modifier = Modifier.padding(top = 8.dp),
+                                modifier = Modifier.padding(top = 8.dp).storeFocus(com.winlator.star.ui.theme.labPillShape(), onDlcLineClick),
                             ) { Text("Choose DLC") }
                         }
                     }
@@ -2255,8 +2533,11 @@ private fun SteamGameDetailScreen(
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            text = if (!signedIn) "Sign in to Steam to sync this game's cloud saves."
-                                   else "Install this game to sync its cloud saves with your Steam Cloud.",
+                            text = when {
+                                !signedIn -> "Sign in to Steam to sync this game's cloud saves."
+                                gameStatus == GameStatus.INSTALLED -> "Connecting to Steam…"
+                                else -> "Install this game to sync its cloud saves with your Steam Cloud."
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -2278,7 +2559,12 @@ private fun SteamGameDetailScreen(
         AchievementCaptionBar(
             selected = selectedAch,
             modifier = Modifier
-                .align(Alignment.BottomCenter)
+                .align(if (sideBySide) Alignment.BottomStart else Alignment.BottomCenter)
+                // Side by side it sits under the scrolling column, clear of the cover.
+                .then(
+                    if (sideBySide) Modifier.offset(x = geometry.edge.dp - pageInset).width(geometry.leftWidth.dp + pageInset * 2)
+                    else Modifier,
+                )
                 .navigationBarsPadding()
                 .onSizeChanged { captionHeightPx = it.height },
         )
@@ -2329,7 +2615,7 @@ private fun SteamGameDetailScreen(
                 Button(
                     onClick = onDismissDlcSheet,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = deckShape(10.dp),
                 ) { Text("Done") }
             }
         }
@@ -2338,6 +2624,47 @@ private fun SteamGameDetailScreen(
     // Beta-branch picker sheet — pick which branch to download/install. Selectable branches (public +
     // any unlocked beta) get a radio; a locked beta needs a verified access code first.
     // Ported from GameNative (GPL-3.0): SteamAppScreen branch picker + password field.
+    if (showLanguageSheet) {
+        ModalBottomSheet(onDismissRequest = onDismissLanguageSheet, sheetState = rememberModalBottomSheetState()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .navigationBarsPadding()
+                    .padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
+            ) {
+                Text(
+                    text = "Game language",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = "Installed games ask before downloading new language files.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp, bottom = 12.dp),
+                )
+                val auto = SteamGameLanguage.label(SteamGameLanguage.resolve("", gameLanguages))
+                (listOf("") + gameLanguages).forEach { code ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelectLanguage(code) }
+                            .padding(vertical = 2.dp),
+                    ) {
+                        RadioButton(selected = pickedLanguage == code, onClick = { onSelectLanguage(code) })
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = if (code.isEmpty()) "App language ($auto)" else SteamGameLanguage.label(code),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+            }
+        }
+    }
     if (showBranchSheet) {
         val sheetState = rememberModalBottomSheetState()
         ModalBottomSheet(onDismissRequest = onDismissBranchSheet, sheetState = sheetState) {
@@ -2431,7 +2758,7 @@ private fun SteamGameDetailScreen(
                         onClick = { onCheckBranchPassword(code) },
                         enabled = !branchCheckBusy && code.isNotBlank(),
                         modifier = Modifier.padding(top = 8.dp),
-                        shape = RoundedCornerShape(10.dp),
+                        shape = deckShape(10.dp),
                     ) {
                         if (branchCheckBusy) {
                             CircularProgressIndicator(
@@ -2448,7 +2775,7 @@ private fun SteamGameDetailScreen(
                 Button(
                     onClick = onDismissBranchSheet,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = deckShape(10.dp),
                 ) { Text("Done") }
             }
         }
@@ -2484,6 +2811,7 @@ private fun GearMenuItem(
 ) {
     val base = if (danger) MaterialTheme.colorScheme.error else AchvInk
     DropdownMenuItem(
+        modifier = if (enabled) Modifier.storeFocus(deckShape(6.dp), onClick) else Modifier,
         text = {
             Text(
                 text = text,
@@ -2499,9 +2827,8 @@ private fun GearMenuItem(
 }
 
 /**
- * The detail page's tab strip — pill tabs styled like the action buttons (fixed mockup palette, not
- * MaterialTheme). Horizontally scrollable. The Achievements tab carries a `done/total` count badge
- * once its list has loaded (hidden while empty / not signed in).
+ * The detail page's tab chips (fixed mockup palette, not MaterialTheme), an icon and a short label each. The Achievements tab
+ * shows its `done/total` count beside the trophy once its list has loaded (hidden while empty / not signed in).
  */
 @Composable
 private fun SteamDetailTabs(
@@ -2512,57 +2839,22 @@ private fun SteamDetailTabs(
     mediaCount: Int,
     onSelect: (DetailTab) -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        tabs.forEach { tab ->
-            val isSel = tab == selected
-            val badge = when {
-                tab == DetailTab.ACHIEVEMENTS && achTotal > 0 -> "$achDone/$achTotal"
-                tab == DetailTab.MEDIA && mediaCount > 0 -> "$mediaCount"
-                else -> null
+    StoreTabChips(
+        tabs = tabs.map { tab ->
+            val icon = storeTabIcon(tab.label)
+            when {
+                tab == DetailTab.ACHIEVEMENTS && achTotal > 0 -> StoreTab(icon, "$achDone/$achTotal")
+                tab == DetailTab.MEDIA && mediaCount > 0 -> StoreTab(icon, tab.label, "$mediaCount")
+                else -> StoreTab(icon, tab.label)
             }
-            val shape = RoundedCornerShape(9.dp)
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(7.dp),
-                modifier = Modifier
-                    .clip(shape)
-                    .background(if (isSel) AchvTabActiveBg else AchvCard)
-                    .border(1.dp, if (isSel) AchvTabActiveBorder else AchvLineSoft, shape)
-                    .clickable { onSelect(tab) }
-                    .padding(horizontal = 15.dp, vertical = 9.dp),
-            ) {
-                Text(
-                    text = tab.label,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isSel) AchvTabActiveText else AchvInk2,
-                    maxLines = 1,
-                )
-                if (badge != null) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(if (isSel) AchvTabActiveBadge else AchvBadgeBg)
-                            .padding(horizontal = 7.dp, vertical = 1.dp),
-                    ) {
-                        Text(
-                            text = badge,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isSel) AchvTabActiveText else AchvInk3,
-                            maxLines = 1,
-                        )
-                    }
-                }
-            }
-        }
-    }
+        },
+        selected = tabs.indexOf(selected),
+        onSelect = { onSelect(tabs[it]) },
+        shape = deckShape(8.dp),
+        idle = StoreChipStyle(AchvCard, AchvLineSoft, AchvInk2),
+        active = StoreChipStyle(AchvTabActiveBg, AchvTabActiveBorder, AchvTabActiveText),
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 6.dp),
+    )
 }
 
 /**
@@ -2671,7 +2963,7 @@ private fun AchievementProgressBlock(done: Int, total: Int, pct: Int) {
         }
         Spacer(Modifier.height(8.dp))
         val frac = (pct / 100f).coerceIn(0f, 1f)
-        val trackShape = RoundedCornerShape(20.dp)
+        val trackShape = deckShape(20.dp)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2716,7 +3008,7 @@ private fun AchievementTile(
     modifier: Modifier = Modifier,
 ) {
     val hiddenLocked = a.hidden && !a.unlocked
-    val shape = RoundedCornerShape(11.dp)
+    val shape = deckShape(11.dp)
     val bg = if (a.unlocked) Brush.linearGradient(listOf(AchvTileUnlockedTop, AchvTileUnlockedBot))
              else Brush.linearGradient(listOf(AchvTileLockedTop, AchvTileLockedBot))
     val borderColor = when {
@@ -2727,6 +3019,7 @@ private fun AchievementTile(
     Box(
         modifier = modifier
             .aspectRatio(1f)
+            .storeFocus(shape, onClick)
             .clip(shape)
             .background(bg)
             .border(1.dp, borderColor, shape)
@@ -2784,8 +3077,8 @@ private fun AchievementTile(
 @Composable
 private fun AchievementHelpDialog(a: SteamAchievement, onDismiss: () -> Unit) {
     val hiddenLocked = a.hidden && !a.unlocked
-    val iconShape = RoundedCornerShape(16.dp)
-    val pillShape = RoundedCornerShape(20.dp)
+    val iconShape = deckShape(16.dp)
+    val pillShape = deckShape(20.dp)
     val statusLabel = when {
         a.unlocked && a.unlockTimeSec > 0L -> "Unlocked · ${formatUnlockDate(a.unlockTimeSec)}"
         a.unlocked                         -> "Unlocked"
@@ -2946,7 +3239,7 @@ private fun AchievementCaptionBar(selected: SteamAchievement?, modifier: Modifie
 /** Status pill for the caption bar: gold "Unlocked" vs muted "Locked". */
 @Composable
 private fun AchvStatusPill(unlocked: Boolean) {
-    val shape = RoundedCornerShape(20.dp)
+    val shape = deckShape(20.dp)
     Box(
         modifier = Modifier
             .clip(shape)
@@ -2975,7 +3268,7 @@ private fun AchvLegendItem(swatch: @Composable () -> Unit, label: String) {
 /** A 12dp legend swatch: unlocked (gold-bordered bright gradient) vs locked (dim greyed gradient). */
 @Composable
 private fun AchvLegendSwatch(unlocked: Boolean) {
-    val shape = RoundedCornerShape(4.dp)
+    val shape = deckShape(4.dp)
     Box(
         modifier = Modifier
             .size(12.dp)
@@ -3134,7 +3427,7 @@ private fun GoldbergSection(
                 Button(
                     onClick = onDownloadClick,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = deckShape(10.dp),
                 ) { Text("$verb Steam Emulator$sizeSuffix", maxLines = 1) }
             }
         }
@@ -3157,7 +3450,7 @@ private fun GoldbergSection(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(deckShape(8.dp))
                     .clickable(enabled = !busy) { onModeSelected(optMode) }
                     .padding(vertical = 4.dp),
             ) {
@@ -3228,7 +3521,7 @@ private fun CloudSavesSection(
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .padding(bottom = 16.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(deckShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(16.dp),
     ) {
@@ -3283,8 +3576,8 @@ private fun CloudSavesSection(
                 Spacer(Modifier.height(12.dp))
                 Button(
                     onClick = onSetUp,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().storeFocus(deckShape(10.dp), onSetUp, tint = MaterialTheme.colorScheme.onPrimary),
+                    shape = deckShape(10.dp),
                 ) { Text("Set up in a container", maxLines = 1) }
             }
 
@@ -3306,8 +3599,8 @@ private fun CloudSavesSection(
                 Button(
                     onClick = onSyncFromCloud,
                     enabled = !busy,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().storeFocus(deckShape(10.dp), onSyncFromCloud, tint = MaterialTheme.colorScheme.onPrimary),
+                    shape = deckShape(10.dp),
                 ) { Text("⬇ Sync from Cloud", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 Spacer(Modifier.height(2.dp))
                 Text(
@@ -3320,8 +3613,8 @@ private fun CloudSavesSection(
                 Button(
                     onClick = onSyncToCloud,
                     enabled = !busy,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().storeFocus(deckShape(10.dp), onSyncToCloud, tint = MaterialTheme.colorScheme.onPrimary),
+                    shape = deckShape(10.dp),
                 ) { Text("⬆ Sync to Cloud", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 Spacer(Modifier.height(2.dp))
                 Text(
@@ -3336,7 +3629,8 @@ private fun CloudSavesSection(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
+                        .storeFocus(deckShape(8.dp), { advancedExpanded = !advancedExpanded })
+                        .clip(deckShape(8.dp))
                         .clickable { advancedExpanded = !advancedExpanded }
                         .padding(vertical = 6.dp),
                 ) {
@@ -3366,15 +3660,15 @@ private fun CloudSavesSection(
                         Button(
                             onClick = onDownload,
                             enabled = !busy,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f).storeFocus(deckShape(10.dp), onDownload, tint = MaterialTheme.colorScheme.onPrimary),
+                            shape = deckShape(10.dp),
                         ) { Text("⬇ Download", maxLines = 1, overflow = TextOverflow.Ellipsis) }
 
                         OutlinedButton(
                             onClick = onUpload,
                             enabled = !busy,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f).storeFocus(deckShape(10.dp), onUpload),
+                            shape = deckShape(10.dp),
                         ) { Text("⬆ Upload", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                     }
 
@@ -3390,15 +3684,15 @@ private fun CloudSavesSection(
                         Button(
                             onClick = onApply,
                             enabled = !busy,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f).storeFocus(deckShape(10.dp), onApply, tint = MaterialTheme.colorScheme.onPrimary),
+                            shape = deckShape(10.dp),
                         ) { Text("→ Apply", maxLines = 1, overflow = TextOverflow.Ellipsis) }
 
                         OutlinedButton(
                             onClick = onCollect,
                             enabled = !busy,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f).storeFocus(deckShape(10.dp), onCollect),
+                            shape = deckShape(10.dp),
                         ) { Text("← Collect", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                     }
                 }
@@ -3520,7 +3814,7 @@ private fun CloudConfirmDialog(
 private fun InfoChip(label: String) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(deckShape(6.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(horizontal = 8.dp, vertical = 3.dp),
     ) {
@@ -3541,6 +3835,8 @@ private fun DownloadSpeedPickerDialog(
     onManageLocations: () -> Unit,
     onDismiss: () -> Unit,
     onDownload: (speedTier: Int, debugLog: Boolean, installRoot: String?) -> Unit,
+    /** A location was added from this dialog (custom folder, another drive): reload the list. */
+    onLocationsChanged: () -> Unit = {},
 ) {
     // Tiers mirror GameNative: cores × ratio scales download + decompress concurrency.
     // Higher tiers download faster but use more RAM/CPU during decompression.
@@ -3556,8 +3852,12 @@ private fun DownloadSpeedPickerDialog(
     // Install location — the user's default (the internal one unless they set another), asked every
     // time. The chooser is only shown when there is more than the internal default (an SD card is
     // detected or library folders were added); with just the internal location nothing changes.
-    var selectedLocationId by remember { mutableStateOf(defaultLocationId) }
-    val showLocations = locations.size > 1
+    // Follows a default changed while the dialog is open (Manage locations → Make default, "Use as default").
+    var selectedLocationId by remember(defaultLocationId) { mutableStateOf(defaultLocationId) }
+    var makeDefault by remember { mutableStateOf(false) }
+    val ctx = LocalContext.current
+    // Always shown: "+ Custom folder…" and other drives must be reachable even with internal storage only.
+    val showLocations = locations.isNotEmpty()
     // A removed library leaves a dangling id; fall back to the first entry (the internal default).
     val chosenLocation = locations.firstOrNull { it.id == selectedLocationId } ?: locations.firstOrNull()
     // An unreachable library or one without room for the game can't be downloaded to. Internal is
@@ -3595,14 +3895,16 @@ private fun DownloadSpeedPickerDialog(
             onDismissRequest = onDismiss,
             properties = DialogProperties(usePlatformDefaultWidth = false),
         ) {
+            // Drawn at the Lab's size, as a Lab panel: hard corners, thin line, compact rows.
+            com.winlator.star.ui.DeckDialogScaled {
             Surface(
                 modifier = Modifier
-                    .fillMaxWidth(0.96f)
-                    .widthIn(max = 720.dp)
+                    .fillMaxWidth(0.9f)
+                    .widthIn(max = 640.dp)
                     .heightIn(max = maxH),
-                shape = RoundedCornerShape(16.dp),
+                shape = SimpleShape,
                 color = cs.surface,
-                border = BorderStroke(1.dp, cs.primary.copy(alpha = 0.22f)),
+                border = BorderStroke(1.dp, cs.outline),
             ) {
                 Column(Modifier.heightIn(max = maxH)) {
                     // Header — no download-size/on-disk values are in scope in this composable, so
@@ -3645,7 +3947,7 @@ private fun DownloadSpeedPickerDialog(
                                 .weight(1.15f)
                                 .fillMaxHeight()
                                 .verticalScroll(rememberScrollState())
-                                .padding(start = 14.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
+                                .padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
                         ) {
                             Text(
                                 text = "SPEED & RESOURCE USE",
@@ -3665,82 +3967,39 @@ private fun DownloadSpeedPickerDialog(
                                 }
                                 val hint = when (tier) {
                                     DownloadSpeedConfig.TIER_SLOW ->
-                                        "Lowest RAM / CPU — gentlest on the device"
+                                        "Gentlest on the device"
                                     DownloadSpeedConfig.TIER_MEDIUM ->
-                                        "Balanced throughput and resource use"
+                                        "Balanced"
                                     DownloadSpeedConfig.TIER_FAST ->
-                                        "Best speed for most devices"
-                                    else -> "Fastest — highest RAM / CPU on decompress"
+                                        "Best for most devices"
+                                    else -> "Fastest, heaviest on RAM / CPU"
                                 }
+                                // One slim line per speed, the Lab menu's way: the selected one carries the line on its
+                                // left and a faint fill; a fading line separates the rows.
+                                if (index > 0) com.winlator.star.ui.simple.SimpleRowDivider()
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(vertical = 3.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(
-                                            if (isSel) cs.primary.copy(alpha = 0.16f)
-                                            else Color.Transparent,
-                                        )
-                                        .border(
-                                            width = 1.dp,
-                                            color = if (isSel) cs.primary.copy(alpha = 0.55f)
-                                            else cs.outline.copy(alpha = 0.25f),
-                                            shape = RoundedCornerShape(10.dp),
-                                        )
-                                        .clickable { selected = index }
-                                        .padding(start = 10.dp, end = 10.dp, top = 7.dp, bottom = 7.dp),
+                                        .background(if (isSel) cs.primary.copy(alpha = 0.10f) else Color.Transparent)
+                                        .labTile(onClick = { selected = index })
+                                        .padding(end = 8.dp),
                                 ) {
-                                    RadioButton(
-                                        selected = isSel,
-                                        onClick = { selected = index },
+                                    Box(Modifier.width(2.dp).height(34.dp).background(if (isSel) cs.primary else Color.Transparent))
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(name, fontSize = 13.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal, color = cs.onSurface, maxLines = 1)
+                                    Spacer(Modifier.width(8.dp))
+                                    // Meter fills Slow=1 … Blazing=4.
+                                    SpeedLoadMeter(filled = index + 1)
+                                    Text(
+                                        text = if (tier == DownloadSpeedConfig.TIER_FAST) "Recommended · $hint" else hint,
+                                        fontSize = 11.sp,
+                                        color = cs.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                        modifier = Modifier.weight(1f).padding(start = 10.dp),
                                     )
-                                    Spacer(Modifier.width(6.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(
-                                                text = name,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = cs.onSurface,
-                                            )
-                                            // Fast is the recommended default — flag it by tier
-                                            // value (not a hard index) so it tracks the list.
-                                            if (tier == DownloadSpeedConfig.TIER_FAST) {
-                                                Spacer(Modifier.width(6.dp))
-                                                Box(
-                                                    modifier = Modifier
-                                                        .clip(RoundedCornerShape(5.dp))
-                                                        .background(cs.primary)
-                                                        .padding(horizontal = 6.dp, vertical = 1.dp),
-                                                ) {
-                                                    Text(
-                                                        text = "RECOMMENDED",
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        color = cs.onPrimary,
-                                                        fontWeight = FontWeight.Bold,
-                                                    )
-                                                }
-                                            }
-                                            Spacer(Modifier.width(8.dp))
-                                            // Meter fills Slow=1 … Blazing=4.
-                                            SpeedLoadMeter(filled = index + 1)
-                                        }
-                                        Text(
-                                            text = hint,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = cs.onSurfaceVariant,
-                                        )
-                                    }
-                                    // Per-tier "?" — has its own onClick, so tapping it opens
-                                    // help without selecting the row.
-                                    IconButton(onClick = { helpRes = tierHelpRes(tier) }) {
-                                        Icon(
-                                            Icons.Default.Help,
-                                            contentDescription = "What is this?",
-                                            modifier = Modifier.size(18.dp),
-                                        )
-                                    }
                                 }
                             }
                         }
@@ -3814,6 +4073,14 @@ private fun DownloadSpeedPickerDialog(
                                     onManage = onManageLocations,
                                     warning = { DownloadDialogWarning(text = it) },
                                 )
+                                LocationExtras(
+                                    locations = locations,
+                                    chosenId = chosenLocation?.id,
+                                    defaultId = defaultLocationId,
+                                    makeDefault = makeDefault,
+                                    onMakeDefault = { makeDefault = it },
+                                    onAdded = { id -> selectedLocationId = id; onLocationsChanged() },
+                                )
                             }
                         }
                     }
@@ -3836,12 +4103,14 @@ private fun DownloadSpeedPickerDialog(
                         Spacer(Modifier.width(4.dp))
                         Button(
                             onClick = {
+                                if (makeDefault) chosenLocation?.let { SteamLibraryLocations.setDefault(ctx, it.id) }
                                 onDownload(options[selected].second, debugLog, chosenInstallRoot)
                             },
                             enabled = canDownload,
                         ) { Text("Download") }
                     }
                 }
+            }
             }
         }
         return
@@ -3961,7 +4230,10 @@ private fun DownloadSpeedPickerDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onDownload(options[selected].second, debugLog, chosenInstallRoot) },
+                onClick = {
+                    if (makeDefault) chosenLocation?.let { SteamLibraryLocations.setDefault(ctx, it.id) }
+                    onDownload(options[selected].second, debugLog, chosenInstallRoot)
+                },
                 enabled = canDownload,
             ) {
                 Text("Download")
@@ -3983,7 +4255,7 @@ private fun SpeedLoadMeter(filled: Int) {
             Box(
                 modifier = Modifier
                     .size(width = 12.dp, height = 4.dp)
-                    .clip(RoundedCornerShape(2.dp))
+                    .clip(deckShape(2.dp))
                     .background(if (i < filled) cs.primary else cs.surfaceVariant),
             )
         }
@@ -3998,9 +4270,9 @@ private fun DownloadDialogWarning(text: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(deckShape(8.dp))
             .background(cs.error.copy(alpha = 0.12f))
-            .border(1.dp, cs.error.copy(alpha = 0.30f), RoundedCornerShape(8.dp))
+            .border(1.dp, cs.error.copy(alpha = 0.30f), deckShape(8.dp))
             .padding(horizontal = 8.dp, vertical = 6.dp),
     ) {
         Text(
@@ -4045,4 +4317,67 @@ private fun ExePickerDialogGame(
         },
         confirmButton = {},
     )
+}
+
+/**
+ * Under the "Install to" list: "+ Custom folder…" (any folder, made a regular Steam library), one "+ <drive>" per
+ * SD card / USB drive that has no location yet (a `Steam` folder on it becomes a library), and "Use as default".
+ */
+@Composable
+private fun LocationExtras(
+    locations: List<SteamLibraryLocations.Location>,
+    chosenId: String?,
+    defaultId: String,
+    makeDefault: Boolean,
+    onMakeDefault: (Boolean) -> Unit,
+    onAdded: (String) -> Unit,
+) {
+    val ctx = LocalContext.current
+    fun addPath(path: String) {
+        when (val r = SteamLibraryLocations.add(ctx, path)) {
+            is SteamLibraryLocations.AddResult.Added -> onAdded(r.library.id)
+            is SteamLibraryLocations.AddResult.Rejected -> android.widget.Toast.makeText(ctx, r.reason, android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+    val pick = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+    ) { res ->
+        val path = if (res.resultCode == android.app.Activity.RESULT_OK) com.winlator.star.util.InAppFilePicker.pickedPath(res.data) else null
+        if (path != null) addPath(path)
+    }
+    // Drives with no location yet (the first SD card already has its own entry).
+    var drives by remember { mutableStateOf<List<com.winlator.star.core.StorageRoot>>(emptyList()) }
+    LaunchedEffect(locations) {
+        drives = withContext(Dispatchers.IO) {
+            val roots = try { com.winlator.star.core.StorageRoots.list(ctx) } catch (_: Throwable) { emptyList() }
+            roots.filter { r ->
+                if (!r.removable) return@filter false
+                val vol = com.winlator.star.core.WinePath.storageVolumeRootOf(r.dir.absolutePath) ?: return@filter false
+                vol == r.dir.absolutePath && locations.none { l -> l.kind != SteamLibraryLocations.Kind.INTERNAL && l.rootPath.startsWith(vol) }
+            }
+        }
+    }
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = { pick.launch(com.winlator.star.util.InAppFilePicker.buildDirIntent(ctx, "Choose a download folder")) }) {
+                Text("+ Custom folder…")
+            }
+            for (d in drives) {
+                TextButton(onClick = {
+                    val steam = java.io.File(d.dir, "Steam")
+                    steam.mkdirs()
+                    addPath(steam.absolutePath)
+                }) { Text("+ ${d.label.ifBlank { d.dir.name }}") }
+            }
+        }
+        if (chosenId != null && chosenId != defaultId) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { onMakeDefault(!makeDefault) },
+            ) {
+                androidx.compose.material3.Checkbox(checked = makeDefault, onCheckedChange = onMakeDefault)
+                Text("Use as default")
+            }
+        }
+    }
 }

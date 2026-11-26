@@ -107,21 +107,15 @@ public class AdrenotoolsManager {
     }
 
     // Migrate every container/shortcut still pointing at the driver being removed onto the default
-    // wrapper. Matching is by the driver's NAME, read from its meta.json.
+    // wrapper. The config's "version" holds the driver's id (its folder name), so only an exact match
+    // counts: matching the meta.json name with contains() also reset games set to another driver whose
+    // id merely contains that name ("Turnip" vs "Turnip-v26").
     //
-    // Two guards, because this is the one place that rewrites configuration the user never touched:
-    //  • an absent/unreadable meta.json makes getDriverName() return "", and String.contains("") is
-    //    true for EVERY container and EVERY shortcut — that reset the whole library's graphics
-    //    driver on a single driver delete. Nothing to match against means nothing to migrate.
-    //  • a shortcut with no graphicsDriverConfig of its own INHERITS the container's. Rewriting it
-    //    pinned a per-game override onto a game that never had one; the container was already
-    //    migrated above, so leaving it alone is both correct and lossless.
+    // A shortcut with no graphicsDriverConfig of its own INHERITS the container's. Rewriting it
+    // pinned a per-game override onto a game that never had one; the container was already
+    // migrated above, so leaving it alone is both correct and lossless.
     private void reloadContainers(String adrenoToolsDriverId) {
-        String driverName = getDriverName(adrenoToolsDriverId);
-        if (driverName.isEmpty()) {
-            Log.w("AdrenotoolsManager", "No driver name for " + adrenoToolsDriverId + " (missing meta.json?) - skipping container migration");
-            return;
-        }
+        if (adrenoToolsDriverId == null || adrenoToolsDriverId.isEmpty()) return;
         String fallback = GPUInformation.isDriverSupported(DefaultVersion.WRAPPER_ADRENO, mContext)
                 ? DefaultVersion.WRAPPER_ADRENO : DefaultVersion.WRAPPER;
 
@@ -129,8 +123,8 @@ public class AdrenotoolsManager {
         for (Container container : containerManager.getContainers()) {
             HashMap<String, String> config = GraphicsDriverConfigDialog.parseGraphicsDriverConfig(container.getGraphicsDriverConfig());
             String version = config.get("version");
-            Log.d("AdrenotoolsManager", "Checking if container driver version " + version + " matches " + driverName);
-            if (version == null || !version.contains(driverName)) continue;
+            Log.d("AdrenotoolsManager", "Checking if container driver version " + version + " matches " + adrenoToolsDriverId);
+            if (!adrenoToolsDriverId.equals(version)) continue;
             Log.d("AdrenotoolsManager", "Found a match for container " + container.getName());
             config.put("version", fallback);
             container.setGraphicsDriverConfig(GraphicsDriverConfigDialog.toGraphicsDriverConfig(config));
@@ -141,8 +135,8 @@ public class AdrenotoolsManager {
             if (own.isEmpty()) continue;   // inherits the container, which was just migrated
             HashMap<String, String> config = GraphicsDriverConfigDialog.parseGraphicsDriverConfig(own);
             String version = config.get("version");
-            Log.d("AdrenotoolsManager", "Checking if shortcut driver version " + version + " matches " + driverName);
-            if (version == null || !version.contains(driverName)) continue;
+            Log.d("AdrenotoolsManager", "Checking if shortcut driver version " + version + " matches " + adrenoToolsDriverId);
+            if (!adrenoToolsDriverId.equals(version)) continue;
             Log.d("AdrenotoolsManager", "Found a match for shortcut " + shortcut.name);
             config.put("version", fallback);
             shortcut.putExtra("graphicsDriverConfig", GraphicsDriverConfigDialog.toGraphicsDriverConfig(config));
@@ -217,6 +211,8 @@ public class AdrenotoolsManager {
         public static final String BAD_META = "bad-meta";
         public static final String LINUX_KIND = "linux-kind";
         public static final String WAYLAND_KIND = "wayland-kind";
+        /** The library links glibc: a Linux driver, which the Android loader cannot use. */
+        public static final String GLIBC = "glibc";
         public static final String NO_LIBRARY = "no-library";
         public static final String LIBRARY_MISSING = "library-missing";
         public static final String BUILT_IN = "built-in";
@@ -306,9 +302,19 @@ public class AdrenotoolsManager {
         }
     }
 
-    /** The folder holding meta.json: the zip's top level, or its only folder when everything sits in one. */
+    /**
+     * The folder holding meta.json: the zip's top level, its only folder when everything sits in one, or the
+     * Android folder of a zip with several drivers ({@link DriverInstaller#parseBundle}: DroidDeck's android/ + linux/).
+     */
     private static File driverRoot(File dir) {
         if (new File(dir, "meta.json").isFile()) return dir;
+        File manifest = new File(dir, "manifest.json");
+        if (manifest.isFile()) {
+            String text = FileUtils.readString(manifest);
+            DriverInstaller.Bundle bundle = text != null ? DriverInstaller.parseBundle(text) : null;
+            String path = bundle != null ? bundle.getPaths().get(DriverInstaller.Place.ANDROID) : null;
+            if (path != null && new File(new File(dir, path), "meta.json").isFile()) return new File(dir, path);
+        }
         File only = null;
         int count = 0;
         File[] kids = dir.listFiles();
@@ -355,7 +361,10 @@ public class AdrenotoolsManager {
         if ("linux-vulkan-icd".equals(kind)) return InstallResult.fail(InstallResult.LINUX_KIND, null);
         if ("wayland-game-driver".equals(kind)) return InstallResult.fail(InstallResult.WAYLAND_KIND, null);
         if (libraryName.isEmpty()) return InstallResult.fail(InstallResult.NO_LIBRARY, null);
-        if (!new File(dir, libraryName).isFile()) return InstallResult.fail(InstallResult.LIBRARY_MISSING, libraryName);
+        File library = new File(dir, libraryName);
+        if (!library.isFile()) return InstallResult.fail(InstallResult.LIBRARY_MISSING, libraryName);
+        // glibc's libc soname is versioned ("libc.so.6"), bionic's is not: a Linux build named like an Android one.
+        if (LinuxVulkanDriverManager.containsAscii(library, "libc.so.6")) return InstallResult.fail(InstallResult.GLIBC, libraryName);
         return null;
     }
 

@@ -1,5 +1,6 @@
 package com.winlator.star.store.xbox
 
+import com.winlator.star.store.StoreLang
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -144,23 +145,49 @@ internal object XboxCatalog {
     fun products(ids: List<String>, access: Map<String, String> = emptyMap(), market: String = Xodus.market()): List<XboxGame> =
         rawProducts(ids, market).mapNotNull { product(it, access, market) }
 
+    /** The app's language first, then English. */
+    private fun languages(): String = (listOf(StoreLang.xbox(), "en-us", "neutral")).distinct().joinToString(",")
+
     fun rawProducts(ids: List<String>, market: String = Xodus.market()): List<JSONObject> =
         ids.map { it.uppercase() }.filter { productId.matches(it) }.distinct().chunked(25).flatMap { batch ->
-            val body = get("https://displaycatalog.mp.microsoft.com/v7.0/products?bigIds=${batch.joinToString(",")}&market=$market&languages=en-us,neutral")
+            val body = get("https://displaycatalog.mp.microsoft.com/v7.0/products?bigIds=${batch.joinToString(",")}&market=$market&languages=${languages()}")
             objects(body.optJSONArray("Products")).filter { it.optString("ProductId").uppercase() in batch }
         }
 
+    /**
+     * xbox.com's search first, then the Microsoft Store's: the Store search leaves out console-first games that also
+     * have a PC package (the original Xbox games on PC, Nov 2026). Either one may fail on its own.
+     */
     fun search(query: String, access: Map<String, String>): List<XboxGame> {
         if (productId.matches(query.uppercase())) return products(listOf(query.uppercase()), access)
         if (query.length !in 2..100) return emptyList()
-        val q = java.net.URLEncoder.encode(query, "UTF-8")
-        val body = get("https://apps.microsoft.com/api/products/search?query=$q&mediaType=games&age=all&price=all&category=all&subscription=all&gl=${Xodus.market()}&hl=en-us")
-        val ids = objects(body.optJSONArray("productsList")).map { it.optString("productId") }.take(60)
+        val xboxTask = java.util.concurrent.FutureTask(java.util.concurrent.Callable { xboxSearch(query) })
+        Thread(xboxTask, "xbox-search").apply { isDaemon = true }.start()
+        val store = runCatching { storeSearch(query) }
+        val xbox = runCatching { xboxTask.get(15, java.util.concurrent.TimeUnit.SECONDS) }
+        if (xbox.isFailure && store.isFailure) throw store.exceptionOrNull()!!
+        val ids = (xbox.getOrDefault(emptyList()) + store.getOrDefault(emptyList())).map { it.uppercase() }.distinct().take(60)
         return products(ids, access)
     }
 
+    private fun storeSearch(query: String): List<String> {
+        val q = java.net.URLEncoder.encode(query, "UTF-8")
+        val body = get("https://apps.microsoft.com/api/products/search?query=$q&mediaType=games&age=all&price=all&category=all&subscription=all&gl=${Xodus.market()}&hl=${StoreLang.xboxStore()}")
+        return objects(body.optJSONArray("productsList")).map { it.optString("productId") }.take(60)
+    }
+
+    /** The search behind xbox.com's store (up to 25 products); the locale's region sets the market. */
+    private fun xboxSearch(query: String): List<String> {
+        val locale = "${StoreLang.xboxStore().substringBefore('-')}-${Xodus.market()}"
+        val request = JSONObject().put("Query", query).put("Filters", "e30=").put("ReturnFilters", false)
+            .put("ChannelKeyToBeUsedInResponse", "SEARCH")
+        val headers = mapOf("x-ms-api-version" to "1.1", "MS-CV" to java.util.UUID.randomUUID().toString().replace("-", "").take(16) + ".0")
+        val body = JSONObject(fetch("https://emerald.xboxservices.com/xboxcomfd/search/games?locale=$locale", request.toString(), headers))
+        return objects(body.optJSONObject("channels")?.optJSONObject("SEARCH")?.optJSONArray("products")).map { it.optString("productId") }
+    }
+
     fun featured(access: Map<String, String>): List<XboxGame> {
-        val body = get("https://apps.microsoft.com/api/Reco/GetComputedProductsList?listName=TopTrending&pgNo=1&noItems=12&filteredCategories=AllProducts&mediaType=Games&gl=${Xodus.market()}&hl=en-us&exp=0")
+        val body = get("https://apps.microsoft.com/api/Reco/GetComputedProductsList?listName=TopTrending&pgNo=1&noItems=12&filteredCategories=AllProducts&mediaType=Games&gl=${Xodus.market()}&hl=${StoreLang.xboxStore()}&exp=0")
         return products(objects(body.optJSONArray("productsList")).map { it.optString("productId") }.take(24), access)
     }
 
@@ -196,12 +223,19 @@ internal object XboxCatalog {
     private fun get(url: String): JSONObject = JSONObject(fetch(url))
     private fun getArray(url: String): JSONArray = JSONArray(fetch(url))
 
-    private fun fetch(url: String): String {
+    private fun fetch(url: String, post: String? = null, headers: Map<String, String> = emptyMap()): String {
         val connection = URL(url).openConnection() as HttpURLConnection
         try {
             connection.connectTimeout = 15_000; connection.readTimeout = 30_000
             connection.setRequestProperty("Accept", "application/json")
             connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Bannerlator")
+            headers.forEach { (name, value) -> connection.setRequestProperty(name, value) }
+            if (post != null) {
+                connection.requestMethod = "POST"
+                connection.doOutput = true
+                connection.setRequestProperty("Content-Type", "application/json")
+                connection.outputStream.use { it.write(post.toByteArray(Charsets.UTF_8)) }
+            }
             check(connection.responseCode == 200) { "Microsoft Store could not be reached. Try again." }
             val text = connection.inputStream.use { it.readBytes() }.also { require(it.size <= 16_000_000) }
             return String(text, Charsets.UTF_8)

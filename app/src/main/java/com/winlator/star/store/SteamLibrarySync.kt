@@ -60,6 +60,8 @@ object SteamLibrarySync {
                 added++
             }
             Log.i(TAG, "Seeded $added installed Steam game(s) into DownloadRegistry")
+            // Downloads the app was interrupted in come back as paused rows the Download Manager can resume.
+            SteamDownloadControl.seedInterrupted()
         } catch (t: Throwable) {
             // Reset so a later call (once the DB is ready) can retry.
             seeded.set(false)

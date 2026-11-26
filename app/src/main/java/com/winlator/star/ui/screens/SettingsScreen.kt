@@ -60,6 +60,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -77,6 +78,7 @@ import androidx.compose.ui.unit.sp
 import androidx.preference.PreferenceManager
 import com.winlator.star.R
 import com.winlator.star.SettingsFragment
+import com.winlator.star.ui.LocalXmbHintInset
 import com.winlator.star.util.InAppFilePicker
 import com.winlator.star.box64.Box64Preset
 import com.winlator.star.box64.Box64PresetManager
@@ -248,6 +250,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     }
 
     fun saveSettings() {
+        com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.SAVED)
         val editor = prefs.edit()
         editor.putString("box64_preset", selectedBox64Preset)
         editor.putString("fexcore_preset", selectedFEXCorePreset)
@@ -506,9 +509,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                         val dataDir = context.filesDir.parentFile
                         val backupFile = File(Environment.getExternalStorageDirectory(), "app_data_backup.tar")
                         try {
-                            com.winlator.star.core.TarCompressorUtils.archive(
-                                arrayOf(dataDir), backupFile
-                            ) { file -> !file.absolutePath.contains("imagefs/tmp/.sysvshm") }
+                            com.winlator.star.core.AppDataBackup.archive(dataDir, backupFile)
                             (context as? Activity)?.runOnUiThread {
                                 isBackingUp = false
                                 AppUtils.showToast(context, "Backup completed: ${backupFile.path}")
@@ -948,6 +949,20 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         // ── Sound ─────────────────────────────────────────────────────
         FieldSetLabel("Sound")
         FieldSet {
+            val uiSounds by com.winlator.star.sound.UiSoundPacks.state.collectAsState()
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Menu sounds", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                androidx.compose.material3.Switch(
+                    checked = uiSounds.on,
+                    onCheckedChange = { com.winlator.star.sound.UiSoundPacks.setOn(context, it) },
+                )
+            }
+            var showPackPicker by remember { mutableStateOf(false) }
+            Button(onClick = { showPackPicker = true }) {
+                Text(com.winlator.star.sound.UiSoundPacks.choices().firstOrNull { it.first == uiSounds.selected }?.second ?: "Sound pack")
+            }
+            if (showPackPicker) com.winlator.star.ui.simple.SoundPackPicker(onDismiss = { showPackPicker = false })
+            Spacer(Modifier.height(12.dp))
             Text("MIDI Sound Font", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             Text(
                 "New containers start with this SoundFont. Existing containers keep their own MIDI choice.",
@@ -1062,7 +1077,8 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(
-                    selected = defaultLandingScreen == "games",
+                    // "home" is Lab's Home page; Classic opens its games list for it.
+                    selected = defaultLandingScreen == "games" || defaultLandingScreen == "home",
                     onClick = { defaultLandingScreen = "games" },
                 )
                 Text("Game Shortcuts", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
@@ -1564,7 +1580,8 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                 onSaved()
             },
             containerColor = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
+            // XMB mode: above the floating Back / Search hints (0 elsewhere).
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).padding(bottom = LocalXmbHintInset.current)
         ) {
             Icon(Icons.Default.Check, "Save", tint = MaterialTheme.colorScheme.onPrimary)
         }

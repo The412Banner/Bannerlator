@@ -874,16 +874,17 @@ public class InputControlsView extends View {
             }
         }
 
+        Set<Binding> heldKeys = activeControllerBindings.get(controller);
         ExternalControllerBinding triggerL = controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_L2);
         if (triggerL != null) {
-            boolean active = controller.state.triggerL > ControlElement.STICK_DEAD_ZONE;
+            boolean active = controller.state.triggerL > keyAwareDeadZone(triggerL.getBinding(), heldKeys);
             mergeAxisBindingState(mappedAxes, triggerL.getBinding(), active, controller.state.triggerL);
             pulseState = addActiveControllerPulseSource(
                     pulseState, triggerL.getKeyCode(), triggerL.getBinding(), active);
         }
         ExternalControllerBinding triggerR = controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_R2);
         if (triggerR != null) {
-            boolean active = controller.state.triggerR > ControlElement.STICK_DEAD_ZONE;
+            boolean active = controller.state.triggerR > keyAwareDeadZone(triggerR.getBinding(), heldKeys);
             mergeAxisBindingState(mappedAxes, triggerR.getBinding(), active, controller.state.triggerR);
             pulseState = addActiveControllerPulseSource(
                     pulseState, triggerR.getKeyCode(), triggerR.getBinding(), active);
@@ -921,6 +922,12 @@ public class InputControlsView extends View {
         }
     }
 
+    /** STICK_DEAD_ZONE, or a little less for a keyboard key this controller already holds. */
+    private static float keyAwareDeadZone(Binding binding, Set<Binding> heldKeys) {
+        return binding.isKeyboard() && heldKeys != null && heldKeys.contains(binding)
+                ? ControlElement.STICK_DEAD_ZONE - ControlElement.KEY_RELEASE_MARGIN : ControlElement.STICK_DEAD_ZONE;
+    }
+
     private static ControllerPulseState addActiveControllerPulseSource(
             ControllerPulseState pulseState,
             int sourceKeyCode,
@@ -950,17 +957,17 @@ public class InputControlsView extends View {
     }
 
     private void updateHeldControllerBindingState(ExternalController controller, Map<Binding, Float> mappedInputs) {
+        Set<Binding> previousBindings = activeControllerBindings.get(controller);
+        if (previousBindings == null) previousBindings = Collections.emptySet();
         Set<Binding> currentBindings = new HashSet<>();
         for (Map.Entry<Binding, Float> input : mappedInputs.entrySet()) {
             Binding binding = input.getKey();
             if (!binding.isGamepad() && !isMomentaryBinding(binding)
-                    && Math.abs(input.getValue()) > ControlElement.STICK_DEAD_ZONE) {
+                    && Math.abs(input.getValue()) > keyAwareDeadZone(binding, previousBindings)) {
                 currentBindings.add(binding);
             }
         }
 
-        Set<Binding> previousBindings = activeControllerBindings.get(controller);
-        if (previousBindings == null) previousBindings = Collections.emptySet();
         Map<Binding, Integer> previousCounts = new EnumMap<>(Binding.class);
         previousCounts.putAll(activeControllerBindingCounts);
         for (Binding binding : previousBindings) {
@@ -1087,6 +1094,13 @@ public class InputControlsView extends View {
             }
         }
         return super.onGenericMotionEvent(event);
+    }
+
+    // A captured mouse's events go to the focused view, and this view holds focus while it is shown
+    // (a physical profile's sticks and hat reach it only then), so they go on to the touchpad.
+    @Override
+    public boolean onCapturedPointerEvent(MotionEvent event) {
+        return touchpadView != null && touchpadView.dispatchCapturedPointerEvent(event);
     }
 
     // #413 handheld split: forward an unhandled touch to the full-screen TouchpadView. When this overlay
@@ -1596,6 +1610,7 @@ public class InputControlsView extends View {
     }
 
     public boolean onKeyEvent(KeyEvent event) {
+        if (ExternalController.isKeyboardKeyOfController(event)) return false;
         if (physicalProfile != null && event.getRepeatCount() == 0) {
             ExternalController controller = physicalProfile.getController(event.getDeviceId());
             if (controller != null) {
@@ -1947,6 +1962,32 @@ public class InputControlsView extends View {
         }
     }
 
+    // Preview of a profile file that is not imported: its custom icons come from the file, never from this
+    // device's icon store (whose ids belong to other profiles).
+    private boolean embeddedIconsOnly = false;
+    private final java.util.HashSet<Integer> embeddedIconIds = new java.util.HashSet<>();
+
+    public void setEmbeddedIcons(org.json.JSONArray customIcons) {
+        for (int id : embeddedIconIds) {
+            Bitmap old = icons[id];
+            icons[id] = null;
+            if (old != null && !old.isRecycled()) old.recycle();
+        }
+        embeddedIconIds.clear();
+        embeddedIconsOnly = true;
+        if (customIcons == null) return;
+        for (int i = 0; i < customIcons.length(); i++) {
+            org.json.JSONObject icon = customIcons.optJSONObject(i);
+            if (icon == null) continue;
+            int id = com.winlator.star.inputcontrols.InputControlsManager.normalizeLegacyIconId(icon.optInt("id", -1));
+            if (id < CustomIconManager.CUSTOM_ICON_ID_OFFSET || id >= icons.length || embeddedIconIds.contains(id)) continue;
+            Bitmap bitmap = CustomIconManager.decodeEncodedIcon(icon.optString("png", null));
+            if (bitmap == null) continue;
+            icons[id] = bitmap;
+            embeddedIconIds.add(id);
+        }
+    }
+
     public Bitmap getIcon(int id) {
         int index = id;
         if (index >= icons.length) return null;
@@ -1954,6 +1995,7 @@ public class InputControlsView extends View {
         if (icons[index] == null) {
             // Check if it's a custom icon (ID >= 100)
             if (index >= CustomIconManager.CUSTOM_ICON_ID_OFFSET) {
+                if (embeddedIconsOnly) return null;
                 icons[index] = customIconManager.loadIcon((short) index);
             } else {
                 // Built-in icon from assets

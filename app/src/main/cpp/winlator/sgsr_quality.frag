@@ -23,15 +23,25 @@
 //   - reuses window.vert (full-screen quad over the destination rect)
 // =============================================================================
 
-layout(binding = 0) uniform sampler2D ps0;
+// BL_HALF is set for the *_half_frag.h build (gen_shaders.sh): colour and
+// weight maths in mediump (RelaxedPrecision, 16-bit on Adreno) as in Qualcomm's
+// reference; positions and texture coordinates stay highp.
+#ifdef BL_HALF
+precision mediump float;
+#define BL_MP mediump
+#else
+#define BL_MP
+#endif
+
+layout(binding = 0) uniform BL_MP sampler2D ps0;
 
 layout(push_constant) uniform PC {
-    vec4  ndc;          // quad NDC rect, consumed by window.vert (offset 0)
-    vec4  ViewportInfo; // xy = 1/inputSize (texel size), zw = inputSize in pixels
+    highp vec4  ndc;          // quad NDC rect, consumed by window.vert (offset 0)
+    highp vec4  ViewportInfo; // xy = 1/inputSize (texel size), zw = inputSize in pixels
     float EdgeSharpness; // driven by the "Sharpness" slider
 } pc;
 
-layout(location = 0) in  vec2 fragTexCoord;
+layout(location = 0) in  highp vec2 fragTexCoord;
 layout(location = 0) out vec4 out_Target0;
 
 const float EdgeThreshold = 8.0 / 255.0;
@@ -60,20 +70,27 @@ vec2 edgeDirection(vec4 left, vec4 right) {
     vec2 delta;
     delta.x = RxLz + RwLy;
     delta.y = RxLz - RwLy;
+#ifdef BL_HALF
+    // 3.07574e-05 is below the smallest normal 16-bit float (6.1e-05) and is
+    // flushed to 0 where denormals are not kept: 0 * inf on a flat row. Highp here.
+    highp vec2 dh = delta;
+    float lengthInv = inversesqrt((dh.x * dh.x + 3.075740e-05) + (dh.y * dh.y));
+#else
     float lengthInv = inversesqrt((delta.x * delta.x + 3.075740e-05) + (delta.y * delta.y));
+#endif
     return delta * lengthInv;
 }
 
 void main() {
-    vec4 ViewportInfo = pc.ViewportInfo;
-    vec2 uv = fragTexCoord;
+    highp vec4 ViewportInfo = pc.ViewportInfo;
+    highp vec2 uv = fragTexCoord;
 
     vec4 color;
     color.xyz = textureLod(ps0, uv, 0.0).xyz;
 
-    vec2 imgCoord = ((uv * ViewportInfo.zw) + vec2(-0.5, 0.5));
-    vec2 imgCoordPixel = floor(imgCoord);
-    vec2 coord = (imgCoordPixel * ViewportInfo.xy);
+    highp vec2 imgCoord = ((uv * ViewportInfo.zw) + vec2(-0.5, 0.5));
+    highp vec2 imgCoordPixel = floor(imgCoord);
+    highp vec2 coord = (imgCoordPixel * ViewportInfo.xy);
     vec2 pl = (imgCoord + (-imgCoordPixel));
     vec4 left = textureGather(ps0, coord, 1);
 
@@ -96,7 +113,14 @@ void main() {
                    + (((abs(right.x) + abs(right.y)) + abs(right.z)) + abs(right.w)))
                    + (((abs(upDown.x) + abs(upDown.y)) + abs(upDown.z)) + abs(upDown.w)));
         float sumMean = 1.014185e+01 / sum;
+#ifdef BL_HALF
+        // (10.14 / sum)^2 passes 65504 (16-bit max) once sum < ~0.04, and c * c * inf
+        // is NaN for c == 0. Capped: c * c * cap still saturates the clamp below for
+        // any c >= 1/255.
+        float std = min(sumMean * sumMean, 65504.0);
+#else
         float std = sumMean * sumMean;
+#endif
 
         vec3 data = vec3(std, edgeDirection(left, right));
 

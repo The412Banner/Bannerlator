@@ -152,6 +152,11 @@ fun AmazonLibraryTab(
             ) {
                 StoreFilterChip("All", !installedOnly) { installedOnly = false }
                 StoreFilterChip("Installed", installedOnly) { installedOnly = true }
+                // Game folders the user already has → installed in place, only missing files download.
+                var importing by remember { mutableStateOf(false) }
+                StoreFilterChip("+ Import game library", false) { importing = true }
+                if (importing) StoreImportGamesFlow(StoreInstallLocations.Store.AMAZON) { importing = false }
+                StoreViewButton()
                 Spacer(Modifier.weight(1f))
                 Text(
                     text = state.statusText,
@@ -185,8 +190,8 @@ fun AmazonLibraryTab(
                 columns = GridCells.Adaptive(storeGridCell(wide)),
                 modifier = Modifier.fillMaxSize().focusGroup(),
                 contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(shown, key = { it.productId }) { g ->
                     val item = remember(g.productId, state.posterTick) { AmazonLibraryRepo.toCatalogItem(ctx, g) }
@@ -196,16 +201,6 @@ fun AmazonLibraryTab(
                         onOpen = { onOpen(g) },
                         badgeText = if (g.productId in state.updatableIds) "Update" else null,
                     )
-                }
-                item(key = "full_library_footer", span = { GridItemSpan(maxLineSpan) }) {
-                    Box(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), contentAlignment = Alignment.Center) {
-                        StoreNotice(
-                            title = "Full library",
-                            body = "Need the list or poster view, or in-list installs? Open the full library screen.",
-                            actionLabel = "Open full library",
-                            onAction = onOpenFullLibrary,
-                        )
-                    }
                 }
             }
         }

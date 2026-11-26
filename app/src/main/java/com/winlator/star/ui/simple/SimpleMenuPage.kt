@@ -146,8 +146,10 @@ internal fun SimpleMenuPage(
     banner: String? = null,
     /** The section open first (its key); the first one when null. */
     startSection: String? = null,
+    /** Called with the key of the section on screen, each time it changes (a section that loads only when shown). */
+    onSection: ((String) -> Unit)? = null,
 ) {
-    SimpleFlat { SimpleMenuPageBody(overline, title, sections, onBack, banner, startSection) }
+    SimpleFlat { SimpleMenuPageBody(overline, title, sections, onBack, banner, startSection, onSection) }
 }
 
 @Composable
@@ -158,10 +160,12 @@ private fun SimpleMenuPageBody(
     onBack: () -> Unit,
     banner: String?,
     startSection: String? = null,
+    onSection: ((String) -> Unit)? = null,
 ) {
     val layout by AppThemeState.simpleLayout.collectAsState()
     var secKey by rememberSaveable { mutableStateOf(startSection ?: sections.firstOrNull()?.key ?: "") }
     val sec = sections.firstOrNull { it.key == secKey } ?: sections.firstOrNull()
+    LaunchedEffect(sec?.key) { sec?.key?.let { onSection?.invoke(it) } }
     val secIndex = sections.indexOfFirst { it.key == sec?.key }.coerceAtLeast(0)
     var row by rememberSaveable { mutableIntStateOf(0) }
     var zone by remember { mutableStateOf(PZone.ROWS) }
@@ -180,6 +184,7 @@ private fun SimpleMenuPageBody(
     // Right / Left on a row step onto its buttons: 0 = the row, 1 = its ▶ (Launch), 2 = its ⋯ (Options).
     var col by remember { mutableIntStateOf(0) }
     LaunchedEffect(rowNow, secKey) { col = 0 }
+    com.winlator.star.sound.MoveSound(listOf(zone, secKey, rowNow, col))
     fun colsOf(e: MenuEntry?): List<Int> = buildList { add(0); if (e?.play != null) add(1); if (e?.actions?.isNotEmpty() == true) add(2) }
 
     fun stepSection(d: Int) {
@@ -247,10 +252,11 @@ private fun SimpleMenuPageBody(
                 else -> return@onKey a == SIn.START || a == SIn.SELECT
             }
             else -> when (a) {
-                SIn.UP -> { if (rowNow > 0) row = rowNow - 1 }
+                SIn.UP -> { if (rowNow > 0) row = rowNow - 1 else com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.NAVIGATE_EDGE) }
                 SIn.DOWN -> {
                     if (rowNow >= entries.size - 1 && layout == AppThemeState.SIMPLE_LAYOUT_FOCUS && sections.size > 1) zone = PZone.SECS
-                    else row = min(max(0, entries.size - 1), rowNow + 1)
+                    else if (rowNow < entries.size - 1) row = rowNow + 1
+                    else com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.NAVIGATE_EDGE)
                 }
                 SIn.LEFT -> {
                     val cols = colsOf(cur)
@@ -262,12 +268,19 @@ private fun SimpleMenuPageBody(
                 SIn.RIGHT -> {
                     val cols = colsOf(cur)
                     val i = cols.indexOf(col)
-                    if (i >= 0 && i < cols.size - 1) col = cols[i + 1]
+                    if (i >= 0 && i < cols.size - 1) col = cols[i + 1] else com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.NAVIGATE_EDGE)
                 }
                 SIn.A -> when (col) {
                     1 -> cur?.play?.invoke()
                     2 -> { if (cur != null && cur.actions.isNotEmpty()) actionsFor = cur }
-                    else -> cur?.onA?.invoke() ?: run { if (cur != null && cur.actions.isNotEmpty()) actionsFor = cur }
+                    else -> {
+                        val f = cur?.onA
+                        if (f != null) {
+                            val was = cur?.toggle
+                            f()
+                            if (was != null) com.winlator.star.sound.toggleSound(!was)
+                        } else if (cur != null && cur.actions.isNotEmpty()) actionsFor = cur
+                    }
                 }
                 SIn.START -> { cur?.play?.invoke() }
                 else -> return@onKey a == SIn.SELECT
@@ -297,7 +310,13 @@ private fun SimpleMenuPageBody(
                 onMenu = { i -> entries.getOrNull(i)?.takeIf { it.actions.isNotEmpty() }?.let { actionsFor = it } },
             ) { i ->
                 zone = PZone.ROWS
-                if (i == rowNow) entries.getOrNull(i)?.let { e -> e.onA?.invoke() ?: run { if (e.actions.isNotEmpty()) actionsFor = e } } else row = i
+                if (i == rowNow) entries.getOrNull(i)?.let { e ->
+                    val f = e.onA
+                    if (f != null) {
+                        f()
+                        e.toggle?.let { was -> com.winlator.star.sound.toggleSound(!was) }
+                    } else if (e.actions.isNotEmpty()) actionsFor = e
+                } else row = i
             }
         }
         when (layout) {
@@ -447,7 +466,7 @@ private fun SectionStrip(sections: List<MenuSection>, sec: MenuSection?, active:
 }
 
 @Composable
-private fun EntryPanel(
+internal fun EntryPanel(
     sec: MenuSection?,
     entries: List<MenuEntry>,
     row: Int,
@@ -611,6 +630,7 @@ internal fun SimpleActionSheet(title: String, actions: List<MenuAction>, onDismi
         runCatching { requesters.getOrNull(start)?.requestFocus() }
     }
     Dialog(onDismissRequest = onDismiss) {
+        com.winlator.star.sound.DialogSound()
         Column(
             modifier = Modifier
                 .widthIn(min = 300.dp, max = 520.dp)
@@ -632,7 +652,7 @@ internal fun SimpleActionSheet(title: String, actions: List<MenuAction>, onDismi
                         .fillMaxWidth()
                         .heightIn(min = 46.dp)
                         .focusRequester(requesters[i])
-                        .onFocusChanged { f = it.isFocused }
+                        .onFocusChanged { if (it.isFocused && !f) com.winlator.star.sound.UiSounds.focusGained(); f = it.isFocused }
                         .then(if (f) Modifier.background(accent.copy(alpha = 0.3f), SimpleShape).drawBehind { drawRect(accent, size = Size(3.dp.toPx(), size.height)) } else Modifier)
                         .clickable { onRun(a) }
                         .padding(horizontal = 14.dp, vertical = 6.dp),
@@ -641,9 +661,9 @@ internal fun SimpleActionSheet(title: String, actions: List<MenuAction>, onDismi
                 }
             }
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                SimpleGlyph("A"); Spacer(Modifier.width(4.dp)); Text(L("Select"), color = SimpleMuted, fontSize = 12.sp)
-                Spacer(Modifier.width(14.dp))
-                SimpleGlyph("B"); Spacer(Modifier.width(4.dp)); Text(L("Close"), color = SimpleMuted, fontSize = 12.sp)
+                LabHint("A", L("Select"))
+                Spacer(Modifier.width(8.dp))
+                LabHint("B", L("Close"))
             }
         }
     }

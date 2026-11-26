@@ -97,6 +97,8 @@ object ContentsInstaller {
                 }
 
                 // ── Keep raw archive (before install consumes the file) ───────
+                // A Cancel that came in as the download finished keeps nothing, not even the file.
+                ensureActive()
                 if (keepRaw) {
                     runCatching { library.saveRaw(type, fileName, temp!!) }
                         .onFailure { Log.w(TAG, "keep-raw failed for $key", it) }
@@ -373,7 +375,7 @@ object ContentsInstaller {
      */
     private fun driverOutcome(st: ContentDownloadState, ok: Boolean, driver: DriverInstaller.Result?): ContentDownloadState =
         if (ok) st.copy(phase = ContentDownloadPhase.DONE, fraction = 1f,
-            note = driver?.takeIf { it.place != DriverInstaller.Place.ANDROID }?.let { DriverInstaller.message(it) })
+            note = driver?.takeIf { it.place != DriverInstaller.Place.ANDROID || it.more.isNotEmpty() }?.let { DriverInstaller.message(it) })
         else st.copy(phase = ContentDownloadPhase.ERROR,
             error = driver?.let { DriverInstaller.message(it) } ?: "Install failed.",
             replaceable = driver?.sameName == true)

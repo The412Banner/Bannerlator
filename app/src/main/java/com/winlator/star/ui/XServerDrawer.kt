@@ -1,5 +1,7 @@
 package com.winlator.star.ui
 
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.focusRequester
 import com.winlator.star.linux.LinuxComponents
 import com.winlator.star.linux.LinuxTuning
 import androidx.compose.animation.AnimatedVisibility
@@ -809,6 +811,8 @@ private fun SectionHeader(title: String) {
 
 @Composable
 private fun ToggleRow(label: String, checked: Boolean, enabled: Boolean = true, onCheckedChange: (Boolean) -> Unit) {
+    val userChange = onCheckedChange
+    val onCheckedChange: (Boolean) -> Unit = { v -> com.winlator.star.sound.toggleSound(v); userChange(v) }
     val accent = MaterialTheme.colorScheme.primary
     val accentDim = LocalAccentDim.current
     Row(
@@ -853,6 +857,8 @@ private fun LabeledSlider(
     enabled: Boolean = true,
     format: (Float) -> String = { "%.0f".format(it) }
 ) {
+    val userChange = onValueChange
+    val onValueChange: (Float) -> Unit = { v -> if (v != value) com.winlator.star.sound.sliderSound(v > value); userChange(v) }
     val accent = MaterialTheme.colorScheme.primary
     Column(modifier = Modifier.padding(vertical = 4.dp).then(if (enabled) Modifier else Modifier.alpha(0.4f))) {
         Row(
@@ -1820,6 +1826,51 @@ private fun Modifier.dpadDropdown(onOpen: () -> Unit): Modifier {
     }
 }
 
+/**
+ * A drawer field's list of choices: as wide as the field, and when it opens the highlight moves into it, so the
+ * controller picks from the list (Up / Down, A; B closes it) instead of staying on the field behind it.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun androidx.compose.material3.ExposedDropdownMenuBoxScope.DrawerDropdown(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** The field the list hangs from: it gives up the highlight while the list is open and takes it back after. */
+    anchorFocus: androidx.compose.ui.focus.FocusRequester? = null,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
+) {
+    val fieldFocus = LocalFocusManager.current
+    var wasOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(expanded) {
+        if (expanded) {
+            wasOpen = true
+            fieldFocus.clearFocus()
+        } else if (wasOpen) {
+            wasOpen = false
+            runCatching { anchorFocus?.requestFocus() }
+        }
+    }
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismissRequest, modifier = modifier.exposedDropdownSize()) {
+        val focusManager = LocalFocusManager.current
+        LaunchedEffect(Unit) {
+            delay(80)
+            focusManager.moveFocus(FocusDirection.Next)
+        }
+        content()
+    }
+}
+
+/** A list entry's highlight: the accent tint and outline while the controller is on it. */
+@Composable
+private fun Modifier.drawerItemFocus(): Modifier {
+    var focused by remember { mutableStateOf(false) }
+    val accent = MaterialTheme.colorScheme.primary
+    return this
+        .onFocusChanged { focused = it.hasFocus }
+        .then(if (focused) Modifier.background(accent.copy(alpha = 0.22f)).border(2.dp, accent) else Modifier)
+}
+
 /** Dim one-line explanation under a control (same style as the Controls tab's Wayland note). */
 @Composable
 private fun HelperText(text: String) {
@@ -1835,6 +1886,14 @@ private fun HelperText(text: String) {
 /** The one reason line for a control the Wayland compositor does not drive in this build. */
 @Composable
 private fun WaylandNotYetNote() = HelperText("Not on Wayland in this build yet")
+
+/** Button label for an engine in the in-game engine switch (XServerDrawerState.fgEngineChoices). */
+private fun fgEngineChoiceName(engine: String): String = when (engine) {
+    "lsfg-native" -> "LSFG Native"
+    "bionic"      -> "Win-FG Native"
+    "wfg"         -> "WFG"
+    else          -> "Off"
+}
 
 // ───── Runtime-backend diagnostic chip (Graphics tab header) ─────
 // Read-only status: arch · translator, plus the FEX unixlib mode. unixlib (native .so loaded) =
@@ -1904,6 +1963,9 @@ internal fun FrameGenSection(state: XServerDrawerState) {
     val isWaylandSession by state.isWaylandMode.collectAsState()
     val waylandFgOk by state.waylandFrameGenAvailable.collectAsState()
     val waylandFgBlocked = isWaylandSession && !waylandFgOk
+    // Engines that can be switched to while the game runs; empty = fixed for this session.
+    val engineChoices by state.fgEngineChoices.collectAsState()
+    val canSwitchEngine = engineChoices.isNotEmpty() && !waylandFgBlocked
 
     // Title on the left, engine badge on the right (green dot = engine actually running this
     // session). Replaces the old standalone "Frame Generation (AI)" header so the engine isn't
@@ -1912,6 +1974,7 @@ internal fun FrameGenSection(state: XServerDrawerState) {
         "lsfg"        -> "lsfg-vk"
         "lsfg-native" -> "LSFG Native"
         "bionic"      -> if (winFgNative) "Win-FG Native" else "win-fg"
+        "wfg"         -> "WFG"
         else          -> "Off"
     }
     // Green dot = engine actually multiplying frames right now. Frame gen starts at multiplier 0
@@ -1960,6 +2023,16 @@ internal fun FrameGenSection(state: XServerDrawerState) {
         )
     }
     Spacer(Modifier.height(8.dp))
+
+    if (canSwitchEngine) {
+        ModeChipGrid(
+            engineChoices.map { e ->
+                Triple<String, Boolean, () -> Unit>(fgEngineChoiceName(e), e == engine) { state.onFgEngineSelected?.accept(e) }
+            },
+            perRow = 2
+        )
+        Spacer(Modifier.height(10.dp))
+    }
 
     if (frameGenEnabled) {
         var fgMult by remember(initFgMult) { mutableIntStateOf(initFgMult) }
@@ -2047,8 +2120,9 @@ internal fun FrameGenSection(state: XServerDrawerState) {
         // shortcut carries from before can put it back.
 
         // Flow Scale only matters with frame gen actually on -> collapse it while Off.
+        // WFG has no flow scale (its flow resolution is a fixed pixel budget).
         AnimatedVisibility(
-            visible = fgMult > 0 && !waylandFgBlocked,
+            visible = fgMult > 0 && engine != "wfg" && !waylandFgBlocked,
             enter = expandVertically() + fadeIn(),
             exit = shrinkVertically() + fadeOut()
         ) {
@@ -2121,7 +2195,7 @@ internal fun FrameGenSection(state: XServerDrawerState) {
         }
     } else if (waylandFgBlocked) {
         WaylandNotYetNote()
-    } else {
+    } else if (!canSwitchEngine) {
         Text(
             "Enable Frame Generation in this container's settings to tune it here.",
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
@@ -3586,7 +3660,7 @@ internal fun HudContent(state: XServerDrawerState, embedded: Boolean = false) {
         val fgMult by state.frameGenMultiplier.collectAsState()
         val displayTargetHz by state.displayTargetHz.collectAsState()
         // nativeFgLocks covers both compositor engines; name the one actually running.
-        val nativeFgName = if (fgEngine == "lsfg-native") "LSFG Native" else "Win-FG Native"
+        val nativeFgName = when (fgEngine) { "lsfg-native" -> "LSFG Native"; "wfg" -> "WFG"; else -> "Win-FG Native" }
         // Locked ON while native frame gen generates - see XServerDrawerState.nativeFgLocks.
         ToggleRow("Limit FPS", limiterOn, enabled = !nativeFgLocks) { limiterOn = it; applyLimiter() }
         if (nativeFgLocks) {
@@ -4041,18 +4115,20 @@ internal fun ControlsContent(
             Text("Input Controls", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
             Spacer(Modifier.height(6.dp))
 
+            val anchorFocus0 = remember { androidx.compose.ui.focus.FocusRequester() }
             ExposedDropdownMenuBox(expanded = dropdownExpanded, onExpandedChange = { dropdownExpanded = it }) {
                 OutlinedTextField(
                     value = allItems.getOrElse(selectedIdx) { "-- Disabled --" },
                     onValueChange = {}, readOnly = true,
                     label = { Text("Profile", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownExpanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor().dpadDropdown { dropdownExpanded = true },
+                    modifier = Modifier.fillMaxWidth().menuAnchor().focusRequester(anchorFocus0).dpadDropdown { dropdownExpanded = true },
                     singleLine = true,
                 )
-                ExposedDropdownMenu(expanded = dropdownExpanded, onDismissRequest = { dropdownExpanded = false }) {
+                DrawerDropdown(anchorFocus = anchorFocus0, expanded = dropdownExpanded, onDismissRequest = { dropdownExpanded = false }, modifier = Modifier.outlinedMenuCard()) {
                     allItems.forEachIndexed { i, label ->
-                        DropdownMenuItem(text = { Text(label) }, onClick = {
+                        if (i > 0) MenuItemDivider()
+                        DropdownMenuItem(modifier = Modifier.drawerItemFocus(), text = { Text(label) }, onClick = {
                             selectedIdx = i
                             dropdownExpanded = false
                             XServerDialogState.onInputControlsConfirm?.invoke(selectedIdx, showTouchscreen, timeoutEnabled, hapticsEnabled)
@@ -4471,16 +4547,17 @@ private fun PlayerSlotRowItem(row: XServerDialogState.PlayerSlotRow) {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(4.dp))
+        val anchorFocus1 = remember { androidx.compose.ui.focus.FocusRequester() }
         ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
             OutlinedTextField(
                 value = selectedLabel,
                 onValueChange = {}, readOnly = true,
                 label = { Text("Slot", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier.fillMaxWidth().menuAnchor().dpadDropdown { expanded = true },
+                modifier = Modifier.fillMaxWidth().menuAnchor().focusRequester(anchorFocus1).dpadDropdown { expanded = true },
                 singleLine = true,
             )
-            ExposedDropdownMenu(
+            DrawerDropdown(anchorFocus = anchorFocus1, 
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
                 // #333 polish: match the shared outlined-menu-card look (outline + thin divider between
@@ -4490,7 +4567,7 @@ private fun PlayerSlotRowItem(row: XServerDialogState.PlayerSlotRow) {
                 options.forEachIndexed { index, option ->
                     if (index > 0) MenuItemDivider()
                     val (label, value) = option
-                    DropdownMenuItem(text = { Text(label) }, onClick = {
+                    DropdownMenuItem(modifier = Modifier.drawerItemFocus(), text = { Text(label) }, onClick = {
                         expanded = false
                         if (value != row.override) {
                             XServerDialogState.onPlayerSlotChanged?.invoke(row.descriptor, value)
@@ -4560,20 +4637,21 @@ private fun PadSection() {
     PadRowHeader("Controller type", identityApply, R.string.help_controller_identity)
     var identityExpanded by remember { mutableStateOf(false) }
     val identityLocked = pad.identityLockedReason != null
+    val anchorFocus2 = remember { androidx.compose.ui.focus.FocusRequester() }
     ExposedDropdownMenuBox(expanded = identityExpanded && !identityLocked,
         onExpandedChange = { if (!identityLocked) identityExpanded = it }) {
         OutlinedTextField(
             value = ControllerIdentity.label(pad.identity),
             onValueChange = {}, readOnly = true, enabled = !identityLocked,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = identityExpanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor().dpadDropdown { if (!identityLocked) identityExpanded = true },
+            modifier = Modifier.fillMaxWidth().menuAnchor().focusRequester(anchorFocus2).dpadDropdown { if (!identityLocked) identityExpanded = true },
             singleLine = true,
         )
-        ExposedDropdownMenu(expanded = identityExpanded && !identityLocked, onDismissRequest = { identityExpanded = false },
+        DrawerDropdown(anchorFocus = anchorFocus2, expanded = identityExpanded && !identityLocked, onDismissRequest = { identityExpanded = false },
             modifier = Modifier.outlinedMenuCard()) {
             choices.forEachIndexed { index, id ->
                 if (index > 0) MenuItemDivider()
-                DropdownMenuItem(text = { Text(id.label) }, onClick = {
+                DropdownMenuItem(modifier = Modifier.drawerItemFocus(), text = { Text(id.label) }, onClick = {
                     identityExpanded = false
                     if (id.value != pad.identity) XServerDialogState.onPadIdentity?.invoke(id.value)
                 })
@@ -5448,6 +5526,14 @@ internal fun ProcessorAffinityDialog(
     onDismiss: () -> Unit,
 ) {
     val coreCount = remember { Runtime.getRuntime().availableProcessors().coerceIn(1, 32) }
+    // Each core's short name and top clock under its tile ("X4 3.30"), read from the device.
+    val coreNotes = remember {
+        val cores = com.winlator.star.deviceinfo.CpuCores.read()
+        cores.associate { c ->
+            c.index to listOfNotNull(c.name?.removePrefix("Cortex-"),
+                if (c.maxKhz > 0) String.format(java.util.Locale.US, "%.2f", c.maxKhz / 1e6) else null).joinToString(" ")
+        }
+    }
     val allMask = remember(coreCount) { if (coreCount >= 32) -1 else (1 shl coreCount) - 1 }
     // Open pre-ticked to the cores the user actually chose. Prefer the live override cache (what the
     // user last applied) over the guest's GetProcessAffinityMask readback, which is unreliable under
@@ -5519,7 +5605,10 @@ internal fun ProcessorAffinityDialog(
                                 modifier = Modifier.size(28.dp),
                             )
                             Spacer(Modifier.height(2.dp))
-                            Text("CPU$i", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                            Text("Core $i", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                            coreNotes[i]?.takeIf { it.isNotEmpty() }?.let {
+                                Text(it, fontSize = 9.5.sp, maxLines = 1, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }
@@ -5695,12 +5784,16 @@ internal fun TmCoreStrip(h: XServerDialogState.TmHeaderStats?) {
     if (cores.isEmpty()) return
     val accent = MaterialTheme.colorScheme.primary
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    // Cores the game is not running on (core pick / Prefer big cores) are dimmed, as on the HUD.
+    val gameMask by XServerDrawerState.gameCoreMask.collectAsState()
     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         CorePanel(count = cores.size) { i ->
             val mhz = cores[i]
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 4.dp),
+                modifier = Modifier.fillMaxWidth()
+                    .alpha(if (gameMask != 0 && (gameMask shr i) and 1 == 0) 0.35f else 1f)
+                    .padding(vertical = 8.dp, horizontal = 4.dp),
             ) {
                 Text("C$i", color = muted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                 Text(
@@ -5847,7 +5940,7 @@ private fun ContainerInfoRow(label: String, value: String, valueColor: Color? = 
 }
 
 /** Prettify a raw dxwrapper id (e.g. "dxvk+vkd3d") to its display form ("DXVK+VKD3D"). */
-private fun prettyDxWrapper(raw: String): String {
+internal fun prettyDxWrapper(raw: String): String {
     if (raw.isBlank() || raw == "—") return raw
     return raw.split("+").joinToString("+") { token ->
         when (token.trim().lowercase()) {
@@ -5861,7 +5954,7 @@ private fun prettyDxWrapper(raw: String): String {
 }
 
 /** Prettify a raw renderer id (e.g. "vulkan") to its display form ("Vulkan"). */
-private fun prettyRenderer(raw: String): String = when (raw.trim().lowercase()) {
+internal fun prettyRenderer(raw: String): String = when (raw.trim().lowercase()) {
     "" -> raw
     "vulkan" -> "Vulkan"
     "gl", "opengl", "gles" -> "OpenGL"
@@ -5871,7 +5964,7 @@ private fun prettyRenderer(raw: String): String = when (raw.trim().lowercase()) 
 
 /** Tidy the device line: "8 cores" -> "8c" so it fits the narrow value column without wrapping to a
  *  dangling separator. */
-private fun tidyDevice(raw: String): String = raw.replace(" cores", "c")
+internal fun tidyDevice(raw: String): String = raw.replace(" cores", "c")
 
 /** Mods tab: one card per mod this game's EXE can take (core.GameMods). A loaded mod shows its release,
  *  the DLL it loads as and a button that shows or hides its in-game menu; an off or not-loaded one is dimmed. */

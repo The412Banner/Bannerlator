@@ -594,6 +594,10 @@ public abstract class FileUtils {
         }
 
         Log.d(TAG, "Document ID: " + documentId);
+        // Android's Downloads entry: "downloads", "raw:<path>" and "msd:<id>" are not storage volumes.
+        String downloadsPath = ExternalExeResolver.downloadsFolderPath(context, uri, documentId);
+        if (downloadsPath != null) return downloadsPath;
+
         String[] split = documentId.split(":");
         String type = split[0];
         String path = split.length > 1 ? split[1] : "";
@@ -607,6 +611,9 @@ public abstract class FileUtils {
 
         if ("primary".equalsIgnoreCase(type)) {
             return Environment.getExternalStorageDirectory() + "/" + path;
+        } else if ("home".equalsIgnoreCase(type)) {
+            // The Documents entry of older Android versions.
+            return Environment.getExternalStorageDirectory() + "/Documents/" + path;
         } else {
             return "/mnt/media_rw/" + type + "/" + path;
         }

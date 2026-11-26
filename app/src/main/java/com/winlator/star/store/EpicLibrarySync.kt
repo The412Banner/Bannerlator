@@ -126,6 +126,10 @@ object EpicLibrarySync {
                 // install. Leave it entirely to the producer. (Guard BEFORE the disk-truth check.)
                 if (DownloadRegistry.isActive(key)) continue
 
+                // A download the user paused (kept in EpicDownloadControl's prefs) has its dir but no exe yet: it is not an orphan,
+                // and its record must survive for the resume. Shown as a paused row by seedPaused below.
+                if (EpicDownloadControl.isPersistedPaused(ctx, appName)) continue
+
                 // Truth = the install must still EXIST ON DISK: dir present AND the recorded launch
                 // exe present. Prevents zombie rows after an uninstall that deleted files but left
                 // prefs. (epic_dir_ is stored as an absolute path.)
@@ -133,6 +137,8 @@ object EpicLibrarySync {
                 val exe = prefs.getString("epic_exe_$appName", null)
                 val installed = installDir.exists() && exe != null && File(exe).exists()
 
+                // A game on an SD card / USB drive that is not plugged in is not gone: keep its record.
+                if (!installed && StoreInstallLocations.onMissingVolume(dirPath)) continue
                 if (!installed) {
                     // Self-heal: purge the stale native record + drop any durable-library row.
                     EpicInstallState.purge(ctx, appName)
@@ -165,6 +171,8 @@ object EpicLibrarySync {
                 added++
             }
             Log.i(TAG, "Seeded $added installed Epic game(s), self-healed $healed orphan(s)")
+            // Downloads paused in an earlier run of the app come back as paused rows with a Resume button.
+            EpicDownloadControl.seedPaused(ctx)
         } catch (t: Throwable) {
             seeded.set(false)   // reset so a later call (once prefs are ready) can retry
             Log.w(TAG, "Library seed skipped: ${t.message}")

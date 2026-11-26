@@ -29,6 +29,7 @@ object GogLibraryRepo {
     private const val CACHE_KEY = "gog_library_cache"
     private const val LAST_SYNC_KEY = "gog_library_synced_at"
     private const val THROTTLE_MS = 15L * 60L * 1000L
+    private const val LANG_KEY = "gog_library_lang"
     private const val VCOVER_PREFIX = "gog_vcover_"
     private const val SGDB_KEY = "cf89227f12c773bb1117b6b109ae1659"
 
@@ -126,7 +127,8 @@ object GogLibraryRepo {
             val cachedList = cached(appCtx)
             val lastSync = p.getLong(LAST_SYNC_KEY, 0L)
             val stale = System.currentTimeMillis() - lastSync >= THROTTLE_MS
-            val heavy = force || cachedList.isEmpty() || stale
+            // Titles are saved in the language they were fetched in: another language fetches them again.
+            val heavy = force || cachedList.isEmpty() || stale || p.getString(LANG_KEY, "en-US") != StoreLang.gog()
             val cachedIds = cachedList.mapTo(HashSet()) { it.gameId }
             val idsToFetch = if (heavy) ids else ids.filter { it !in cachedIds }
             val fetchSet = idsToFetch.toHashSet()
@@ -156,7 +158,7 @@ object GogLibraryRepo {
             saveDlcBuffer(p, dlcBuffer)
             val finalList = merged.values.toList()
             saveCache(p, finalList)
-            if (heavy) p.edit().putLong(LAST_SYNC_KEY, System.currentTimeMillis()).apply()
+            if (heavy) p.edit().putLong(LAST_SYNC_KEY, System.currentTimeMillis()).putString(LANG_KEY, StoreLang.gog()).apply()
             Log.i(TAG, "sync: owned=${ids.size} fetched=$fetched cached=${finalList.size} heavy=$heavy")
             SyncResult.Ok(finalList.sortedBy { it.title.lowercase() }, fetched)
         } catch (e: Exception) {
@@ -256,7 +258,7 @@ object GogLibraryRepo {
                 if (!verticalCover.isNullOrEmpty()) prefs.edit().putString("$VCOVER_PREFIX$id", verticalCover).apply()
             }
 
-            return GogGame(id, titleStr, imageUrl, desc, developer, category, generation, verticalCover)
+            return GogGame(id, GogTitles.localized(prefs, id, titleStr, token), imageUrl, desc, developer, category, generation, verticalCover)
         } catch (_: Exception) {
             return null
         }

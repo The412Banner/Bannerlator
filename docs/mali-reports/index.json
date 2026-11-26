@@ -1,5 +1,55 @@
 [
   {
+    "id": "2026-11-22T16-12-55-1774b9",
+    "created": "2026-11-22T16:12:55.393Z",
+    "reporter": "",
+    "device": "LAVA LXX503",
+    "gpu": "Mediatek Dimensity 700",
+    "game": "GTA V PORT",
+    "symptom": "Runs but very low FPS",
+    "logs": 1
+  },
+  {
+    "id": "2026-11-22T16-09-16-01d6ac",
+    "created": "2026-11-22T16:09:16.468Z",
+    "reporter": "",
+    "device": "Lava lxx503",
+    "gpu": "Mediatek dimensity 700",
+    "game": "GTA V PORT",
+    "symptom": "Runs but very low FPS",
+    "logs": 1
+  },
+  {
+    "id": "2026-11-20T09-19-17-046b11",
+    "created": "2026-11-20T09:19:17.411Z",
+    "reporter": "",
+    "device": "Samsung 17LTE",
+    "gpu": "ARM Mali-G57 MC2",
+    "game": "Hades",
+    "symptom": "Black screen (no image)",
+    "logs": 0
+  },
+  {
+    "id": "2026-11-15T16-14-58-577016",
+    "created": "2026-11-15T16:14:58.967Z",
+    "reporter": "Ian Maj Bauman",
+    "device": "Ixsaomi pad 7",
+    "gpu": "Qualcomm Snapdragon 7+ Gen 3",
+    "game": "Contens (not a game)",
+    "symptom": "Other",
+    "logs": 3
+  },
+  {
+    "id": "2026-11-12T23-44-14-89c161",
+    "created": "2026-11-12T23:44:14.275Z",
+    "reporter": "",
+    "device": "Oppo Reno 11f 5G",
+    "gpu": "ARM Mali-G68 MC4",
+    "game": "NARUTO X BORUTO Ultimate Ninja STORM CONNECTIONS",
+    "symptom": "Other",
+    "logs": 0
+  },
+  {
     "id": "2026-11-11T08-17-24-bab383",
     "created": "2026-11-11T08:17:24.277Z",
     "reporter": "Delta",

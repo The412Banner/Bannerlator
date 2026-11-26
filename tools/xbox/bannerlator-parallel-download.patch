@@ -1,5 +1,5 @@
 diff --git a/crates/xodus-cli/src/commands/streaming.rs b/crates/xodus-cli/src/commands/streaming.rs
-index 314f346..ee914c6 100644
+index c9dd278..e29ac69 100644
 --- a/crates/xodus-cli/src/commands/streaming.rs
 +++ b/crates/xodus-cli/src/commands/streaming.rs
 @@ -14,6 +14,73 @@ use tokio::sync::mpsc::{Receiver, Sender};
@@ -76,7 +76,7 @@ index 314f346..ee914c6 100644
  use crate::license::get_license;
  use crate::package::get_packages;
  
-@@ -171,6 +238,14 @@ pub async fn run(
+@@ -174,6 +241,14 @@ pub async fn run(
              let Some(root) = file.cdn_root_paths.first() else {
                  eprintln!("Microsoft returned no package download location."); return ExitCode::FAILURE;
              };
@@ -91,7 +91,7 @@ index 314f346..ee914c6 100644
              format!(
                  "{}{}",
                  root,
-@@ -509,6 +584,13 @@ where
+@@ -544,6 +619,13 @@ where
  
      let remote_xvd_ref = &remote_xvd;
      let (failed, failure_signal) = tokio::sync::watch::channel(false);
@@ -105,16 +105,16 @@ index 314f346..ee914c6 100644
      stream::iter(
          pending
              .into_iter()
-@@ -523,7 +605,7 @@ where
+@@ -558,7 +640,7 @@ where
              })
              .enumerate(),
      )
--    .for_each_concurrent(parallel.unwrap_or(4).max(1), |(id, job)| {
-+    .for_each_concurrent(ceiling, |(id, job)| {
+-    .for_each_concurrent(if stage.is_some() { 1 } else { parallel.unwrap_or(4).max(1) }, |(id, job)| {
++    .for_each_concurrent(if stage.is_some() { 1 } else { ceiling }, |(id, job)| {
          let tx = tx.clone();
          let client = client.clone();
          let mut pause = pause.clone();
-@@ -599,20 +681,99 @@ where
+@@ -642,20 +724,99 @@ where
                  remote_xvd_ref
                      .extract_file(&mut i, &mut fout, &job.content, *full_key, progress)
                      .await?;
@@ -217,7 +217,7 @@ index 314f346..ee914c6 100644
              }
              Ok(())
              };
-@@ -625,6 +786,7 @@ where
+@@ -675,6 +836,7 @@ where
          }
      })
      .await;

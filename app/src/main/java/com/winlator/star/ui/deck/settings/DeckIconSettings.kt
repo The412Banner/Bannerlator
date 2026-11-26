@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
+import com.winlator.star.ui.deck.deckInset
 import com.winlator.star.util.InAppFilePicker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -148,7 +149,7 @@ private fun IconPreview(icon: Bitmap?) {
     val shape = deckShape(12.dp)
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.size(56.dp).clip(shape).background(cs.surfaceVariant.copy(alpha = 0.55f)),
+        modifier = Modifier.size(56.dp).clip(shape).background(deckInset()),
     ) {
         if (icon != null) {
             Image(bitmap = icon.asImageBitmap(), contentDescription = L("Icon"), modifier = Modifier.size(56.dp))

@@ -2,7 +2,6 @@ package com.winlator.star.store.download
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -74,6 +73,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import coil.compose.AsyncImage
 import com.winlator.star.store.MediaPlayback
 import com.winlator.star.store.StoreNotice
+import com.winlator.star.store.storeFocus
 import kotlin.math.abs
 
 /**
@@ -164,10 +164,8 @@ fun MediaTab(
                         itemsIndexed(media.videos, key = { i, v -> "v$i:${v.title}" }) { _, video ->
                             MediaTile(
                                 image = video.poster,
-                                modifier = Modifier.combinedClickable(
-                                    onClick = { onOpenVideo(video) },
-                                    onLongClick = { MediaPlayback.openExternal(context, video) },
-                                ),
+                                onClick = { onOpenVideo(video) },
+                                onLongClick = { MediaPlayback.openExternal(context, video) },
                             ) {
                                 // Centered play badge + a caption on a bottom fade.
                                 Box(
@@ -210,10 +208,7 @@ fun MediaTab(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         itemsIndexed(media.screenshots, key = { i, s -> "s$i:${s.thumb}" }) { index, shot ->
-                            MediaTile(
-                                image = shot.thumb,
-                                modifier = Modifier.clickable { viewerIndex = index },
-                            )
+                            MediaTile(image = shot.thumb, onClick = { viewerIndex = index })
                         }
                     }
                     Spacer(Modifier.height(8.dp))
@@ -243,20 +238,24 @@ private fun MediaRowTitle(text: String) {
     )
 }
 
-/** One 300x169 rounded tile with an optional overlay (the play badge / caption). */
+/** One 300x169 rounded tile with an optional overlay (the play badge / caption); a stop of the D-pad, A runs [onClick]. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MediaTile(
     image: String?,
-    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     overlay: @Composable (BoxScope.() -> Unit)? = null,
 ) {
+    val shape = RoundedCornerShape(10.dp)
     Box(
         modifier = Modifier
             .width(TILE_W)
             .height(TILE_H)
-            .clip(RoundedCornerShape(10.dp))
+            .storeFocus(shape, onClick)
+            .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .then(modifier),
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
     ) {
         if (!image.isNullOrBlank()) {
             AsyncImage(

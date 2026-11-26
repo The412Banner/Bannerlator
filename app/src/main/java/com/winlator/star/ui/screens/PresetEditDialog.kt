@@ -98,7 +98,7 @@ internal sealed class PresetEditTarget(val id: String?) {
 }
 
 /** One row of <prefix>_env_vars.json. */
-private data class VarSpec(
+internal data class VarSpec(
     val name: String,
     val values: List<String>,
     val kind: Kind,
@@ -107,7 +107,7 @@ private data class VarSpec(
     enum class Kind { TOGGLE, DROPDOWN, TEXT }
 }
 
-private fun loadSpecs(context: Context, prefix: String): List<VarSpec> = try {
+internal fun loadSpecs(context: Context, prefix: String): List<VarSpec> = try {
     val data = JSONArray(FileUtils.readString(context, prefix + "_env_vars.json"))
     (0 until data.length()).map { i ->
         val item = data.getJSONObject(i)
@@ -138,13 +138,13 @@ private fun loadSpecs(context: Context, prefix: String): List<VarSpec> = try {
 }
 
 /** Per-variable help string, e.g. box64_env_var_help__dynarec_bigblock, fexcore_env_var_help__tsoenabled. */
-private fun varHelp(context: Context, kind: PresetKind, name: String): String? {
+internal fun varHelp(context: Context, kind: PresetKind, name: String): String? {
     val suffix = name.replace(kind.varPrefix, "").lowercase(Locale.ENGLISH)
     return StringUtils.getString(context, kind.prefix + "_env_var_help__" + suffix)
 }
 
 /** Per-preset help string, e.g. box64_preset_help__extreme_2 / fexcore_preset_help__extreme_tso. */
-private fun presetHelp(context: Context, prefix: String, id: String?): String? {
+internal fun presetHelp(context: Context, prefix: String, id: String?): String? {
     if (id == null) return null
     val key = id.substringBefore('-').lowercase(Locale.ENGLISH)
     return StringUtils.getString(context, prefix + "_preset_help__" + key)

@@ -71,12 +71,20 @@ import coil.compose.AsyncImage
 import com.winlator.star.R
 import com.winlator.star.store.blsteam.BlPlayerProfile
 import com.winlator.star.store.blsteam.BlSteamEngine
+import com.winlator.star.ui.deck.XmbGroupItem
+import com.winlator.star.ui.deck.XmbInk
+import com.winlator.star.ui.deck.rememberXmbFocusGroup
+import com.winlator.star.ui.deck.rememberXmbHighlightItem
 import com.winlator.star.ui.deck.xmbCardFill
 import com.winlator.star.ui.deck.xmbCardLine
+import com.winlator.star.ui.deck.xmbGlassCard
+import com.winlator.star.ui.deck.xmbInner
+import com.winlator.star.ui.deck.xmbOnGlass
 import com.winlator.star.ui.theme.LocalAccentDim
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import java.util.Locale
 import kotlin.math.roundToInt
+import com.winlator.star.ui.deck.deckShape
 
 /**
  * The **Profile** tab — the signed-in user's own Steam profile, the one surface the app never had.
@@ -315,153 +323,156 @@ private fun ProfileTabLandscape(c: ProfileTabContent) {
 private fun IdentityCard(c: ProfileTabContent) {
     val ctx = LocalContext.current
     val accent = MaterialTheme.colorScheme.primary
-    val shape = RoundedCornerShape(12.dp)
+    val shape = deckShape(12.dp)
     var editing by remember { mutableStateOf(false) }
+    // XMB: the whole card is one stop of the D-pad; A enters its buttons (Edit, the SteamID, Change account), B comes back.
+    val group = rememberXmbFocusGroup()
 
-    Column(
-        modifier = Modifier
-            .padding(horizontal = 14.dp, vertical = 12.dp)
-            .fillMaxWidth()
-            .clip(shape)
-            .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
-            .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape),
-    ) {
-        // Banner: an accent wash, the same gradient treatment ProfileHero uses. When the account has
-        // an equipped profile background, that art is drawn over it.
-        Box(
+    XmbGroupItem(group, shape, Modifier.padding(horizontal = 14.dp, vertical = 12.dp).fillMaxWidth()) {
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(72.dp)
-                .background(
-                    Brush.linearGradient(
-                        listOf(accent.copy(alpha = 0.34f), MaterialTheme.colorScheme.surfaceContainer),
+                .xmbGlassCard(shape, xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+                .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape),
+        ) {
+            // Banner: an accent wash, the same gradient treatment ProfileHero uses. When the account has
+            // an equipped profile background, that art is drawn over it.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(72.dp)
+                    .background(
+                        Brush.linearGradient(
+                            listOf(accent.copy(alpha = 0.34f), MaterialTheme.colorScheme.surfaceContainer),
+                        ),
                     ),
-                ),
-        ) {
-            c.profile?.equipped?.profileBackground?.imageUrl(large = true)?.let { url ->
-                AsyncImage(
-                    model = url,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .offset(y = (-22).dp)
-                .padding(horizontal = 13.dp),
-        ) {
-            // Avatar + presence dot. FriendAvatar is the roster's own avatar composable, reused so
-            // our face renders identically to everyone else's.
-            Box {
-                val me = c.self
-                val cachedAvatar = c.profile?.avatarUrl
-                when {
-                    // Live persona — the richest source (nickname, presence-aware).
-                    me != null -> FriendAvatar(friend = me, size = 62.dp)
-
-                    // No persona yet, but the cached profile carries an avatar URL. This is the
-                    // whole point of painting from cache: the image starts downloading on the first
-                    // frame instead of waiting for the persona round-trip that used to gate it.
-                    cachedAvatar != null -> AsyncImage(
-                        model = cachedAvatar,
+            ) {
+                c.profile?.equipped?.profileBackground?.imageUrl(large = true)?.let { url ->
+                    AsyncImage(
+                        model = url,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(62.dp)
-                            .clip(RoundedCornerShape(9.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                    )
-
-                    else -> Box(
-                        modifier = Modifier
-                            .size(62.dp)
-                            .clip(RoundedCornerShape(9.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .offset(x = 3.dp, y = 3.dp)
-                        .size(15.dp)
-                        .clip(CircleShape)
-                        .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
-                        .padding(2.5.dp)
-                        .clip(CircleShape)
-                        .background(dotColor(presenceOf(c.personaState))),
-                )
             }
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f).padding(top = 26.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (editing) {
-                        PersonaNameField(
-                            initial = c.displayName,
-                            onDone = { editing = false; c.onRename(it) },
-                            onCancel = { editing = false },
-                            modifier = Modifier.weight(1f),
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset(y = (-22).dp)
+                    .padding(horizontal = 13.dp),
+            ) {
+                // Avatar + presence dot. FriendAvatar is the roster's own avatar composable, reused so
+                // our face renders identically to everyone else's.
+                Box {
+                    val me = c.self
+                    val cachedAvatar = c.profile?.avatarUrl
+                    when {
+                        // Live persona — the richest source (nickname, presence-aware).
+                        me != null -> FriendAvatar(friend = me, size = 62.dp)
+
+                        // No persona yet, but the cached profile carries an avatar URL. This is the
+                        // whole point of painting from cache: the image starts downloading on the first
+                        // frame instead of waiting for the persona round-trip that used to gate it.
+                        cachedAvatar != null -> AsyncImage(
+                            model = cachedAvatar,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(62.dp)
+                                .clip(deckShape(9.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
                         )
-                    } else {
-                        Text(
-                            text = c.displayName,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
+
+                        else -> Box(
+                            modifier = Modifier
+                                .size(62.dp)
+                                .clip(deckShape(9.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
                         )
-                        // Steam level — public data, but still null when the CM declined it or the
-                        // JavaSteam engine is driving. Absent is NOT level 0, so the chip hides.
-                        c.profile?.level?.let { lvl ->
+                    }
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .offset(x = 3.dp, y = 3.dp)
+                            .size(15.dp)
+                            .clip(CircleShape)
+                            .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+                            .padding(2.5.dp)
+                            .clip(CircleShape)
+                            .background(dotColor(presenceOf(c.personaState))),
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f).padding(top = 26.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (editing) {
+                            PersonaNameField(
+                                initial = c.displayName,
+                                onDone = { editing = false; c.onRename(it) },
+                                onCancel = { editing = false },
+                                modifier = Modifier.weight(1f),
+                            )
+                        } else {
+                            Text(
+                                text = c.displayName,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false),
+                            )
+                            // Steam level — public data, but still null when the CM declined it or the
+                            // JavaSteam engine is driving. Absent is NOT level 0, so the chip hides.
+                            c.profile?.level?.let { lvl ->
+                                Spacer(Modifier.width(8.dp))
+                                LevelChip(lvl)
+                            }
                             Spacer(Modifier.width(8.dp))
-                            LevelChip(lvl)
+                            MiniButton("Edit", first = true) { editing = true }
                         }
-                        Spacer(Modifier.width(8.dp))
-                        MiniButton("Edit") { editing = true }
+                    }
+                    Text(
+                        text = listOfNotNull(
+                            personaLabel(c.personaState),
+                            c.profile?.country?.takeIf { it.isNotBlank() },
+                        ).joinToString("  ·  "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                    c.profile?.memberSince?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Spacer(Modifier.height(7.dp))
+                    SteamIdRow(c.steamId) {
+                        copyToClipboard(ctx, "Steam ID", c.steamId.toString())
+                        c.onMessage("Steam ID copied")
                     }
                 }
-                Text(
-                    text = listOfNotNull(
-                        personaLabel(c.personaState),
-                        c.profile?.country?.takeIf { it.isNotBlank() },
-                    ).joinToString("  ·  "),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-                c.profile?.memberSince?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Spacer(Modifier.height(7.dp))
-                SteamIdRow(c.steamId) {
-                    copyToClipboard(ctx, "Steam ID", c.steamId.toString())
-                    c.onMessage("Steam ID copied")
-                }
             }
+            ChangeAccountButton(c.onChangeAccount)
         }
-        ChangeAccountButton(c.onChangeAccount)
     }
 }
 
 /** The identity card's "Change account" entry — a full-width 48dp target that opens the account chooser. */
 @Composable
 private fun ChangeAccountButton(onClick: () -> Unit) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = deckShape(10.dp)
     Row(
         modifier = Modifier
             .padding(start = 13.dp, end = 13.dp, bottom = 12.dp)
             .fillMaxWidth()
             .heightIn(min = 48.dp)
             .steamFocusRing(shape)
+            .xmbInner()
             .clip(shape)
             .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
             .clickable(onClick = onClick)
@@ -497,7 +508,7 @@ private fun PersonaNameField(
     var text by remember { mutableStateOf(initial) }
     val requester = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { requester.requestFocus() } }
-    val shape = RoundedCornerShape(6.dp)
+    val shape = deckShape(6.dp)
     BasicTextField(
         value = text,
         onValueChange = { if (it.length <= 32) text = it },
@@ -551,8 +562,8 @@ private fun LevelChip(level: Int) {
 
 /** Small outlined text button (the prototype's `.mini`) — used for Edit. */
 @Composable
-private fun MiniButton(label: String, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(5.dp)
+private fun MiniButton(label: String, first: Boolean = false, onClick: () -> Unit) {
+    val shape = deckShape(5.dp)
     Text(
         text = label,
         style = MaterialTheme.typography.labelSmall,
@@ -560,6 +571,7 @@ private fun MiniButton(label: String, onClick: () -> Unit) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier
             .steamFocusRing(shape)
+            .xmbInner(first = first)
             .clip(shape)
             .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
             .clickable(onClick = onClick)
@@ -570,10 +582,11 @@ private fun MiniButton(label: String, onClick: () -> Unit) {
 /** The tappable, copyable SteamID64 row. */
 @Composable
 private fun SteamIdRow(steamId: Long, onCopy: () -> Unit) {
-    val shape = RoundedCornerShape(5.dp)
+    val shape = deckShape(5.dp)
     Row(
         modifier = Modifier
             .steamFocusRing(shape)
+            .xmbInner()
             .clip(shape)
             .background(MaterialTheme.colorScheme.background)
             .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
@@ -628,7 +641,7 @@ private fun StatusChips(c: ProfileTabContent) {
 
 @Composable
 private fun StatusChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(20.dp)
+    val shape = deckShape(20.dp)
     Text(
         text = label,
         style = MaterialTheme.typography.labelMedium,
@@ -697,10 +710,11 @@ private fun StatTiles(c: ProfileTabContent, columns: Int = 4) {
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 12.dp)
             .focusGroup(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        // On the glass the tiles cast a shadow, so they sit further apart.
+        verticalArrangement = Arrangement.spacedBy(if (xmbOnGlass()) 14.dp else 8.dp),
     ) {
         stats.chunked(columns).forEach { rowStats ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(if (xmbOnGlass()) 14.dp else 8.dp)) {
                 rowStats.forEach { stat ->
                     StatTile(
                         value = stat.value,
@@ -730,32 +744,35 @@ private fun StatTile(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
 ) {
-    val shape = RoundedCornerShape(9.dp)
+    val shape = deckShape(9.dp)
+    val hl = rememberXmbHighlightItem()
     Column(
         modifier = modifier
-            .then(if (onClick != null) Modifier.steamFocusRing(shape) else Modifier)
-            .clip(shape)
-            .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+            .then(if (onClick != null) Modifier.xmbRing(shape, hl) else Modifier)
+            .xmbGlassCard(shape, xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
             .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(vertical = 10.dp, horizontal = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.ExtraBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-        )
-        Text(
-            text = label.uppercase(Locale.getDefault()),
-            fontSize = 9.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            modifier = Modifier.padding(top = 3.dp),
-        )
+        // The tappable tile turns accent while it holds the highlight (the colours are read inside XmbInk).
+        XmbInk(hl) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+            )
+            Text(
+                text = label.uppercase(Locale.getDefault()),
+                fontSize = 9.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                modifier = Modifier.padding(top = 3.dp),
+            )
+        }
     }
 }
 
@@ -845,7 +862,7 @@ private fun BadgeTile(
     var attempt by remember(candidates) { mutableStateOf(0) }
     if (candidates.isEmpty() || attempt >= candidates.size) return
 
-    val shape = RoundedCornerShape(10.dp)
+    val shape = deckShape(10.dp)
     Column(
         modifier = Modifier
             .width(84.dp)
@@ -931,7 +948,7 @@ private fun RecentlyPlayedList(c: ProfileTabContent, fillsPane: Boolean = false)
             .fillMaxWidth()
             .padding(horizontal = 14.dp)
             .focusGroup(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(if (xmbOnGlass()) 14.dp else 8.dp),
     ) {
         games.forEach { g -> RecentRow(g) { c.onOpenApp(g.appId) } }
     }
@@ -939,13 +956,13 @@ private fun RecentlyPlayedList(c: ProfileTabContent, fillsPane: Boolean = false)
 
 @Composable
 private fun RecentRow(game: SteamFriendsStore.RecentGame, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = deckShape(10.dp)
+    val hl = rememberXmbHighlightItem()
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .steamFocusRing(shape)
-            .clip(shape)
-            .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+            .xmbRing(shape, hl)
+            .xmbGlassCard(shape, xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
             .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
             .clickable(onClick = onClick)
             .padding(8.dp),
@@ -956,24 +973,26 @@ private fun RecentRow(game: SteamFriendsStore.RecentGame, onClick: () -> Unit) {
             appId = game.appId,
             title = game.name,
             modifier = Modifier.width(88.dp),
-            shape = RoundedCornerShape(5.dp),
+            shape = deckShape(5.dp),
         )
-        Text(
-            text = game.name,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            text = "${fmtCount(game.hours.roundToInt())}h",
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            maxLines = 1,
-        )
+        XmbInk(hl) {
+            Text(
+                text = game.name,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = "${fmtCount(game.hours.roundToInt())}h",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+            )
+        }
     }
 }
 

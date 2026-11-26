@@ -54,6 +54,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -81,6 +82,8 @@ import com.winlator.star.ui.deck.SoraFamily
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import com.winlator.star.ui.screens.UnsavedChangesDialog
 import com.winlator.star.ui.simple.L
+import com.winlator.star.ui.simple.LabDownloadPicker
+import com.winlator.star.ui.simple.LabDownloads
 import com.winlator.star.ui.simple.SIn
 import com.winlator.star.ui.simple.SimpleCover
 import com.winlator.star.ui.simple.SimpleDim
@@ -102,6 +105,7 @@ import com.winlator.star.ui.simple.simpleInputOf
 import com.winlator.star.ui.simple.simpleTap
 import com.winlator.star.ui.theme.AppThemeState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.max
 
 // The Simple style's container, new-container, All-containers and game menus, laid out like the Classic editors:
@@ -127,6 +131,11 @@ private class CLinks(val category: String) : CItem
 /** A category's extra drawn in place among the rows (not behind a row of its own), e.g. the adapter report. */
 private class CInline(val category: String, val keys: (String) -> Boolean) : CItem
 private class CTab(val title: String, val icon: ImageVector, val items: List<CItem>, val leftovers: Set<String> = emptySet())
+/** One of the editor's own tools as a row (Classic's rail links: the glossary, Reset to app defaults). */
+private class CTool(val key: String, val title: String) : CItem
+
+private const val TOOL_GLOSSARY = "glossary"
+private const val TOOL_RESET = "reset"
 
 private fun pre(vararg p: String): (SettingDef) -> Boolean = { d -> p.any { d.id.startsWith(it) } }
 
@@ -194,11 +203,15 @@ private fun envTab(title: String): CTab = CTab(
     leftovers = setOf("expert"),
 )
 
-/** Classic's container editor: GENERAL · ENVIRONMENT · DRIVES · WIN COMPONENTS · ADVANCED (All containers has no drives). */
-private fun containerLayout(): List<CTab> = listOf(
+/** Classic's container editor: GENERAL · ENVIRONMENT · DRIVES · WIN COMPONENTS · ADVANCED, plus CONTROLLER (All containers has no drives). */
+private fun containerLayout(defaults: Boolean): List<CTab> = listOf(
     CTab(
         L("General"), Icons.Filled.Settings,
-        listOf(
+        listOfNotNull(
+            // Classic's rail links, first on the first tab.
+            CTool(TOOL_GLOSSARY, L("What is all this?")),
+            CTool(TOOL_RESET, L("Reset to app defaults")).takeIf { defaults },
+        ) + listOf(
             CHead(L("Container")),
             CRow("windows.containerName", L("Name")),
             CRow("display.resolution", L("Screen Size")),
@@ -244,6 +257,8 @@ private fun containerLayout(): List<CTab> = listOf(
     CTab(
         L("Advanced"), Icons.Filled.Memory,
         listOf(
+            CHead(L("Display server")),
+            CRow(SettingsRegistry.ID_DISPLAY_SERVER, L("Display server")),
             CHead("Box64EC"),
             CRow("performance.box64ecVersion", L("Box64EC Version")),
             CHead("Box64"),
@@ -254,17 +269,25 @@ private fun containerLayout(): List<CTab> = listOf(
             CRow("performance.fexPreset", L("FEXCore Preset")),
             CRow("performance.forceSsbs", L("Force SSBS (CPU speed fix)")),
             CPage(L("Preset values"), listOf(CExtra("performance", L("Translator presets"), { it.startsWith("perf-preset") }))),
-        ) + controllerItems(game = false) + listOf(
             CHead(L("System")),
             CRow("performance.startupServices", L("Startup Selection")),
             CPage(L("Custom Services"), listOf(CMatch(pre("performance.service.")))),
             CRow("performance.cpuAffinity", L("Processor Affinity")),
             CRow("performance.cpuAffinity32", L("Processor Affinity (32-bit apps)")),
+            CRow("performance.syncCpuTopology", L("Sync CPU topology")),
+            CRow(SettingsRegistry.ID_IDLE_THROTTLE, L("Idle-thread throttle")),
+        ),
+        leftovers = setOf("performance", "visuals"),
+    ),
+    // Its own tab, as the game editor has it.
+    CTab(
+        L("Controller"), Icons.Filled.Gamepad,
+        listOf(CHead(L("Controls")), CRow("input.controlsProfile", L("Controls Profile"))) + controllerItems(game = false) + listOf(
             CHead("XR"),
             CRow("input.xr.primary", L("Primary controller")),
             CPage(L("Controller Mapping"), listOf(CMatch(pre("input.xr.map")))),
         ),
-        leftovers = setOf("input", "performance", "visuals"),
+        leftovers = setOf("input"),
     ),
 )
 
@@ -274,6 +297,7 @@ private fun controllerItems(game: Boolean): List<CItem> = listOf(
     CRow("input.dinputVibration", L("DirectInput vibration")),
     CRow("input.bannerinXInput", L("Direct XInput (BANNERIN)")),
     CRow("input.bannerinXInputSwitching", L("Allow in-game switching")),
+    CRow("input.bannerinXInputOverGameDll", L("Use Direct XInput over the game's own XInput DLL")),
     CRow("input.stickPacing", L("Stick updates")),
     CRow("input.controllerIdentity", L("Controller identity")),
     CRow("input.disableXInput", L("Disable XInput")),
@@ -306,6 +330,7 @@ private fun gameLayout(): List<CTab> = listOf(
     CTab(
         L("General"), Icons.Filled.Settings,
         listOf(
+            CTool(TOOL_GLOSSARY, L("What is all this?")),
             CHead(L("Game")),
             CRow("game.name", L("Name")),
             CRow("game.arguments", L("Exec Arguments")),
@@ -344,6 +369,8 @@ private fun gameLayout(): List<CTab> = listOf(
     CTab(
         L("Advanced"), Icons.Filled.Memory,
         listOf(
+            CHead(L("Display server")),
+            CRow(SettingsRegistry.ID_DISPLAY_SERVER, L("Display server")),
             CHead("Box64"),
             CRow("performance.box64Version", L("Version")),
             CRow("performance.box64Preset", L("Preset")),
@@ -355,11 +382,12 @@ private fun gameLayout(): List<CTab> = listOf(
             CRow("performance.forceSsbs", L("Force SSBS (CPU speed fix)")),
             CPage(L("Preset values"), listOf(CExtra("performance", L("Translator presets"), { it.startsWith("perf-preset") }))),
             CHead(L("System")),
-            CRow("input.controlsProfile", L("Controls Profile")),
             CRow("performance.startupServices", L("Startup Selection")),
             CPage(L("Custom Services"), listOf(CMatch(pre("performance.service.")))),
             CRow("performance.cpuAffinity", L("Processor Affinity")),
             CRow("performance.cpuAffinity32", L("Processor Affinity (32-bit apps)")),
+            CRow("performance.syncCpuTopology", L("Sync CPU topology")),
+            CRow(SettingsRegistry.ID_IDLE_THROTTLE, L("Idle-thread throttle")),
             CHead(L("Sharpness (VKBasalt)")),
             CRow("visuals.vkbasalt", L("Effect")),
             CMatch(pre("visuals.vkbasalt")),
@@ -368,7 +396,11 @@ private fun gameLayout(): List<CTab> = listOf(
         ),
         leftovers = setOf("performance", "visuals"),
     ),
-    CTab(L("Controller"), Icons.Filled.Gamepad, controllerItems(game = true), leftovers = setOf("input")),
+    CTab(
+        L("Controller"), Icons.Filled.Gamepad,
+        listOf(CHead(L("Controls")), CRow("input.controlsProfile", L("Controls Profile"))) + controllerItems(game = true),
+        leftovers = setOf("input"),
+    ),
     CTab("TV", Icons.Filled.Tv, listOf(CMatch(pre("display.tv.")))),
 )
 
@@ -382,6 +414,7 @@ private class RExtra(val title: String, val items: List<PageExtra>) : RLine
 private class RLink(val h: Handoff) : RLine
 private class RInline(val items: List<PageExtra>) : RLine
 private class RTab(val title: String, val icon: ImageVector, val lines: List<RLine>)
+private class RTool(val key: String, val title: String) : RLine
 
 private fun pruneHeads(lines: List<RLine>): List<RLine> = lines.filterIndexed { i, l ->
     if (l !is RHead) true
@@ -431,6 +464,7 @@ private fun resolve(
                 list.forEach { p -> placedExtra += "${it.category}|${p.key}" }
                 if (list.isNotEmpty()) add(RInline(list))
             }
+            is CTool -> add(RTool(it.key, it.title))
             is CLinks -> handoffs[it.category].orEmpty()
                 .filter { h -> !h.target.startsWith(SettingsRegistry.TARGET_CATEGORY) && h.target != SettingsRegistry.TARGET_NONE }
                 .forEach { h -> add(RLink(h)) }
@@ -493,7 +527,7 @@ internal fun SimpleClassicEditor(
     extras["graphics"]?.top()?.filter { it.key == WRAPPER_DETECTED_PROBE }.orEmpty().forEach { p -> key(p.key) { p.content() } }
     val catLabels = remember(categories) { categories.associate { it.id to it.label } }
     val tabs = resolve(
-        if (game) gameLayout() else containerLayout(),
+        if (game) gameLayout() else containerLayout(defaults = env.scope == EditorScope.DEFAULTS),
         defs, ::applies, extras, worldHandoffs,
     ) { catLabels[it] ?: it }
 
@@ -529,16 +563,21 @@ internal fun SimpleClassicEditor(
 
     // Dialogs and pickers.
     var pickerFor by remember { mutableStateOf<SettingDef?>(null) }
+    // The setting whose "+ Download from source" pages are open.
+    var downloadFor by remember { mutableStateOf<SettingDef?>(null) }
+    val downloadScope = rememberCoroutineScope()
     var textFor by remember { mutableStateOf<SettingDef?>(null) }
     var coresFor by remember { mutableStateOf<SettingDef?>(null) }
     var checklistFor by remember { mutableStateOf<SettingDef?>(null) }
     var customFor by remember { mutableStateOf<SettingDef?>(null) }
     var helpFor by remember { mutableStateOf<SettingDef?>(null) }
+    var glossaryOpen by remember { mutableStateOf(false) }
+    var confirmReset by remember { mutableStateOf(false) }
     var pendingConfirm by remember { mutableStateOf<Pair<SettingDef, String>?>(null) }
     var afterUnsaved by remember { mutableStateOf<(() -> Unit)?>(null) }
     var saving by remember { mutableStateOf(false) }
-    val dialogOpen = pickerFor != null || textFor != null || coresFor != null || checklistFor != null ||
-        customFor != null || helpFor != null || pendingConfirm != null || afterUnsaved != null
+    val dialogOpen = pickerFor != null || downloadFor != null || textFor != null || coresFor != null || checklistFor != null ||
+        customFor != null || helpFor != null || pendingConfirm != null || afterUnsaved != null || glossaryOpen || confirmReset
 
     val pick: (SettingDef, String) -> Unit = { def, v ->
         val ask = def.confirm?.invoke(v)
@@ -620,6 +659,10 @@ internal fun SimpleClassicEditor(
             is RPage -> { stack = stack + (l.title to rowNow); row = 0 }
             is RExtra -> { stack = stack + (l.title to rowNow); row = 0 }
             is RLink -> guard { onHandoff(l.h) }
+            is RTool -> when (l.key) {
+                TOOL_GLOSSARY -> glossaryOpen = true
+                TOOL_RESET -> confirmReset = true
+            }
             is RHead, is RInline -> Unit
         }
     }
@@ -702,7 +745,7 @@ internal fun SimpleClassicEditor(
                     else if (a == SIn.LEFT && layout == AppThemeState.SIMPLE_LAYOUT_RAIL && stack.isEmpty()) zone = KZone.TABS
                 }
                 SIn.A -> cur?.let { activate(it) }
-                SIn.START -> curDef?.let { d -> if ((d.help ?: d.hint) != null) helpFor = d }
+                SIn.START -> curDef?.let { d -> if (com.winlator.star.ui.simple.LabFieldHelp.has(d)) helpFor = d }
                 else -> return@onKey false
             }
         }
@@ -798,6 +841,19 @@ internal fun SimpleClassicEditor(
 
     // ── Dialogs (the same ones the other Simple editor uses) ──
     pickerFor?.let { def ->
+        val vm = env.vm
+        if (def.id == LabDownloads.WINE && vm != null) {
+            // The installed Wine / Proton layers, grouped (LabLayerPicker.kt).
+            com.winlator.star.ui.simple.LayerInstalledDialog(
+                installed = vm.wineLayers,
+                current = source.value(def),
+                onPick = { v -> pickerFor = null; pick(def, v) },
+                onDismiss = { pickerFor = null },
+                onGetMore = { pickerFor = null; downloadFor = def },
+                onChanged = { vm.refreshWineVersions() },
+            )
+            return@let
+        }
         val c = def.control(env, values)
         SimplePicker(
             title = (lines.firstOrNull { it is RSet && it.def.id == def.id } as? RSet)?.label ?: def.label,
@@ -807,7 +863,33 @@ internal fun SimpleClassicEditor(
             onDismiss = { pickerFor = null },
             onPick = { v -> pickerFor = null; pick(def, v) },
             onCustom = { pickerFor = null; customFor = def },
+            onDownload = LabDownloads.typesFor(def.id, env)?.let { { pickerFor = null; downloadFor = def } },
         )
+    }
+    downloadFor?.let { def ->
+        val types = LabDownloads.typesFor(def.id, env)
+        val closeDownload: () -> Unit = {
+            downloadFor = null
+            downloadScope.launch {
+                // Back to the picker with the list read again; nothing is picked for the user.
+                runCatching { LabDownloads.refresh(def.id, env) }
+                pickerFor = def
+                // A download still running when the pages closed is listed once it has installed.
+                if (LabDownloads.downloading()) {
+                    LabDownloads.awaitDownloads()
+                    runCatching { LabDownloads.refresh(def.id, env) }
+                }
+            }
+        }
+        val catalogTypes = LabDownloads.catalogTypesFor(def.id)
+        if (types == null) downloadFor = null
+        else if (catalogTypes != null) com.winlator.star.ui.simple.LabContentDownloadSheet(
+            contentTypes = catalogTypes,
+            onDismiss = closeDownload,
+            onContentChanged = { downloadScope.launch { runCatching { LabDownloads.refresh(def.id, env) } } },
+            inUseKey = source.value(def).takeIf { it.isNotEmpty() },
+        )
+        else LabDownloadPicker(types, onClose = closeDownload)
     }
     customFor?.let { def ->
         val control = def.control(env, values) as? Control.Select
@@ -817,20 +899,15 @@ internal fun SimpleClassicEditor(
     textFor?.let { def ->
         val control = def.control(env, values) as? Control.TextField
         if (control == null) textFor = null
-        else OutlinedAlertDialog(
-            onDismissRequest = { textFor = null },
-            confirmButton = { TextButton(onClick = { textFor = null }) { Text(L("Done")) } },
-            title = { Text((lines.firstOrNull { it is RSet && it.def.id == def.id } as? RSet)?.label ?: def.label) },
-            text = { TextControl(control, source.value(def), enabled = true) { v -> pick(def, v) } },
-        )
+        else com.winlator.star.ui.simple.LabSheetDialog(
+            title = (lines.firstOrNull { it is RSet && it.def.id == def.id } as? RSet)?.label ?: def.label,
+            onDismiss = { textFor = null },
+        ) { TextControl(control, source.value(def), enabled = true) { v -> pick(def, v) } }
     }
     coresFor?.let { def ->
-        OutlinedAlertDialog(
-            onDismissRequest = { coresFor = null },
-            confirmButton = { TextButton(onClick = { coresFor = null }) { Text(L("Done")) } },
-            title = { Text(L(def.label)) },
-            text = { CoresControl(source.value(def), enabled = true) { v -> pick(def, v) } },
-        )
+        com.winlator.star.ui.simple.LabSheetDialog(title = L(def.label), onDismiss = { coresFor = null }) {
+            CoresControl(source.value(def), enabled = true) { v -> pick(def, v) }
+        }
     }
     checklistFor?.let { def ->
         val control = def.control(env, values) as? Control.Checklist
@@ -838,33 +915,43 @@ internal fun SimpleClassicEditor(
         if (control == null || items == null) checklistFor = null
         else {
             val value = source.value(def)
-            ChecklistDialog(
+            val off = value.split(',').filter { it.isNotEmpty() }.toSet()
+            val done: (Set<String>) -> Unit = { picked ->
+                checklistFor = null
+                val next = items.filter { it in picked }.joinToString(",")
+                if (next != value) pick(def, next)
+            }
+            // A short list of switches (the idle-thread throttle's APIs) is a Lab pop-up; a game's own value can go back to
+            // the container's from it.
+            if (control.switches) com.winlator.star.ui.simple.LabSwitchListDialog(
                 title = control.title,
-                all = items,
-                off = value.split(',').filter { it.isNotEmpty() }.toSet(),
+                items = items,
+                labels = control.labels,
+                off = off,
+                help = control.help,
+                onUseContainer = if (game && source.origin(def) == Origin.SET_HERE) ({ checklistFor = null; source.reset(def) }) else null,
                 onDismiss = { checklistFor = null },
-                onDone = { picked ->
-                    checklistFor = null
-                    val next = items.filter { it in picked }.joinToString(",")
-                    if (next != value) pick(def, next)
-                },
+                onDone = done,
+            )
+            else ChecklistDialog(
+                control = control,
+                all = items,
+                off = off,
+                onDismiss = { checklistFor = null },
+                onDone = done,
             )
         }
     }
     helpFor?.let { def ->
-        OutlinedAlertDialog(
-            onDismissRequest = { helpFor = null },
-            confirmButton = { TextButton(onClick = { helpFor = null }) { Text("OK") } },
-            title = { Text(L(def.label)) },
-            text = {
-                Text(
-                    listOfNotNull(
-                        def.disabled(env, values),
-                        if (!source.editable(def)) L("This is a container setting; change it in the container's settings.") else null,
-                        (def.help ?: def.hint)?.let { L(it) },
-                    ).joinToString("\n\n"),
-                )
-            },
+        // A row's own help, else Classic's "?" text for it (LabFieldHelp), in a Lab note.
+        com.winlator.star.ui.simple.LabNote(
+            title = L(def.label),
+            body = listOfNotNull(
+                def.disabled(env, values),
+                if (!source.editable(def)) L("This is a container setting; change it in the container's settings.") else null,
+                com.winlator.star.ui.simple.LabFieldHelp.text(context, def),
+            ).joinToString("\n\n"),
+            onDismiss = { helpFor = null },
         )
     }
     pendingConfirm?.let { (def, v) ->
@@ -873,21 +960,40 @@ internal fun SimpleClassicEditor(
             pendingConfirm = null
             source.set(def, v)
         } else {
-            OutlinedAlertDialog(
-                onDismissRequest = { pendingConfirm = null },
-                confirmButton = { TextButton(onClick = { pendingConfirm = null; source.set(def, v) }) { Text(L(ask.confirmLabel)) } },
-                dismissButton = { TextButton(onClick = { pendingConfirm = null }) { Text(L("Cancel")) } },
-                title = { Text(L(ask.title)) },
-                text = { Text(L(ask.body)) },
-            )
+            com.winlator.star.ui.simple.SimpleActionSheet(
+                title = L(ask.title),
+                actions = listOf(
+                    com.winlator.star.ui.simple.MenuAction(L(ask.confirmLabel), { pendingConfirm = null; source.set(def, v) }),
+                    com.winlator.star.ui.simple.MenuAction(L("Cancel"), { pendingConfirm = null }),
+                ),
+                onDismiss = { pendingConfirm = null },
+                message = L(ask.body),
+            ) { it.run() }
         }
     }
+    if (glossaryOpen) com.winlator.star.ui.simple.LabGlossaryDialog(onDismiss = { glossaryOpen = false })
+    if (confirmReset) {
+        val vm = env.vm
+        if (vm == null || env.scope != EditorScope.DEFAULTS) confirmReset = false
+        else com.winlator.star.ui.simple.SimpleConfirm(
+            title = L("Reset to app defaults?"),
+            body = resetDefaultsMessage(vm),
+            danger = true,
+            onDismiss = { confirmReset = false },
+        ) { confirmReset = false; vm.resetDefaults() }
+    }
     afterUnsaved?.let { action ->
-        UnsavedChangesDialog(
-            onSave = { afterUnsaved = null; save(after = action) },
-            onDiscard = { afterUnsaved = null; source.discard(); action() },
-            onKeepEditing = { afterUnsaved = null },
-        )
+        // Classic's "Save changes?" as a Lab list: Save, Discard, Keep editing.
+        com.winlator.star.ui.simple.SimpleActionSheet(
+            title = L("Save changes?"),
+            actions = listOf(
+                com.winlator.star.ui.simple.MenuAction(L("Save"), { afterUnsaved = null; save(after = action) }),
+                com.winlator.star.ui.simple.MenuAction(L("Discard"), { afterUnsaved = null; source.discard(); action() }, danger = true),
+                com.winlator.star.ui.simple.MenuAction(L("Keep editing"), { afterUnsaved = null }),
+            ),
+            onDismiss = { afterUnsaved = null },
+            message = L("You changed settings that haven't been saved yet."),
+        ) { it.run() }
     }
     }
 }
@@ -1170,7 +1276,8 @@ private fun LinesPanel(
                     is RSet -> ClassicSettingLine(l, source, env, values, game, focused = i == row, active = active, onHelp = { onHelp(l.def) }) { onTap(i) }
                     is RPage -> ClassicLinkLine(l.title, pageSummary(l, source, env, values), focused = i == row, active = active) { onTap(i) }
                     is RExtra -> ClassicLinkLine(l.title, null, focused = i == row, active = active) { onTap(i) }
-                    is RLink -> ClassicLinkLine(l.h.label, null, focused = i == row, active = active) { onTap(i) }
+                    is RLink -> ClassicLinkLine(l.h.label, l.h.value, focused = i == row, active = active) { onTap(i) }
+                    is RTool -> ClassicLinkLine(l.title, null, focused = i == row, active = active) { onTap(i) }
                     is RInline -> Column(Modifier.fillMaxWidth()) { l.items.forEach { it.content() } }
                 }
             }
@@ -1239,7 +1346,7 @@ private fun ClassicSettingLine(
                 val sub = disabled ?: (if (focused) note else null)
                 if (sub != null) Text(L(sub), color = SimpleDim, fontSize = 12.sp, maxLines = if (focused) 2 else 1, overflow = TextOverflow.Ellipsis)
             }
-            if ((def.help ?: def.hint) != null) HelpDot(focused, onHelp)
+            if (com.winlator.star.ui.simple.LabFieldHelp.has(def)) HelpDot(focused, onHelp)
         }
         if (game) {
             val tag = when (origin) {

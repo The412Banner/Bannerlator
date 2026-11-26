@@ -1,5 +1,7 @@
 package com.winlator.star.store
 
+import com.winlator.star.ui.simple.SimpleShape
+import com.winlator.star.ui.simple.labTile
 import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -23,12 +25,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.SportsEsports
-import androidx.compose.material3.Button
+import com.winlator.star.ui.theme.LabButton as Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.winlator.star.ui.theme.LabOutlinedButton as OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
@@ -54,13 +56,21 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.winlator.star.ui.deck.rememberScreenScale
 import com.winlator.star.ui.deck.xmbCardFill
 import com.winlator.star.ui.deck.xmbCardLine
+import com.winlator.star.ui.deck.XmbInk
+import com.winlator.star.ui.deck.rememberXmbHighlightItem
+import com.winlator.star.ui.deck.xmbGlassCard
+import com.winlator.star.ui.deck.xmbHighlight
+import com.winlator.star.ui.deck.xmbHighlightHostOrNull
+import com.winlator.star.ui.deck.xmbRevealRoom
 import com.winlator.star.ui.theme.StoreDiscountBg
 import com.winlator.star.ui.theme.StoreDiscountInk
 import com.winlator.star.ui.theme.StoreFreeGreen
+import com.winlator.star.ui.deck.deckShape
 
 /**
  * Shared chrome for the Steam storefront's four tabs: the portrait↔landscape decision, the D-pad
@@ -131,12 +141,17 @@ fun rememberStorefrontLayout(): SteamStorefrontLayout {
  * `.clickable {}` in the chain so the ring wraps the whole target; on a Material `Card(onClick=)`
  * or `Button` just pass it in the `modifier` — the internal clickable is a descendant and
  * `hasFocus` picks it up.
+ *
+ * In the XMB interface, under a highlight host, the 2dp border is not drawn: the element registers as a stop of the one
+ * gliding outline instead (see XmbHighlight.kt). Without a host, and everywhere outside XMB, it is the ring above.
  */
 @Composable
-fun Modifier.steamFocusRing(shape: Shape = RoundedCornerShape(10.dp)): Modifier {
+fun Modifier.steamFocusRing(shape: Shape = deckShape(10.dp)): Modifier {
+    if (xmbHighlightHostOrNull() != null) return this.xmbHighlight(shape, wholeSubtree = true)
     var focused by remember { mutableStateOf(false) }
     val accent = MaterialTheme.colorScheme.primary
     return this
+        .xmbRevealRoom()
         .onFocusChanged { focused = it.isFocused || it.hasFocus }
         .border(
             width = if (focused) 2.dp else 0.dp,
@@ -150,27 +165,15 @@ fun Modifier.steamFocusRing(shape: Shape = RoundedCornerShape(10.dp)): Modifier 
 /** A rail/section header: bold title on the left, muted sub-label pushed to the right. */
 @Composable
 fun StoreSectionHeader(title: String, sub: String? = null, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.Bottom,
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        Spacer(Modifier.weight(1f))
-        if (!sub.isNullOrBlank()) {
-            Text(
-                text = sub,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
+    Text(
+        text = title.uppercase(),
+        fontSize = 11.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 0.6.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        modifier = modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 6.dp),
+    )
 }
 
 /**
@@ -182,18 +185,17 @@ fun StoreSectionHeader(title: String, sub: String? = null, modifier: Modifier = 
  *
  * Selected = filled accent with on-accent ink; unselected = raised container with an outline. Both
  * states carry [steamFocusRing], so a D-pad user can see where they are.
+ *
+ * [modifier] goes first: a chip that is an inner button of a two-level card passes `Modifier.xmbInner(group, first = true)`
+ * (XmbFocusGroup.kt), so its focus properties apply to the chip's own focus target.
  */
 @Composable
-fun StoreFilterChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(20.dp)
-    Text(
-        text = label,
-        style = MaterialTheme.typography.labelMedium,
-        fontWeight = FontWeight.Bold,
-        color = if (selected) MaterialTheme.colorScheme.onPrimary
-        else MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier
-            .steamFocusRing(shape)
+fun StoreFilterChip(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val shape = deckShape(20.dp)
+    val hl = rememberXmbHighlightItem()
+    Box(
+        modifier = modifier
+            .xmbRing(shape, hl)
             .clip(shape)
             .background(
                 if (selected) MaterialTheme.colorScheme.primary
@@ -206,7 +208,18 @@ fun StoreFilterChip(label: String, selected: Boolean, onClick: () -> Unit) {
             )
             .clickable(onClick = onClick)
             .padding(horizontal = 13.dp, vertical = 5.dp),
-    )
+    ) {
+        // XMB: an unselected chip's muted label turns accent while it holds the highlight (the colour is read inside XmbInk).
+        XmbInk(hl) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (selected) MaterialTheme.colorScheme.onPrimary
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 /** Centered empty/error block with an optional retry — the storefront's graceful-degrade surface. */
@@ -241,7 +254,7 @@ fun StoreNotice(
             Spacer(Modifier.height(14.dp))
             OutlinedButton(
                 onClick = onAction,
-                modifier = Modifier.steamFocusRing(RoundedCornerShape(20.dp)),
+                modifier = Modifier.steamFocusRing(deckShape(20.dp)),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = MaterialTheme.colorScheme.primary,
@@ -342,7 +355,10 @@ fun StoreCapsule(
     aspectRatio: Float? = 92f / 43f,
 ) {
     val ctx = LocalContext.current
-    val candidates = remember(appId, apiUrl) { capsuleCandidates(appId, apiUrl) }
+    // The app's published capsule is read here too: it is null until the art map is loaded (a cold start), and keying on it
+    // rebuilds the candidates, with that capsule first, once it is.
+    val published = SteamLibraryArt.header(appId)
+    val candidates = remember(appId, apiUrl, published) { capsuleCandidates(appId, apiUrl) }
     // Phase 1 cursor. == candidates.size means every static candidate failed.
     var attempt by remember(candidates) { mutableStateOf(0) }
     // Phase 2 cursor: index into CAPSULE_RESOLVERS. == size means they all came up empty.
@@ -500,7 +516,7 @@ fun StorePriceRow(item: SteamStoreCatalog.StoreItem, modifier: Modifier = Modifi
                     fontWeight = FontWeight.Bold,
                     color = StoreDiscountInk,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
+                        .clip(deckShape(4.dp))
                         .background(StoreDiscountBg)
                         .padding(horizontal = 5.dp, vertical = 2.dp),
                 )
@@ -557,7 +573,7 @@ fun StoreActionButton(
     modifier: Modifier = Modifier,
     compact: Boolean = false,
 ) {
-    val shape = RoundedCornerShape(7.dp)
+    val shape = deckShape(7.dp)
     val pad = if (compact) PaddingValues(horizontal = 8.dp, vertical = 2.dp)
     else PaddingValues(horizontal = 10.dp, vertical = 4.dp)
     val style = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium
@@ -636,53 +652,19 @@ fun StoreRailCard(
     onAction: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // XMB home: Steam's 600x900 cover; its page carries the action.
-    if (LocalStoreXmb.current) {
-        XmbStoreCover(
-            art = listOfNotNull(steamTallArt(item.appId), item.artUrl), title = item.name, onClick = onOpen,
-            modifier = modifier.width(rememberScreenScale().xmbCoverWidth()),
-            footer = { StorePriceRow(item) },
-        )
-        return
-    }
-    val shape = RoundedCornerShape(10.dp)
+    if (action == StoreAction.AddToLibrary) SteamFreeOffers.ids.add(item.appId)
+    // The same card as every other store: the art, the name, the price. A tap opens the game's page.
     Column(
         modifier = modifier
-            .width(StoreCardWidth)
-            .steamFocusRing(shape)
-            .clip(shape)
-            .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
-            .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
-            .clickable(onClick = onOpen),
+            .width(138.dp)
+            .clip(SimpleShape)
+            .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f))
+            .labTile(onClick = onOpen),
     ) {
-        StoreCapsule(
-            appId = item.appId,
-            title = item.name,
-            modifier = Modifier.fillMaxWidth(),
-            apiUrl = item.artUrl,
-        )
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 9.dp),
-            verticalArrangement = Arrangement.spacedBy(7.dp),
-        ) {
-            Text(
-                text = item.name,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            StorePriceRow(item)
-            StoreActionButton(
-                action = action,
-                onClick = onAction,
-                modifier = Modifier.fillMaxWidth(),
-                compact = true,
-            )
-        }
+        StoreCapsule(appId = item.appId, title = item.name, modifier = Modifier.fillMaxWidth(), apiUrl = item.artUrl)
+        Text(item.name, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onBackground,
+            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 5.dp, end = 5.dp, top = 4.dp))
+        StorePriceRow(item, modifier = Modifier.padding(start = 5.dp, end = 5.dp, bottom = 4.dp))
     }
 }
 
@@ -698,64 +680,25 @@ fun StoreResultRow(
     onAction: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // XMB home: a small portrait cover beside the name and price.
-    if (LocalStoreXmb.current) {
-        XmbFeatureCard(
-            art = listOfNotNull(steamTallArt(item.appId), item.artUrl), title = item.name, eyebrow = item.tags,
-            onClick = onOpen, modifier = modifier, compact = true,
-            footer = { StorePriceRow(item) },
-        )
-        return
-    }
-    val shape = RoundedCornerShape(10.dp)
+    if (action == StoreAction.AddToLibrary) SteamFreeOffers.ids.add(item.appId)
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .steamFocusRing(shape)
-            .clip(shape)
-            .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
-            .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
-            .clickable(onClick = onOpen)
-            .padding(9.dp),
+            .clip(SimpleShape)
+            .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f))
+            .labTile(onClick = onOpen)
+            .padding(horizontal = 6.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(11.dp),
+        horizontalArrangement = Arrangement.spacedBy(9.dp),
     ) {
-        StoreCapsule(
-            appId = item.appId,
-            title = item.name,
-            modifier = Modifier.width(104.dp),
-            shape = RoundedCornerShape(6.dp),
-            apiUrl = item.artUrl,
-        )
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(
-                text = item.name,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+        StoreCapsule(appId = item.appId, title = item.name, modifier = Modifier.width(72.dp), apiUrl = item.artUrl)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(item.name, fontSize = 13.sp, color = MaterialTheme.colorScheme.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (item.tags.isNotBlank()) {
-                Text(
-                    text = item.tags,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Text(item.tags, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            StorePriceRow(item)
         }
-        StoreActionButton(
-            action = action,
-            onClick = onAction,
-            modifier = Modifier.width(112.dp),
-            compact = true,
-        )
+        StorePriceRow(item)
     }
 }
 
@@ -772,67 +715,23 @@ fun StoreHeroCard(
     onAction: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // XMB home: the 600x900 cover beside the name and price.
-    if (LocalStoreXmb.current) {
-        XmbFeatureCard(
-            art = listOfNotNull(steamTallArt(item.appId), item.artUrl), title = item.name,
-            eyebrow = "FEATURED & RECOMMENDED", onClick = onOpen, modifier = modifier,
-            footer = { StorePriceRow(item) },
-        )
-        return
-    }
-    val shape = RoundedCornerShape(12.dp)
+    if (action == StoreAction.AddToLibrary) SteamFreeOffers.ids.add(item.appId)
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .steamFocusRing(shape)
-            .clip(shape)
-            .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
-            .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
-            .clickable(onClick = onOpen),
+            .clip(SimpleShape)
+            .labTile(onClick = onOpen),
     ) {
-        StoreCapsule(
-            appId = item.appId,
-            title = item.name,
-            modifier = Modifier.fillMaxWidth(),
-            apiUrl = item.artUrl,
-        )
+        StoreCapsule(appId = item.appId, title = item.name, modifier = Modifier.fillMaxWidth().height(storeHeroHeight()), aspectRatio = null, apiUrl = item.artUrl)
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.92f)),
-                    ),
-                )
-                .padding(horizontal = 13.dp, vertical = 11.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.9f))))
+                .padding(start = 10.dp, end = 10.dp, top = 18.dp, bottom = 8.dp),
         ) {
-            Text(
-                text = "FEATURED & RECOMMENDED",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                // On the black scrim, not on a themed surface — but still the live accent, so a
-                // green-accent user gets a green eyebrow.
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                text = item.name,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold,
-                // Fixed white: this sits on the art scrim, like the grid-tile name.
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                StorePriceRow(item, modifier = Modifier.weight(1f, fill = false))
-                StoreActionButton(action = action, onClick = onAction, compact = true)
-            }
+            Text(item.name, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            StorePriceRow(item)
         }
     }
 }
@@ -846,3 +745,11 @@ fun StoreHeroCard(
  */
 @Composable
 fun StoreMessageBar(message: String, onTimeout: () -> Unit) = UninstallResultBar(message, onTimeout)
+
+/**
+ * Free games the Store tab showed that the account does not own yet. A card no longer carries "Add to Library"; the
+ * game's page reads this to offer it as its main button.
+ */
+internal object SteamFreeOffers {
+    val ids: MutableSet<Int> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+}

@@ -47,7 +47,6 @@ import androidx.compose.material3.FilledTonalButton
 import java.io.File
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -102,6 +101,9 @@ import com.winlator.star.contentdialog.GraphicsDriverConfigDialog
 import com.winlator.star.core.EmuSaveRoots
 import com.winlator.star.core.FileUtils
 import com.winlator.star.core.GameSaveBackup
+import com.winlator.star.ui.deck.XmbInk
+import com.winlator.star.ui.deck.rememberXmbFocusGroup
+import com.winlator.star.ui.deck.rememberXmbHighlightItem
 import com.winlator.star.util.InAppFilePicker
 import com.winlator.star.core.SaveLocator
 import com.winlator.star.core.StringUtils
@@ -204,7 +206,7 @@ fun ContainersScreen(
             // the field state as the seed for future new containers) via the EDIT_DEFAULTS_ID sentinel.
             // Containers screen only. Sits next to the import action.
             IconButton(onClick = { onNavigateToDetail(ContainerDetailViewModel.EDIT_DEFAULTS_ID) }) {
-                Icon(Icons.Filled.Settings, contentDescription = "New container defaults", tint = androidx.compose.ui.graphics.Color.White)
+                Icon(Icons.Filled.Settings, contentDescription = "Defaults for new containers", tint = androidx.compose.ui.graphics.Color.White)
             }
             IconButton(onClick = { showImportPicker = true }) {
                 Icon(Icons.Filled.FileDownload, contentDescription = "Import container", tint = androidx.compose.ui.graphics.Color.White)
@@ -220,7 +222,7 @@ fun ContainersScreen(
                 modifier = Modifier.align(Alignment.Center),
             )
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = xmbListPadding()) {
                 items(containers, key = { it.id }) { container ->
                     ContainerItem(
                         container = container,
@@ -335,7 +337,7 @@ fun ContainersScreen(
                                         Toast.makeText(context, "Container imported: ${dir.name}", Toast.LENGTH_SHORT).show()
                                     }
                                 },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().xmbStop(CircleShape),
                             ) {
                                 Text(dir.name, modifier = Modifier.weight(1f))
                             }
@@ -434,7 +436,7 @@ fun ContainersScreen(
                                 "A layer is the set of Wine/Proton files a container runs on. " +
                                     "\"${action.container.name}\" runs on ${action.container.wineVersion}; " +
                                     (if (newLabel == ContainerLayerUpdater.codeLabel(action.target)) "a newer build of the same layer, "
-                                    else "a newer DroidDeck-Proton version, ") + "${action.target}, is " +
+                                    else "a newer version of the same layer, ") + "${action.target}, is " +
                                     (if (action.remote != null) "available in the catalog. The $newLabel layer will be " +
                                         "downloaded" + layerSizeHint(action.remote) + " first."
                                     else "installed.") + "\n\n" +
@@ -529,10 +531,10 @@ fun ContainersScreen(
                     Spacer(Modifier.size(8.dp))
                     SaveFlowCaution()
                     Spacer(Modifier.size(8.dp))
-                    TextButton(onClick = { saveFlow = SaveFlow.BackupScope(flow.container) }, modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = { saveFlow = SaveFlow.BackupScope(flow.container) }, modifier = Modifier.fillMaxWidth().xmbStop(CircleShape)) {
                         Text("Back up this save", modifier = Modifier.weight(1f))
                     }
-                    TextButton(onClick = { saveFlow = SaveFlow.RestoreSource(flow.container) }, modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = { saveFlow = SaveFlow.RestoreSource(flow.container) }, modifier = Modifier.fillMaxWidth().xmbStop(CircleShape)) {
                         Text("Restore a save", modifier = Modifier.weight(1f))
                     }
                 }
@@ -554,7 +556,7 @@ fun ContainersScreen(
                                 InAppFilePicker.buildIntent(context, InAppFilePicker.SAVE, "Select backup (.zip)")
                             )
                         },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().xmbStop(CircleShape),
                     ) { Text("GameHub backup (.zip)", modifier = Modifier.weight(1f)) }
                     TextButton(
                         onClick = {
@@ -562,7 +564,7 @@ fun ContainersScreen(
                             saveFlow = null
                             restorePickerLauncher.launch("application/zip")
                         },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().xmbStop(CircleShape),
                     ) { Text("Pick via system…", modifier = Modifier.weight(1f)) }
                 }
             },
@@ -603,11 +605,11 @@ fun ContainersScreen(
                     Spacer(Modifier.size(8.dp))
                     TextButton(
                         onClick = { saveFlow = SaveFlow.BackupFormat(flow.container, null, flow.container.name) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().xmbStop(CircleShape),
                     ) { Text(stringResource(R.string.save_backup_scope_whole), modifier = Modifier.weight(1f)) }
                     TextButton(
                         onClick = { saveFlow = SaveFlow.GamePicker(flow.container) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().xmbStop(CircleShape),
                     ) { Text("${stringResource(R.string.save_backup_scope_game)} ▸", modifier = Modifier.weight(1f)) }
                 }
             },
@@ -726,15 +728,17 @@ private fun ContainerItem(
     val subtitle = listOf(container.wineVersion, container.screenSize)
         .filter { it.isNotEmpty() }.joinToString(" · ")
 
-    Card(
+    // XMB interface: the card is one D-pad stop (outlined whole, text in the accent), A enters it and reaches the buttons below
+    // (update layer, "?", Play, Settings), B comes back to the card. Elsewhere this is the plain Card it was.
+    val group = rememberXmbFocusGroup()
+    XmbGroupCard(
+        group = group,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        classicColor = MaterialTheme.colorScheme.surfaceVariant,
+        classicBorder = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -765,7 +769,7 @@ private fun ContainerItem(
                 Text(
                     text = container.name,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = OnSurface,
+                    color = xmbOnSurface(),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -773,7 +777,7 @@ private fun ContainerItem(
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = OnSurfaceVariant,
+                        color = xmbOnSurfaceVariant(),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -795,7 +799,7 @@ private fun ContainerItem(
                             onClick = { onUpdateLayer(layerTarget) },
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
                             border = BorderStroke(1.dp, layerOutline),
-                            modifier = Modifier.height(26.dp),
+                            modifier = Modifier.height(26.dp).xmbBtn(CircleShape),
                         ) {
                             if (layerNeedsDownload) {
                                 Icon(
@@ -815,7 +819,7 @@ private fun ContainerItem(
                         Spacer(Modifier.width(6.dp))
                         IconButton(
                             onClick = { onLayerHelp(layerTarget) },
-                            modifier = Modifier.size(26.dp),
+                            modifier = Modifier.size(26.dp).xmbBtn(CircleShape),
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.HelpOutline,
@@ -842,6 +846,7 @@ private fun ContainerItem(
             Box(
                 modifier = Modifier
                     .size(44.dp)
+                    .xmbBtn(CircleShape, first = true, tint = MaterialTheme.colorScheme.onPrimary)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primary)
                     .clickable(onClick = onRun),
@@ -859,16 +864,18 @@ private fun ContainerItem(
 
             // Settings button
             Box {
-                IconButton(onClick = { menuExpanded = true }) {
+                IconButton(onClick = { menuExpanded = true }, modifier = Modifier.xmbBtn(CircleShape)) {
                     Icon(
                         imageVector = Icons.Filled.Settings,
                         contentDescription = "Settings",
-                        tint = OnSurfaceVariant,
+                        tint = xmbOnSurfaceVariant(),
                     )
                 }
                 ScrollingDropdownMenu(
                     expanded = menuExpanded,
                     onDismissRequest = { menuExpanded = false },
+                    // The menu is a window of its own: the controller's B closes it here (nothing outside the XMB interface).
+                    modifier = Modifier.xmbMenuBack { menuExpanded = false },
                 ) {
                     DropdownMenuItem(
                         text = { Text("Edit") },
@@ -1018,57 +1025,65 @@ internal fun runScopedBackup(
 /** One selectable row in the game picker: cover art (fallback icon) + game name. */
 @Composable
 private fun GamePickerRow(shortcut: Shortcut, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        val cover = shortcut.coverArt ?: shortcut.icon
-        Box(
+    val stop = rememberXmbHighlightItem()
+    XmbInk(stop) {
+        Row(
             modifier = Modifier
-                .size(width = 36.dp, height = 48.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(SurfaceVariantColor),
-            contentAlignment = Alignment.Center,
+                .fillMaxWidth()
+                .xmbStop(RoundedCornerShape(8.dp), stop)
+                .clickable(onClick = onClick)
+                .padding(vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (cover != null) {
-                Image(
-                    bitmap = cover.asImageBitmap(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else {
-                Image(
-                    painter = painterResource(R.drawable.icon_wine),
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                )
+            val cover = shortcut.coverArt ?: shortcut.icon
+            Box(
+                modifier = Modifier
+                    .size(width = 36.dp, height = 48.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(SurfaceVariantColor),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (cover != null) {
+                    Image(
+                        bitmap = cover.asImageBitmap(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(R.drawable.icon_wine),
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
             }
+            Text(
+                shortcut.name,
+                color = xmbOnSurface(),
+                modifier = Modifier.padding(start = 12.dp).weight(1f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
-        Text(
-            shortcut.name,
-            color = OnSurface,
-            modifier = Modifier.padding(start = 12.dp).weight(1f),
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
     }
 }
 
 /** A two-line format option in the BackupFormat dialog. */
 @Composable
 private fun BackupFormatOption(title: String, subtitle: String, onClick: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
-    ) {
-        Text(title, color = MaterialTheme.colorScheme.primary)
-        Text(subtitle, color = OnSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+    val stop = rememberXmbHighlightItem()
+    XmbInk(stop) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .xmbStop(RoundedCornerShape(8.dp), stop)
+                .clickable(onClick = onClick)
+                .padding(vertical = 8.dp),
+        ) {
+            Text(title, color = MaterialTheme.colorScheme.primary)
+            Text(subtitle, color = xmbOnSurfaceVariant(), style = MaterialTheme.typography.bodySmall)
+        }
     }
 }
 
@@ -1105,27 +1120,12 @@ internal fun GameSavesDialog(
 
     LaunchedEffect(gameKey, rescan) {
         loading = true
-        val (list, sidecar) = withContext(Dispatchers.IO) {
-            val saved = if (rescan == 0) SaveLocator.loadMap(container, gameKey) else null
-            if (saved != null && saved.roots.isNotEmpty()) {
-                saved.roots.map { rel ->
-                    SaveLocator.Candidate(rel, rel.substringAfterLast('/'), 100, SaveLocator.sizeOf(container, rel))
-                } to true
-            } else {
-                SaveLocator.discover(container, gameName, exePath, wmClass) to false
-            }
-        }
-        val (foundId, emu) = withContext(Dispatchers.IO) {
-            val found = EmuSaveRoots.appIdFor(container, appIdExtra, exePath)
-            val driveC = File(container.rootDir, ".wine/drive_c")
-            found to found?.let { EmuSaveRoots.includedFor(driveC, it) }.orEmpty()
-                .map { it to FileUtils.totalSize(File(driveC, it)) }
-        }
-        appId = foundId
-        emuDirs.clear(); emuDirs.addAll(emu)
-        rows.clear(); rows.addAll(list)
-        checked.clear(); checked.addAll(list.map { it.relPath })
-        fromSidecar = sidecar
+        val scan = withContext(Dispatchers.IO) { scanGameSaves(container, gameKey, gameName, exePath, wmClass, appIdExtra, useSidecar = rescan == 0) }
+        appId = scan.appId
+        emuDirs.clear(); emuDirs.addAll(scan.emuDirs)
+        rows.clear(); rows.addAll(scan.rows)
+        checked.clear(); checked.addAll(scan.rows.map { it.relPath })
+        fromSidecar = scan.fromSidecar
         loading = false
     }
 
@@ -1175,25 +1175,31 @@ internal fun GameSavesDialog(
                 )
                 Spacer(Modifier.size(4.dp))
                 rows.forEach { c ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                if (checked.contains(c.relPath)) checked.remove(c.relPath) else checked.add(c.relPath)
+                    // XMB interface: the row is the one stop (A ticks it); the checkbox inside is not a second one.
+                    val stop = rememberXmbHighlightItem()
+                    XmbInk(stop) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .xmbStop(RoundedCornerShape(8.dp), stop)
+                                .clickable {
+                                    if (checked.contains(c.relPath)) checked.remove(c.relPath) else checked.add(c.relPath)
+                                }
+                                .padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Checkbox(
+                                checked = checked.contains(c.relPath),
+                                onCheckedChange = {
+                                    if (it) { if (!checked.contains(c.relPath)) checked.add(c.relPath) }
+                                    else checked.remove(c.relPath)
+                                },
+                                modifier = Modifier.xmbNoFocus(),
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(c.relPath, color = xmbOnSurface(), style = MaterialTheme.typography.bodyMedium)
+                                Text(StringUtils.formatBytes(c.sizeBytes), color = xmbOnSurfaceVariant(), style = MaterialTheme.typography.bodySmall)
                             }
-                            .padding(vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(
-                            checked = checked.contains(c.relPath),
-                            onCheckedChange = {
-                                if (it) { if (!checked.contains(c.relPath)) checked.add(c.relPath) }
-                                else checked.remove(c.relPath)
-                            },
-                        )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(c.relPath, color = OnSurface, style = MaterialTheme.typography.bodyMedium)
-                            Text(StringUtils.formatBytes(c.sizeBytes), color = OnSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
@@ -1216,9 +1222,9 @@ internal fun GameSavesDialog(
                 }
                 Spacer(Modifier.size(4.dp))
                 Row {
-                    TextButton(onClick = { showManualAdd = true }) { Text(stringResource(R.string.save_backup_add_folder)) }
+                    TextButton(onClick = { showManualAdd = true }, modifier = Modifier.xmbStop(CircleShape)) { Text(stringResource(R.string.save_backup_add_folder)) }
                     if (fromSidecar) {
-                        TextButton(onClick = { rescan += 1 }) { Text(stringResource(R.string.save_backup_rescan)) }
+                        TextButton(onClick = { rescan += 1 }, modifier = Modifier.xmbStop(CircleShape)) { Text(stringResource(R.string.save_backup_rescan)) }
                     }
                 }
             }
@@ -1237,6 +1243,36 @@ internal fun GameSavesDialog(
         },
         dismissButton = { TextButton(onClick = onBack) { Text("Back") } },
     )
+}
+
+/** A game's save step as it opens: the folders to offer (remembered or found), and the emulator save folders the backup always takes. */
+internal class GameSaveScan(
+    val rows: List<SaveLocator.Candidate>,
+    val fromSidecar: Boolean,
+    val appId: Int?,
+    /** drive_c-relative emulator folders for [appId], with their sizes. */
+    val emuDirs: List<Pair<String, Long>>,
+)
+
+/**
+ * The remembered folder set from the sidecar (when [useSidecar] and there is one), else a scan of the container,
+ * plus the emulator save folders named by the game's Steam app id. Blocking: call off the UI thread.
+ */
+internal fun scanGameSaves(
+    container: Container, gameKey: String, gameName: String, exePath: String, wmClass: String, appIdExtra: String, useSidecar: Boolean,
+): GameSaveScan {
+    val saved = if (useSidecar) SaveLocator.loadMap(container, gameKey) else null
+    val (list, sidecar) = if (saved != null && saved.roots.isNotEmpty()) {
+        saved.roots.map { rel ->
+            SaveLocator.Candidate(rel, rel.substringAfterLast('/'), 100, SaveLocator.sizeOf(container, rel))
+        } to true
+    } else {
+        SaveLocator.discover(container, gameName, exePath, wmClass) to false
+    }
+    val found = EmuSaveRoots.appIdFor(container, appIdExtra, exePath)
+    val driveC = File(container.rootDir, ".wine/drive_c")
+    val emu = found?.let { EmuSaveRoots.includedFor(driveC, it) }.orEmpty().map { it to FileUtils.totalSize(File(driveC, it)) }
+    return GameSaveScan(list, sidecar, found, emu)
 }
 
 /**
@@ -1265,13 +1301,13 @@ private fun ManualAddDialog(container: Container, onPick: (File) -> Unit, onCanc
                 LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
                     if (cur.path != root.path) {
                         item {
-                            TextButton(onClick = { cur.parentFile?.let { cur = it } }, modifier = Modifier.fillMaxWidth()) {
+                            TextButton(onClick = { cur.parentFile?.let { cur = it } }, modifier = Modifier.fillMaxWidth().xmbStop(CircleShape)) {
                                 Text("..", modifier = Modifier.weight(1f), color = OnSurface)
                             }
                         }
                     }
                     items(subDirs, key = { it.path }) { d ->
-                        TextButton(onClick = { cur = d }, modifier = Modifier.fillMaxWidth()) {
+                        TextButton(onClick = { cur = d }, modifier = Modifier.fillMaxWidth().xmbStop(CircleShape)) {
                             Text(d.name, modifier = Modifier.weight(1f), color = OnSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }

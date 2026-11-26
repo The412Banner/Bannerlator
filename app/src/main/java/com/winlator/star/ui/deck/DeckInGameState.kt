@@ -91,10 +91,15 @@ object DeckInGameState {
     // Lab: one in-game menu whose first page is Quick (the quick menu's controls), then the full menu's pages.
     private val _labQuick = MutableStateFlow(true)
     val labQuick: StateFlow<Boolean> = _labQuick
-    private val lab: Boolean get() = com.winlator.star.ui.theme.AppThemeState.simpleHome.value
+    // The XMB mode's drawer is Lab's menu in XMB dress (XmbInGameMenu), so it runs the same state machine. The two styles
+    // never run together (AppThemeState keeps simpleHome and deckXmbHome apart).
+    private val lab: Boolean get() = com.winlator.star.ui.theme.AppThemeState.simpleHome.value || xmbDrawer
+
+    /** XMB mode: the in-game menu is the one glass drawer on the left (XmbInGameMenu) instead of the Deck's quick menu + game menu. */
+    val xmbDrawer: Boolean get() = com.winlator.star.ui.theme.AppThemeState.deckXmbHome.value
 
     fun openQuick() {
-        if (lab) _labQuick.value = true
+        // Lab: the menu reopens on the page it was left on during this game session (Quick the first time).
         setPanel(Panel.QUICK)
     }
 
@@ -111,6 +116,7 @@ object DeckInGameState {
 
     /** Lab: the Quick page. */
     fun selectLabQuick() {
+        if (!_labQuick.value) com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.TAB)
         _labQuick.value = true
         requestFocus()
     }
@@ -135,12 +141,14 @@ object DeckInGameState {
     }
 
     fun selectMenuTab(tab: MenuTab) {
+        if (_labQuick.value || _menuTab.value != tab) com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.TAB)
         _menuTab.value = tab
         _labQuick.value = false
         requestFocus()
     }
 
     fun selectQuickTab(tab: QuickTab) {
+        if (_quickTab.value != tab) com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.TAB)
         _quickTab.value = tab
         requestFocus()
     }
@@ -235,6 +243,8 @@ object DeckInGameState {
     private fun setPanel(p: Panel) {
         val was = _panel.value
         if (was == p) return
+        // Quick ↔ full menu swap; opening and closing sound through onPanelOpenChanged (the activity).
+        if (was != Panel.NONE && p != Panel.NONE) com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.MENU_OPEN)
         _panel.value = p
         if (p != Panel.NONE) requestFocus()
         if ((was == Panel.NONE) != (p == Panel.NONE)) onPanelOpenChanged?.accept(p != Panel.NONE)
@@ -246,6 +256,7 @@ object DeckInGameState {
         controlFocused = false
         _menuTab.value = MenuTab.SCREEN
         _quickTab.value = QuickTab.QUICK
+        _labQuick.value = true
         _sessionKind.value = InGameSessionKind.WINE_X11
         _gameTitle.value = ""
         _gameShortcutPath.value = null

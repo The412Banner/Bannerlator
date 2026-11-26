@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -75,6 +76,9 @@ import com.winlator.star.contents.WrapperManager
 import com.winlator.star.contents.WrapperSettingsDictionary
 import com.winlator.star.core.GPUInformation
 import com.winlator.star.core.StringUtils
+import com.winlator.star.ui.deck.rememberXmbFocusGroup
+import com.winlator.star.ui.deck.rememberXmbHome
+import com.winlator.star.ui.deck.xmbOnGlass
 import com.winlator.star.ui.findActivity
 import com.winlator.star.util.InAppFilePicker
 import kotlinx.coroutines.Dispatchers
@@ -96,7 +100,8 @@ fun WrapperManagerScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(cs.surface)
+            // On the XMB glass the page shows through; an opaque fill would hide it.
+            .then(if (xmbOnGlass()) Modifier else Modifier.background(cs.surface))
             .verticalScroll(rememberScrollState())
     ) {
         WrapperManagerBody()
@@ -147,12 +152,7 @@ fun WrapperManagerBody(modifier: Modifier = Modifier) {
 
     // Resolve the real GPU once (native probe): vendor 0x5143 = Qualcomm/Adreno, plus a friendly model
     // name for the applicability lines. Wrapped defensively so a probe hiccup never crashes the screen.
-    val gpu = remember {
-        val vendor = runCatching { GPUInformation.getVendorID(null, null) }.getOrDefault(0)
-        val model = runCatching { GPUInformation.extractModelName(GPUInformation.getRenderer(null, null)) }
-            .getOrNull()?.takeIf { it.isNotBlank() } ?: "this GPU"
-        GpuInfo(isQualcomm = vendor == 0x5143, model = model)
-    }
+    val gpu = remember { probeWrapperGpu() }
 
     var slots by remember { mutableStateOf(manager.listSlots().toList()) }
     var imported by remember { mutableStateOf(manager.enumerateImported().toList()) }
@@ -260,12 +260,7 @@ fun WrapperManagerBody(modifier: Modifier = Modifier) {
                     if (!inspection.valid) {
                         Toast.makeText(context, R.string.wrapper_invalid_toast, Toast.LENGTH_LONG).show()
                     } else {
-                        // Default the display name to the file's base name.
-                        val base = (path?.substringAfterLast('/') ?: uri.lastPathSegment?.substringAfterLast('/'))
-                            ?.substringBeforeLast('.')
-                            ?.takeIf { it.isNotBlank() }
-                            ?: "Imported wrapper"
-                        importNameDraft = base
+                        importNameDraft = wrapperImportBaseName(path, uri)
                         pendingInspection = inspection
                         pendingImportUri = uri
                     }
@@ -295,14 +290,14 @@ fun WrapperManagerBody(modifier: Modifier = Modifier) {
                 color = cs.onSurfaceVariant,
             )
             Spacer(Modifier.size(10.dp))
-            OutlinedButton(onClick = { confirmResetAll = true }) {
+            OutlinedButton(onClick = { confirmResetAll = true }, modifier = Modifier.xmbBtn(CircleShape)) {
                 Icon(Icons.Filled.RestartAlt, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(context.getString(R.string.wrapper_reset_all))
             }
         }
 
-        Divider(color = cs.outline.copy(alpha = 0.4f))
+        if (!rememberXmbHome()) Divider(color = cs.outline.copy(alpha = 0.4f))
         Spacer(Modifier.size(4.dp))
 
         // Fixed bundled slots.
@@ -403,7 +398,7 @@ fun WrapperManagerBody(modifier: Modifier = Modifier) {
                             importMode = false
                             confirmInstallPrompt = true
                         },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().xmbBtn(CircleShape),
                     ) {
                         Icon(Icons.Filled.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
@@ -415,7 +410,7 @@ fun WrapperManagerBody(modifier: Modifier = Modifier) {
                             updateChooserSlot = null
                             catalogTargetSlot = chooserSlot
                         },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().xmbBtn(CircleShape),
                     ) {
                         Icon(Icons.Filled.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
@@ -677,18 +672,63 @@ internal fun WrapperCardFrame(
     // A card is either a plain click affordance (import card) or an expandable detail card; both map
     // to a single clickable action here.
     val clickAction: (() -> Unit)? = onClick ?: (if (expandable) onToggleExpand else null)
+    if (rememberXmbHome()) {
+        // XMB interface: a glass card and one D-pad stop. A plain click card (import / download) is a single stop that A
+        // runs. An expandable card has buttons (the overflow menu), so A enters it: the card's own action (expand) is the
+        // first stop inside, the buttons follow, B comes back to the card.
+        val group = rememberXmbFocusGroup()
+        val flat = onClick != null
+        val mainAction = if (!flat && clickAction != null) Modifier.xmbMainAction(RoundedCornerShape(10.dp), clickAction) else Modifier
+        XmbGroupColumn(
+            group = group,
+            shape = RoundedCornerShape(12.dp),
+            classicModifier = base,
+            onActivate = if (flat) clickAction else null,
+            margin = 16.dp,
+            vGap = 6.dp,
+        ) {
+            WrapperCardBody(icon, title, subtitle, highlightSubtitle, expandable, expanded, details, trailing, titleBadge, mainAction)
+        }
+        return
+    }
     Card(
         modifier = if (clickAction != null) base.clickable(onClick = clickAction) else base,
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = cs.surfaceVariant),
         border = BorderStroke(1.dp, cs.outline),
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+        WrapperCardBody(icon, title, subtitle, highlightSubtitle, expandable, expanded, details, trailing, titleBadge, Modifier)
+    }
+}
+
+/**
+ * The inside of a [WrapperCardFrame]. [mainAction] marks the icon + text area as the card's own stop in the XMB interface (it is
+ * `Modifier` everywhere else, where the whole card is clickable instead).
+ */
+@Composable
+private fun WrapperCardBody(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    highlightSubtitle: Boolean,
+    expandable: Boolean,
+    expanded: Boolean,
+    details: @Composable () -> Unit,
+    trailing: @Composable () -> Unit,
+    titleBadge: @Composable () -> Unit,
+    mainAction: Modifier,
+) {
+    val cs = MaterialTheme.colorScheme
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 10.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+        ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 10.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                modifier = Modifier.weight(1f).then(mainAction),
             ) {
                 Box(
                     modifier = Modifier
@@ -717,32 +757,54 @@ internal fun WrapperCardFrame(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Spacer(Modifier.width(8.dp))
-                trailing()
-                if (expandable) {
-                    Icon(
-                        if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                        contentDescription = null,
-                        tint = cs.onSurfaceVariant,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
             }
-            if (expandable && expanded) {
-                Divider(color = cs.outline.copy(alpha = 0.4f))
-                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
-                    details()
-                }
+            Spacer(Modifier.width(8.dp))
+            trailing()
+            if (expandable) {
+                Icon(
+                    if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = null,
+                    tint = cs.onSurfaceVariant,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        }
+        if (expandable && expanded) {
+            Divider(color = cs.outline.copy(alpha = 0.4f))
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
+                details()
             }
         }
     }
 }
 
 /** GPU probe result used by the applicability lines. */
-private data class GpuInfo(val isQualcomm: Boolean, val model: String)
+internal data class GpuInfo(val isQualcomm: Boolean, val model: String)
+
+/** The real GPU (native probe): vendor 0x5143 = Qualcomm/Adreno, plus a friendly model name. Never throws. */
+internal fun probeWrapperGpu(): GpuInfo {
+    val vendor = runCatching { GPUInformation.getVendorID(null, null) }.getOrDefault(0)
+    val model = runCatching { GPUInformation.extractModelName(GPUInformation.getRenderer(null, null)) }
+        .getOrNull()?.takeIf { it.isNotBlank() } ?: "this GPU"
+    return GpuInfo(isQualcomm = vendor == 0x5143, model = model)
+}
+
+/** The default display name of a picked import: the file's base name. */
+internal fun wrapperImportBaseName(path: String?, uri: Uri): String =
+    (path?.substringAfterLast('/') ?: uri.lastPathSegment?.substringAfterLast('/'))
+        ?.substringBeforeLast('.')
+        ?.takeIf { it.isNotBlank() }
+        ?: "Imported wrapper"
+
+/** The detected env keys of an imported wrapper that "Edit settings" can hide (not handled, debug or driver-internal). */
+internal fun editableWrapperKeys(manager: WrapperManager, identifier: String): List<String> =
+    manager.detectedEnvKeys(identifier).filter {
+        it !in WrapperManager.HANDLED_ENV_KEYS && !WrapperManager.isDebugEnvKey(it) &&
+            !WrapperManager.isDriverInternalEnvKey(it)
+    }
 
 /** Chip labels for the true capabilities of a wrapper (in a stable order). */
-private fun capLabels(caps: WrapperManager.WrapperCaps): List<String> {
+internal fun capLabels(caps: WrapperManager.WrapperCaps): List<String> {
     val out = ArrayList<String>()
     if (caps.hasIcd) out.add("Vulkan ICD")
     if (caps.hasBcnLayer) out.add("BCn layer")
@@ -751,7 +813,7 @@ private fun capLabels(caps: WrapperManager.WrapperCaps): List<String> {
 }
 
 /** One-line "what is this" summary for the inspection page (a valid import always carries an ICD). */
-private fun importDescription(caps: WrapperManager.WrapperCaps): String = when {
+internal fun importDescription(caps: WrapperManager.WrapperCaps): String = when {
     caps.hasIcd && (caps.hasBcnLayer || caps.hasCompatLayer) -> "Vulkan ICD wrapper with extra layers"
     caps.hasIcd -> "Vulkan ICD wrapper"
     caps.hasBcnLayer -> "BCn layer"
@@ -760,7 +822,7 @@ private fun importDescription(caps: WrapperManager.WrapperCaps): String = when {
 }
 
 /** GPU-applicability one-liner for the detail view; null when there are no GPU-gated layers. */
-private fun gpuApplicability(caps: WrapperManager.WrapperCaps, gpu: GpuInfo): String? {
+internal fun gpuApplicability(caps: WrapperManager.WrapperCaps, gpu: GpuInfo): String? {
     val layerish = caps.hasBcnLayer || caps.hasCompatLayer
     return when {
         layerish && gpu.isQualcomm ->
@@ -771,7 +833,7 @@ private fun gpuApplicability(caps: WrapperManager.WrapperCaps, gpu: GpuInfo): St
 }
 
 /** Plain "what will be added / needs to work" lines for the inspection page. */
-private fun importNeeds(caps: WrapperManager.WrapperCaps, gpu: GpuInfo, version: String): List<String> {
+internal fun importNeeds(caps: WrapperManager.WrapperCaps, gpu: GpuInfo, version: String): List<String> {
     val out = ArrayList<String>()
     if (caps.hasBcnLayer) {
         out.add(
@@ -1075,7 +1137,7 @@ private fun WrapperSlotCard(
             // action buttons. Bundled slots stay Update/Reset/Details — no settings editing (curated UI).
             var menuOpen by remember { mutableStateOf(false) }
             Box {
-                IconButton(onClick = { menuOpen = true }) {
+                IconButton(onClick = { menuOpen = true }, modifier = Modifier.xmbBtn(CircleShape)) {
                     Icon(
                         Icons.Filled.MoreVert,
                         contentDescription = context.getString(R.string.wrapper_more_actions),
@@ -1084,7 +1146,7 @@ private fun WrapperSlotCard(
                 DropdownMenu(
                     expanded = menuOpen,
                     onDismissRequest = { menuOpen = false },
-                    modifier = Modifier.outlinedMenuCard(),
+                    modifier = Modifier.outlinedMenuCard().xmbMenuBack { menuOpen = false },
                 ) {
                     // #132 feature-c: one-tap update to the newer catalog build (only when available).
                     if (updateAvailable && !updating) {
@@ -1220,7 +1282,7 @@ private fun ImportedWrapperCard(
             // inline Delete button. "Edit settings" opens the per-wrapper hide/show dialog (Part B).
             var menuOpen by remember { mutableStateOf(false) }
             Box {
-                IconButton(onClick = { menuOpen = true }) {
+                IconButton(onClick = { menuOpen = true }, modifier = Modifier.xmbBtn(CircleShape)) {
                     Icon(
                         Icons.Filled.MoreVert,
                         contentDescription = context.getString(R.string.wrapper_more_actions),
@@ -1229,7 +1291,7 @@ private fun ImportedWrapperCard(
                 DropdownMenu(
                     expanded = menuOpen,
                     onDismissRequest = { menuOpen = false },
-                    modifier = Modifier.outlinedMenuCard(),
+                    modifier = Modifier.outlinedMenuCard().xmbMenuBack { menuOpen = false },
                 ) {
                     // #132: in-place update from the catalog, only when a newer version is available.
                     if (updateAvailable && !updating) {
@@ -1292,12 +1354,7 @@ private fun EditWrapperSettingsDialog(
 
     LaunchedEffect(imported.identifier) {
         val eligible = withContext(Dispatchers.IO) {
-            runCatching {
-                manager.detectedEnvKeys(imported.identifier).filter {
-                    it !in WrapperManager.HANDLED_ENV_KEYS && !WrapperManager.isDebugEnvKey(it) &&
-                        !WrapperManager.isDriverInternalEnvKey(it)
-                }
-            }.getOrDefault(emptyList())
+            runCatching { editableWrapperKeys(manager, imported.identifier) }.getOrDefault(emptyList())
         }
         val stored = withContext(Dispatchers.IO) {
             runCatching { manager.hiddenKeys(imported.identifier) }.getOrDefault(emptySet())
@@ -1349,6 +1406,7 @@ private fun EditWrapperSettingsDialog(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier
                                         .fillMaxWidth()
+                                        .xmbStop(RoundedCornerShape(6.dp))
                                         .clip(RoundedCornerShape(6.dp))
                                         .clickable { if (shown) hidden.add(key) else hidden.remove(key) }
                                         .padding(vertical = 2.dp),
@@ -1358,6 +1416,7 @@ private fun EditWrapperSettingsDialog(
                                         onCheckedChange = { checked ->
                                             if (checked) hidden.remove(key) else hidden.add(key)
                                         },
+                                        modifier = Modifier.xmbNoFocus(),
                                     )
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(

@@ -1,11 +1,11 @@
 package com.winlator.star.ui.simple
 
+import com.winlator.star.sound.popupKeySounds
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
-import android.os.Build
 import android.os.Environment
 import android.os.StatFs
 import android.view.KeyEvent
@@ -32,6 +32,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -63,6 +67,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -165,33 +170,45 @@ internal fun LabBar(fraction: Float, modifier: Modifier = Modifier) {
     }
 }
 
-/** Landscape: the section rail down the left, icons with short labels. */
+/**
+ * Landscape: the section rail down the left, icons with short labels. It scrolls when the entries do not fit (large
+ * text or interface size) and keeps the current section in view.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun LabRail(current: Int, onSection: (Int) -> Unit, modifier: Modifier = Modifier) {
     val accent = MaterialTheme.colorScheme.primary
+    // Wider with bigger text (Android's font size times the app's Font size), so the labels keep fitting.
+    val textGrow = LocalDensity.current.fontScale.coerceAtLeast(1f)
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
         modifier = modifier
-            .width(80.dp)
+            .width(80.dp * textGrow)
             .fillMaxHeight()
             .background(SimplePanelBrush, RectangleShape)
             .drawBehind { drawRect(SimpleLineDraw, topLeft = androidx.compose.ui.geometry.Offset(size.width - 1f, 0f), size = Size(1f, size.height)) }
-            .padding(vertical = 14.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(vertical = 10.dp),
     ) {
         LAB_SECTIONS.forEachIndexed { i, s ->
             val on = i == current
+            val reveal = remember { BringIntoViewRequester() }
+            // After a frame, so the rail has been laid out.
+            LaunchedEffect(on) { if (on) { withFrameNanos { }; runCatching { reveal.bringIntoView() } } }
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(3.dp),
                 modifier = Modifier
-                    .width(66.dp)
+                    .width(66.dp * textGrow)
+                    .bringIntoViewRequester(reveal)
                     .then(if (on) Modifier.background(accent.copy(alpha = 0.16f), SimpleShape) else Modifier)
                     .labTile(onClick = { onSection(i) })
                     .padding(vertical = 7.dp),
             ) {
                 Icon(s.icon, contentDescription = L(s.label), tint = if (on) accent else SimpleMuted, modifier = Modifier.size(21.dp))
-                Text(L(s.short), color = if (on) SimpleStrong else SimpleMuted, fontSize = 10.sp, maxLines = 1)
+                // Its own line height: the theme's body style would give the 10 sp label a 24 sp line.
+                Text(L(s.short), color = if (on) SimpleStrong else SimpleMuted, fontSize = 10.sp, lineHeight = 13.sp, maxLines = 1)
             }
         }
     }
@@ -261,12 +278,17 @@ private fun LabTopIcon(icon: ImageVector, label: String, badge: Int = 0, onClick
 internal fun LabTopLine(portrait: Boolean, onMenu: () -> Unit, onBack: (() -> Unit)?, modifier: Modifier = Modifier, onSearch: (() -> Unit)? = null) {
     val dev = rememberLabDevice()
     val context = LocalContext.current
-    // The Community configs browser and its flows are Classic's (ShortcutActionDialogs), mounted here so the drawer
-    // can open it too: the top line stays on screen when the drawer closes.
+    // Community configs opens Lab's page (ShortcutActionDialogs hands it over, see LabActionHandoffs); it is asked for
+    // here so the drawer can open it too: the top line stays on screen when the drawer closes.
     val vm: ShortcutsViewModel = viewModel()
     val actions = rememberShortcutActions(vm)
     LaunchedEffect(LabTopRequests.community) {
         if (LabTopRequests.community) { LabTopRequests.community = false; actions.showCommunityBrowser = true }
+    }
+    // While the frame is up, game actions and the Save Manager launch can open Lab pages (LabNav).
+    DisposableEffect(Unit) {
+        LabNav.frameShown()
+        onDispose { LabNav.frameGone() }
     }
     val steam = rememberSteamSignedIn()
     Row(
@@ -292,7 +314,8 @@ internal fun LabTopLine(portrait: Boolean, onMenu: () -> Unit, onBack: (() -> Un
             "Bannerlator", color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp, maxLines = 1,
             overflow = TextOverflow.Ellipsis, modifier = if (portrait) Modifier.weight(1f) else Modifier,
         )
-        if (!portrait) Text(Build.MODEL ?: "", color = SimpleMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        // The device's name opens the device details (LabDeviceDetails.kt).
+        if (!portrait) Box(Modifier.weight(1f)) { LabDeviceName() }
         LabTopIcon(Icons.Filled.Search, L("Search")) { onSearch?.invoke() ?: labOpenSearch() }
         if (!portrait) {
             LabTopIcon(Icons.Filled.Public, L("Community configs")) { actions.showCommunityBrowser = true }
@@ -307,6 +330,10 @@ internal fun LabTopLine(portrait: Boolean, onMenu: () -> Unit, onBack: (() -> Un
         if (!portrait) LabAccountButton()
     }
     ShortcutActionDialogs(actions)
+    // The community configs pop-ups (apply, its result and installs, share, upload) over whichever Lab page is up.
+    LabCommunityHost(vm)
+    // The device details, opened from the device's name here or in the drawer.
+    LabDeviceDetailsHost()
 }
 
 /**
@@ -360,7 +387,7 @@ internal fun LabDrawer(current: Int, onSection: (Int) -> Unit, onClose: () -> Un
         val first = remember { FocusRequester() }
         LaunchedEffect(Unit) { delay(120); runCatching { first.requestFocus() } }
         BackHandler { close() }
-        Box(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize().popupKeySounds()) {
             androidx.compose.animation.AnimatedVisibility(
                 visibleState = shown,
                 enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(240)),
@@ -393,7 +420,7 @@ internal fun LabDrawer(current: Int, onSection: (Int) -> Unit, onClose: () -> Un
                             Spacer(Modifier.weight(1f))
                             LabAccountButton(onOpen = onClose)
                         }
-                        Text(Build.MODEL ?: "", color = SimpleMuted, fontSize = 12.sp)
+                        LabDeviceName(Modifier.padding(top = 2.dp))
                         if (dev != null) {
                             val showInternal by com.winlator.star.ui.theme.AppThemeState.showInternalStorage.collectAsState()
                             val showSd by com.winlator.star.ui.theme.AppThemeState.showSdStorage.collectAsState()

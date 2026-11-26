@@ -1,5 +1,6 @@
 package com.winlator.star.ui.simple
 
+import com.winlator.star.sound.popupKeySounds
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutLinearInEasing
@@ -95,7 +96,8 @@ internal fun LabGameMenu(
         properties = PopupProperties(focusable = true, dismissOnBackPress = true, dismissOnClickOutside = false),
     ) {
         BackHandler { close {} }
-        BoxWithConstraints(Modifier.fillMaxSize()) {
+        com.winlator.star.sound.ShownSound(com.winlator.star.sound.UiCue.OPTIONS, com.winlator.star.sound.UiCue.DIALOG_CLOSE)
+        BoxWithConstraints(Modifier.fillMaxSize().popupKeySounds()) {
             val portrait = maxHeight > maxWidth
             AnimatedVisibility(visibleState = shown, enter = fadeIn(tween(220)), exit = fadeOut(tween(200))) {
                 Box(Modifier.fillMaxSize().background(Color(0x73000000)).simpleTap { close {} })
@@ -118,7 +120,7 @@ internal fun LabGameMenu(
                         SimpleCover(shortcut, Modifier.width(54.dp).height(72.dp), title = false)
                         Column(Modifier.weight(1f)) {
                             LabTileLabel(L("Game menu"))
-                            Text(shortcut.name, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text(LabTitles.of(shortcut), color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             Text(subtitle, color = SimpleMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         Box(

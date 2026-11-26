@@ -1639,7 +1639,9 @@ static int acquire_image(struct frame_slot *fs, int k, int first, uint32_t *img,
          * compositor thread forever (clients are paced from this thread). */
         const int64_t t_acq = perf_now();
         VkResult ar = g_vk.AcquireNextImageKHR(g_dev, g_swapchain, 1000000000ULL, fs->acqs[k], VK_NULL_HANDLE, img);
-        perf_add(&g_perf.acquire_ns, &g_perf.acquire_max_ns, &g_perf.acquires, perf_now() - t_acq);
+        const int64_t acq_ns = perf_now() - t_acq;
+        perf_add(&g_perf.acquire_ns, &g_perf.acquire_max_ns, &g_perf.acquires, acq_ns);
+        if (first) vkp_framegen_note_acquire(acq_ns);
         if (ar == VK_SUCCESS || ar == VK_SUBOPTIMAL_KHR) { *ar_out = ar; return 0; }
         if (ar == VK_ERROR_DEVICE_LOST) { device_lost("acquire"); return -1; }
         if (ar == VK_ERROR_OUT_OF_DATE_KHR || ar == VK_ERROR_SURFACE_LOST_KHR) {

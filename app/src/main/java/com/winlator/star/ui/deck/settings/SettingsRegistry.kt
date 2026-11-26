@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.xenvironment.components.YServerComponent
 import com.winlator.star.ui.simple.L
 import com.winlator.star.ui.simple.T
 import androidx.compose.material.icons.Icons
@@ -26,6 +27,7 @@ import com.winlator.star.core.DInputVibration
 import com.winlator.star.core.DInputVisibility
 import com.winlator.star.core.DirectAudioSupport
 import com.winlator.star.core.FastOpenGL
+import com.winlator.star.core.IdleThrottle
 import com.winlator.star.core.KeyValueSet
 import com.winlator.star.core.LinuxVulkanDriver
 import com.winlator.star.core.MediaDecoder
@@ -95,6 +97,8 @@ internal object SettingsRegistry {
     const val TARGET_DRIVE_C = "drive_c"
     /** Move a game to another container (or copy it there), over the current Deck page. */
     const val TARGET_MOVE_CONTAINER = "move_container"
+    /** The Edit container page of the game's container (the XMB game page's link to it). */
+    const val TARGET_CONTAINER = "container"
     /** Information only, nothing to open. */
     const val TARGET_NONE = "none"
     /** Another category of this editor (see [categoryTarget]). */
@@ -108,19 +112,28 @@ internal object SettingsRegistry {
     /**
      * Rows that open another screen (or say where something lives) for what is not edited here. Each
      * names its worlds. None opens the classic editor any more ([TARGET_CLASSIC] stays handled by the
-     * screens for a hand-off that may need it again).
+     * screens for a hand-off that may need it again). [xmb]: a game's page also links to its container's Edit page (the chain of
+     * links over the other interfaces' header does not exist there).
      */
-    fun handoffs(scope: EditorScope, env: SettingsEnv): Map<String, List<Handoff>> {
+    fun handoffs(scope: EditorScope, env: SettingsEnv, xmb: Boolean = false): Map<String, List<Handoff>> {
         val game = scope == EditorScope.GAME
         val m = linkedMapOf<String, List<Handoff>>()
         if (game) {
             val containerName = env.shortcut?.container?.name.orEmpty()
+            // Lab's rows show what the Classic editor's Executable, Storage and Container rows show: the .exe the game runs,
+            // where its files are and its container (the other looks show the hints only).
+            val lab = com.winlator.star.ui.theme.AppThemeState.simpleLook
+            val exeInfo = if (!lab) null else env.shortcut?.let { runCatching { com.winlator.star.core.CopyGameToDriveC.parse(it) }.getOrNull() }
+            val exeName = if (!lab) null else exeInfo?.exeWin?.substringAfterLast('\\')?.substringAfterLast('/')?.ifEmpty { null } ?: T("Unknown")
+            val storage = if (!lab) null else env.shortcut?.let { runCatching { com.winlator.star.core.CopyGameToDriveC.storageLabel(it) }.getOrNull() }
             m["game"] = listOf(
                 Handoff(T("Name, cover art and details"), T("Cover art from your files, Steam or SteamGridDB, the Steam link, genres, year and description (Game Details)."), TARGET_DETAILS, ALL_WORLDS),
                 // The icon is picked on this page now (DeckIconSection); the file operations stay with the Games screen.
-                Handoff(T("Change the program to run"), T("Pick another .exe in the game's folder for this entry."), TARGET_CHANGE_EXE, WINE_ONLY),
-                Handoff(T("Copy the game to drive C"), T("Copy the game's folder into the container's drive C and run it from there."), TARGET_DRIVE_C, WINE_ONLY),
-                Handoff(T("Move to another container"), "Now in \"$containerName\". Move this game to another container, or copy it there.", TARGET_MOVE_CONTAINER, WINE_ONLY),
+                Handoff(T("Change the program to run"), T("Pick another .exe in the game's folder for this entry."), TARGET_CHANGE_EXE, WINE_ONLY, value = exeName),
+                Handoff(T("Copy the game to drive C"), T("Copy the game's folder into the container's drive C and run it from there."), TARGET_DRIVE_C, WINE_ONLY, value = storage),
+                Handoff(T("Move to another container"), "Now in \"$containerName\". Move this game to another container, or copy it there.", TARGET_MOVE_CONTAINER, WINE_ONLY, value = containerName.ifEmpty { null }?.takeIf { lab }),
+            ) + listOfNotNull(
+                if (xmb) Handoff(T("Container settings"), "Open the settings of \"$containerName\", the container this game runs in.", TARGET_CONTAINER, WINE_ONLY) else null,
             )
             m["launch"] = listOf(Handoff(T("Offline Steam mode, file checks and updates"), T("Goldberg mode, Verify files and Check for updates live in the launch menu. Turn off \"Skip the launch menu\" to see it on the next start."), TARGET_NONE))
         }
@@ -265,7 +278,9 @@ internal object SettingsRegistry {
             compositorDriverMaliSystem(version, loaded) -> MALI_SYSTEM_DRIVER_NOTE
             compositorDriverUnusable(version, loaded, true) ->
                 if (env.isLinuxEntry) T("This driver cannot show the session. \"System\" or a driver that is no longer installed leaves the compositor on the system Vulkan, which shows a black screen.")
-                else T("Wayland needs a Turnip driver here. \"System\" or a missing driver cannot import the game's frames and shows a black screen. Download one below (Download a Turnip driver).")
+                // The XMB editor has a "Get more" link on this row; the plain Deck, Lab and Classic still list the download below.
+                else if (!com.winlator.star.ui.theme.AppThemeState.deckXmbHome.value) T("Wayland needs a Turnip driver here. \"System\" or a missing driver cannot import the game's frames and shows a black screen. Download one below (Download a Turnip driver).")
+                else T("Wayland needs a Turnip driver here. \"System\" or a missing driver cannot import the game's frames and shows a black screen. Use Get more to download one.")
             vm != null && vm.compositorDriverAutoPicked == version ->
                 if (vm.compositorDriverPickedFromDefaults) T("Picked for you: the driver in your New Container Defaults.")
                 else T("Picked for you: the newest installed Turnip that can import the game's frames.")
@@ -293,11 +308,65 @@ internal object SettingsRegistry {
         return next.takeIf { it != containerWc }
     }
 
+    // ── Idle-thread throttle ──────────────────────────────────────────────────────────────────
+
+    /** The idle-thread throttle row (Advanced): a switch per API, on = Wine may throttle its games (core.IdleThrottle). */
+    const val ID_IDLE_THROTTLE = "performance.idleThrottle"
+
+    /** The row's value as a short line: "On for all", "Off for all" or "Off: DX7, OpenGL". */
+    fun idleThrottleSummary(off: Set<String>): String = when {
+        off.none { it in IdleThrottle.APIS } -> L("On for all")
+        IdleThrottle.APIS.all { it in off } -> L("Off for all")
+        else -> L("Off: %1\$s", IdleThrottle.offNames(IdleThrottle.join(off)))
+    }
+
+    private fun idleThrottleControl(env: SettingsEnv) = Control.Checklist(
+        items = IdleThrottle.APIS,
+        title = L("Idle-thread throttle"),
+        waiting = "",
+        empty = "",
+        labels = IdleThrottle.APIS.associateWith { IdleThrottle.longName(it) },
+        summary = { idleThrottleSummary(it) },
+        switches = true,
+        help = runCatching {
+            com.winlator.star.ui.screens.htmlToAnnotated(env.context.getString(com.winlator.star.R.string.help_idle_throttle)).text
+        }.getOrNull(),
+    )
+
     // ── DX wrapper: leaving VEGAS drops its config file, as the classic editors do ─────────────
 
     private fun stripVegasConfig(config: String): String =
         if (config.split(",").none { it.startsWith("dxvkConfigFile=") && it.length > "dxvkConfigFile=".length }) config
         else config.split(",").filter { !it.startsWith("dxvkConfigFile=") }.joinToString(",")
+
+    // ── Display server (X server / yserver) ────────────────────────────────────────────────────
+
+    /** The display server row (Advanced): the Java X server or yserver, stored as BANNER_YSERVER in the env string. */
+    const val ID_DISPLAY_SERVER = "display.server"
+    private const val DS_X = "x"
+    private const val DS_Y = "yserver"
+    private val YSERVER_TOKEN = Regex("""(^|\s+)BANNER_YSERVER=\S*""")
+
+    /** What [env] picks, as YServerComponent.requestedMode reads it (empty, 0 or off = X server); null when it does not say. */
+    private fun displayServerOf(env: String?): String? {
+        val m = YSERVER_TOKEN.findAll(env ?: return null).lastOrNull() ?: return null
+        val v = m.value.trim().substringAfter('=').trim()
+        return if (v.isEmpty() || v == "0" || v.equals("off", ignoreCase = true)) DS_X else DS_Y
+    }
+
+    /**
+     * [env] with BANNER_YSERVER set for [server]: 1 for yserver, 0 for the X server when [keepOff] (a game turning its
+     * container's yserver off), removed otherwise. The other variables stay exactly as they were.
+     */
+    private fun withDisplayServer(env: String?, server: String?, keepOff: Boolean): String {
+        val base = YSERVER_TOKEN.replace(env.orEmpty(), "").trimStart()
+        val add = when {
+            server == DS_Y -> "BANNER_YSERVER=1"
+            server == DS_X && keepOff -> "BANNER_YSERVER=0"
+            else -> null
+        }
+        return listOfNotNull(base.ifEmpty { null }, add).joinToString(" ")
+    }
 
     // ── Sync ────────────────────────────────────────────────────────────────────────────────────
 
@@ -567,6 +636,37 @@ internal object SettingsRegistry {
             },
             vm = vmString({ it.displayBackend }, { vm, v -> vm.onDisplayBackendChanged(v) }),
             game = key("displayBackend") { if (it == Container.DISPLAY_BACKEND_WAYLAND) it else Container.DISPLAY_BACKEND_X11 },
+            // Lab: Classic's notes under the backend picker of a container whose layer can't drive Wayland.
+            note = { env, _ ->
+                if (!com.winlator.star.ui.theme.AppThemeState.simpleLook || env.waylandCapable || env.scope == EditorScope.GAME) null
+                else if (env.vm?.isWaylandStored == true) T("This container was saved on Wayland, but its Proton layer is no longer Wayland-capable: it runs on X11 and will be saved as X11.")
+                else T("Wayland needs ") + com.winlator.star.core.WineWaylandSupport.LAYER_HINT + T(". The selected layer does not include winewayland and its Wayland Turnip.")
+            },
+        ),
+        SettingDef(
+            id = ID_DISPLAY_SERVER, category = "display", group = T("Screen"), level = ADVANCED,
+            label = T("Display server"), hint = T("yserver is a new X server, still in testing."), tech = "BANNER_YSERVER",
+            control = { env, _ ->
+                Control.Segmented(listOf(
+                    Opt(DS_X, T("X server")),
+                    Opt(DS_Y, "yserver", disabledReason = if (YServerComponent.binary(env.context) != null) null else T("yserver isn't in this build.")),
+                ))
+            },
+            vm = VmBinding(
+                get = { _, vm -> displayServerOf(vm.envVarsStr) ?: DS_X },
+                // Unchanged picks leave the env alone (it may say BANNER_YSERVER=record).
+                set = { _, vm, v -> if ((displayServerOf(vm.envVarsStr) ?: DS_X) != v) vm.envVarsStr = withDisplayServer(vm.envVarsStr, v, keepOff = false) },
+            ),
+            // A game's own env wins at launch; picking its container's choice follows the container again.
+            game = GameBinding(
+                keys = listOf("envVars"),
+                read = { e -> displayServerOf(e.get("envVars")) },
+                write = { e, v ->
+                    val inherited = displayServerOf(e.env.vm?.envVarsStr) ?: DS_X
+                    e.put("envVars", withDisplayServer(e.get("envVars"), v.takeIf { it != inherited }, keepOff = true).ifEmpty { null })
+                },
+                reset = { e -> e.get("envVars")?.let { own -> e.put("envVars", withDisplayServer(own, null, keepOff = false).ifEmpty { null }) } },
+            ),
         ),
         SettingDef(
             id = "display.renderScale", category = "display", group = T("Screen"), level = ADVANCED,
@@ -681,6 +781,11 @@ internal object SettingsRegistry {
             control = { _, _ -> seg(UnrealHdr.OFF to T("Off"), UnrealHdr.DX12 to T("DirectX 12 fix"), UnrealHdr.DX11 to T("DirectX 11 (NVAPI)")) },
             vm = vmString({ it.unrealHdr }, { vm, v -> vm.unrealHdr = v }),
             game = key(UnrealHdr.EXTRA) { UnrealHdr.normalize(it).ifEmpty { null } },
+            // Lab: Classic's DirectX 11 notes (the bundled dxvk-nvapi, the NVIDIA spoof hint).
+            note = { env, values ->
+                if (!com.winlator.star.ui.theme.AppThemeState.simpleLook || values("graphics.unrealHdr") != UnrealHdr.DX11) null
+                else com.winlator.star.ui.simple.LabUnrealHdrFacts.note(env.context, values("graphics.gdc.gpuName"), env.wayland(values))
+            },
         ),
         SettingDef(
             id = "graphics.driver", category = "graphics", group = T("GPU driver"), level = SIMPLE,
@@ -689,6 +794,7 @@ internal object SettingsRegistry {
             vm = VmBinding(get = { _, vm -> idOf(vm.selectedGraphicsDriver) }, set = { _, vm, v -> vm.selectedGraphicsDriver = displayFor(v, vm.graphicsDriverEntries) }),
             game = key("graphicsDriver"),
             visible = { env, values -> x11(env, values) },
+            getMore = "wrappers",
         ),
         SettingDef(
             id = ID_DRIVER_VERSION, category = "graphics", group = T("GPU driver"), level = SIMPLE,
@@ -699,6 +805,7 @@ internal object SettingsRegistry {
             game = compositorGame,
             visible = { env, values -> !env.isLinuxEntry && env.wayland(values) },
             note = { env, values -> compositorNote(env, values(ID_DRIVER_VERSION)) },
+            getMore = "turnip",
         ),
         // The Wayland driver gear: the Wayland game driver and the Mali (PanVK) switches.
         *GraphicsRows.waylandDefs().toTypedArray(),
@@ -817,6 +924,7 @@ internal object SettingsRegistry {
                     Opt("bionic", T("Built-in (Win-FG)")),
                     Opt("lsfg-native", T("Lossless Scaling"),
                         disabledReason = if (env.lsfgDllAvailable) null else T("Import Lossless.dll in Settings › Performance first.")),
+                    Opt("wfg", T("WFG")),
                 ))
             },
             vm = vmString({ if (it.frameGenEngine == "lsfg") "lsfg-native" else it.frameGenEngine }, { vm, v -> vm.frameGenEngine = v }),
@@ -941,6 +1049,7 @@ internal object SettingsRegistry {
             vm = vmString({ it.selectedFEXCoreVersion }, { vm, v -> vm.selectedFEXCoreVersion = v }),
             game = key("fexcoreVersion"),
             visible = { env, _ -> env.arm64ec },
+            getMore = "fex",
         ),
         // The Linux runtime brings its own FEX, but hands this preset to the games the Steam client launches.
         SettingDef(
@@ -966,6 +1075,7 @@ internal object SettingsRegistry {
             control = { env, _ -> Control.Select((env.vm?.box64VersionEntries ?: emptyList()).map { Opt(it, it) }) },
             vm = vmString({ it.selectedBox64Version }, { vm, v -> vm.selectedBox64Version = v }),
             game = key("box64Version"),
+            getMore = "box64",
         ),
         SettingDef(
             id = "performance.box64Preset", category = "performance", group = T("Box64 / WOWBox64"), level = ADVANCED,
@@ -981,7 +1091,12 @@ internal object SettingsRegistry {
             vm = vmString({ it.selectedBox64ECVersion }, { vm, v -> vm.selectedBox64ECVersion = v }),
             game = key("box64ecVersion"),
             visible = { env, _ -> env.arm64ec },
-            disabled = { env, _ -> if (env.box64ECInstalled) null else T("No Box64EC installed. Download one below (Translator downloads).") },
+            disabled = { env, _ ->
+                if (env.box64ECInstalled) null
+                else if (!com.winlator.star.ui.theme.AppThemeState.deckXmbHome.value) T("No Box64EC installed. Download one below (Translator downloads).")
+                else T("No Box64EC installed. Use Get more to download one.")
+            },
+            getMore = "box64ec",
         ),
         SettingDef(
             id = "performance.startupServices", category = "performance", group = T("Windows background services"), level = ADVANCED,
@@ -1004,6 +1119,28 @@ internal object SettingsRegistry {
             vm = vmString({ it.cpuListWoW64 }, { vm, v -> vm.cpuListWoW64 = v }),
             showInGame = false,
             visible = { env, _ -> env.arm64ec },
+        ),
+        SettingDef(
+            id = "performance.syncCpuTopology", category = "performance", group = T("CPU cores"), level = ADVANCED,
+            label = T("Sync CPU topology"), hint = T("Windows sees only the picked cores."), tech = T("WINE_CPU_TOPOLOGY"),
+            control = { _, _ -> Control.Toggle },
+            vm = vmBool({ it.syncCpuTopology }, { vm, v -> vm.syncCpuTopology = v }),
+            game = key10("syncCpuTopology"),
+        ),
+        SettingDef(
+            id = ID_IDLE_THROTTLE, category = "performance", group = T("CPU cores"), level = ADVANCED,
+            label = T("Idle-thread throttle"), tech = T("WINE_SLEEP0_THROTTLE_SKIP"),
+            control = { env, _ -> idleThrottleControl(env) },
+            // The editors' list is the APIs switched off; the stored form is Wine's (core.IdleThrottle), "none" for no API.
+            vm = VmBinding(
+                get = { _, vm -> IdleThrottle.toOffList(vm.sleep0ThrottleSkip) },
+                set = { _, vm, v -> vm.sleep0ThrottleSkip = IdleThrottle.fromOffList(v) },
+            ),
+            game = GameBinding(
+                keys = listOf(IdleThrottle.KEY),
+                read = { e -> IdleThrottle.normalize(e.get(IdleThrottle.KEY))?.let { IdleThrottle.toOffList(it) } },
+                write = { e, v -> e.put(IdleThrottle.KEY, IdleThrottle.fromOffList(v)) },
+            ),
         ),
         perfToggle("performance.power.sustained", "sustainedPerfMode", T("Sustained performance mode"), T("Keeps clocks steady for long sessions instead of short bursts.")),
         perfToggle("performance.power.priorityBoost", "perfPriorityBoost", T("Boost game thread priority"), null),
@@ -1133,6 +1270,23 @@ internal object SettingsRegistry {
             control = { _, _ -> Control.Toggle },
             vm = vmBool({ it.bannerinXInputSwitching }, { vm, v -> vm.bannerinXInputSwitching = v }),
             game = key10(BannerinXInput.EXTRA_SWITCHING),
+        ),
+        // Lab only (Classic's game editor has it; the Deck and XMB editors are left as they are).
+        SettingDef(
+            id = "input.bannerinXInputOverGameDll", category = "input", group = T("Controllers"), level = ADVANCED,
+            label = T("Use Direct XInput over the game's own XInput DLL"),
+            hint = T("A game that ships its own XInput DLL gets Wine's for it unless this is on. Off by default."),
+            help = T("Some games ship their own XInput DLL next to the EXE (often Microsoft's xinput1_3.dll). Wine loads that copy before Bannerlator's, and Microsoft's needs a Windows-only driver, so the game would see no controller. So by default Bannerlator gives that DLL Wine's own XInput, as before Direct XInput, and says so once.\n\nOn: while the game runs, its copy is renamed (xinput1_3.dll becomes xinput1_3.dll.bannerin-disabled) so Direct XInput is used, and renamed back when the session ends, or at the next app start or launch if the session ended unexpectedly. Nothing is deleted or overwritten.\n\nA Prefer game-folder DLLs entry for the same DLL in the env vars wins over this.\n\nOff by default. For this game only."),
+            tech = com.winlator.star.core.GameXInputDlls.EXTRA_OVER_GAME,
+            control = { _, _ -> Control.Toggle },
+            // As Classic stores it: "1" when on, the key removed when off.
+            game = GameBinding(
+                listOf(com.winlator.star.core.GameXInputDlls.EXTRA_OVER_GAME),
+                read = { e -> e.get(com.winlator.star.core.GameXInputDlls.EXTRA_OVER_GAME)?.takeIf { it.isNotEmpty() }?.let { if (it == "1") "1" else "0" } },
+                write = { e, v -> e.put(com.winlator.star.core.GameXInputDlls.EXTRA_OVER_GAME, if (v == "1") "1" else null) },
+                inherit = Inherit.BUILT_IN, inherited = { "0" },
+            ),
+            visible = { env, _ -> gameScope(env) && com.winlator.star.ui.theme.AppThemeState.simpleLook },
         ),
         SettingDef(
             id = "input.stickPacing", category = "input", group = T("Controllers"), level = ADVANCED,
@@ -1273,7 +1427,8 @@ internal object SettingsRegistry {
             id = "input.vibrationIntensity", category = "input", group = T("Rumble"), level = ADVANCED,
             label = T("Rumble strength"), tech = T("Vibration intensity"),
             help = T("Scales vibration strength. Note: on some handhelds a lower strength does not reduce stick slowdown. Use Rumble motors: Single for that."),
-            control = { _, _ -> Control.Slider(0f, 100f, 5f, { "${it.toInt()}%" }, { "${it.toInt()}" }) },
+            // Lab steps 1 % as Classic's slider does; the Deck and XMB editors keep 5 %.
+            control = { _, _ -> Control.Slider(0f, 100f, if (com.winlator.star.ui.theme.AppThemeState.simpleLook) 1f else 5f, { "${it.toInt()}%" }, { "${it.toInt()}" }) },
             vm = vmInt({ it.vibrationIntensity }, { vm, v -> vm.vibrationIntensity = v }),
             game = intKey("vibrationIntensity"),
             visible = { _, values -> values("input.vibrationTarget") != "${Container.VIBRATION_MODE_OFF}" },

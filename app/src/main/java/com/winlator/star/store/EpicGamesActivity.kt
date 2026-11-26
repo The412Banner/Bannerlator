@@ -33,7 +33,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
+import com.winlator.star.ui.theme.LabButton as Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -73,6 +73,7 @@ import org.json.JSONObject
 import androidx.lifecycle.lifecycleScope
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
+import com.winlator.star.ui.deck.deckShape
 
 class EpicGamesActivity : ComponentActivity() {
     data class GameDownloadState(
@@ -414,6 +415,7 @@ class EpicGamesActivity : ComponentActivity() {
         // CANCEL: install() polls this flag across manifest/verify/chunk/assemble, so cancel stops
         // the download promptly. Keep/delete of the partial is decided via EpicCancelPolicy below.
         EpicCancelPolicy.clear(appName)   // fresh download → keep-on-cancel until a dialog says otherwise
+        EpicDownloadControl.onFreshStart(applicationContext, appName)   // supersedes any earlier pause of this game
         val cancelled = AtomicBoolean(false)
         cancelRunnables[appName] = Runnable { cancelled.set(true) }
 
@@ -423,8 +425,9 @@ class EpicGamesActivity : ComponentActivity() {
             id = appName,
             name = game.title,
             cover = game.artCover.ifEmpty { game.artSquare },
-            supportsPause = false,
+            supportsPause = true,
             installTotal = prefs!!.getLong("epic_size_$appName", 0L),
+            pause = { EpicDownloadControl.pause(appName) },
             cancel = { cancelled.set(true) },
         )
 
@@ -460,12 +463,22 @@ class EpicGamesActivity : ComponentActivity() {
 
                 var sanitized = game.title.replace(Regex("[^a-zA-Z0-9 \\-_]"), "").trim()
                 if (sanitized.isEmpty()) sanitized = "epic_${game.appName.hashCode()}"
-                val installDir = File(File(filesDir, "imagefs/epic_games"), sanitized)
+                // This list installs to the user's default Epic location (internal unless one was set).
+                val recordedDir = prefs!!.getString("epic_dir_${game.appName}", null)?.takeIf { it.isNotBlank() && File(it).exists() }
+                val wasInstalledHere = prefs!!.contains("epic_manifest_version_${game.appName}") ||
+                    !prefs!!.getString("epic_exe_${game.appName}", null).isNullOrBlank()
+                val installDir = recordedDir?.let { File(it) } ?: run {
+                    val locs = StoreInstallLocations.locations(appCtx, StoreInstallLocations.Store.EPIC)
+                    val def = StoreInstallLocations.defaultId(appCtx, StoreInstallLocations.Store.EPIC, locs)
+                    File(locs.firstOrNull { it.id == def }?.base ?: File(filesDir, "imagefs/epic_games"), sanitized)
+                }
                 prefs!!.edit().putString("epic_dir_${game.appName}", installDir.absolutePath).apply()
 
                 // Feature #2 — download required(base) + the container language's files only.
                 val installTags = EpicInstallTags.tagsForCurrentContainer(appCtx)
 
+                // Carries the manager's byte counter + speed into every registry tick and the status line.
+                val tracker = EpicProgressTracker(appName)
                 val ok = EpicDownloadManager.install(
                     appCtx,
                     manifestJson,
@@ -473,18 +486,39 @@ class EpicGamesActivity : ComponentActivity() {
                     installDir.absolutePath,
                     installTags,
                     cancelled,
-                ) { msg, pct ->
-                    if (!cancelled.get()) {
-                        StoreDownloadHooks.tick(Store.EPIC, appName, pct)
-                        downloadStates[appName] = downloadStates[appName]?.copy(progress = pct, status = msg)
-                            ?: GameDownloadState(isActive = true, progress = pct, status = msg, showProgress = true)
-                    }
-                }
+                    object : EpicDownloadManager.ProgressCallback {
+                        override fun onBytes(bytesDone: Long, bytesTotal: Long, speedBps: Long, etaSeconds: Long) {
+                            tracker.onBytes(bytesDone, bytesTotal, speedBps, etaSeconds)
+                        }
+
+                        override fun onProgress(message: String?, pct: Int) {
+                            if (!cancelled.get()) {
+                                val p = tracker.tick(pct)
+                                // "45%  ·  1.2 GB / 4.5 GB  ·  12 MB/s" once bytes flow; the manager's own
+                                // message for the phases without a byte count (manifest, verifying, complete).
+                                val status = if (tracker.total > 0L && tracker.done > 0L) tracker.label(p, includeEta = false)
+                                    else message.orEmpty()
+                                downloadStates[appName] = downloadStates[appName]?.copy(progress = p, status = status)
+                                    ?: GameDownloadState(isActive = true, progress = p, status = status, showProgress = true)
+                            }
+                        }
+                    },
+                )
 
                 if (cancelled.get()) {
+                    // A pause (Download Manager) stops the transfer the same way: keep everything and park the row as PAUSED.
+                    if (EpicDownloadControl.consumePause(appName)) {
+                        EpicDownloadControl.parkPaused(appCtx, appName, installDir.absolutePath, game.title,
+                            game.artCover.ifEmpty { game.artSquare })
+                        withContext(Dispatchers.Main) {
+                            cancelRunnables.remove(appName)
+                            downloadStates[appName] = GameDownloadState()
+                        }
+                        return@launch
+                    }
                     // Delete the partial if the user chose "Delete files" on any Cancel dialog.
-                    if (EpicCancelPolicy.consumeDeleteOnCancel(appName)) {
-                        try { EpicDownloadManager.deleteDir(installDir) } catch (_: Exception) {}
+                    if (EpicCancelPolicy.consumeDeleteOnCancel(appName) && !wasInstalledHere) {
+                        try { StoreInstallLocations.safeDelete(appCtx, StoreInstallLocations.Store.EPIC, installDir) } catch (_: Exception) {}
                         // Clear the install record so the list/detail recompute to "not installed".
                         EpicInstallState.purge(applicationContext, appName)
                     }
@@ -667,7 +701,7 @@ private fun EpicGamesScreen(
             Button(
                 onClick = onBack,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                shape = RoundedCornerShape(8.dp),
+                shape = deckShape(8.dp),
                 modifier = Modifier.height(40.dp),
             ) { Text("\u2190", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp) }
             Text(
@@ -680,7 +714,7 @@ private fun EpicGamesScreen(
             Button(
                 onClick = onViewToggle,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                shape = RoundedCornerShape(8.dp),
+                shape = deckShape(8.dp),
                 modifier = Modifier.height(40.dp),
             ) { Text("\u25A6", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp) }
             Spacer(Modifier.width(4.dp))
@@ -688,14 +722,14 @@ private fun EpicGamesScreen(
                 onClick = onRefresh,
                 enabled = refreshEnabled,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                shape = RoundedCornerShape(8.dp),
+                shape = deckShape(8.dp),
                 modifier = Modifier.height(40.dp),
             ) { Text("\u21ba", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp) }
             Spacer(Modifier.width(4.dp))
             Button(
                 onClick = onFreeGames,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                shape = RoundedCornerShape(8.dp),
+                shape = deckShape(8.dp),
                 modifier = Modifier.height(40.dp),
             ) { Text("FREE", color = MaterialTheme.colorScheme.onPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
             // ⬇ cross-store Download Manager (global active-count badge).
@@ -857,7 +891,7 @@ private fun EmptyState(query: String) {
 internal fun EosBadge() {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
+            .clip(deckShape(4.dp))
             .background(Color(0xFF1A73E8))
             .padding(horizontal = 5.dp, vertical = 1.dp),
     ) {
@@ -874,7 +908,7 @@ internal fun EosBadge() {
 internal fun EpicBadge() {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
+            .clip(deckShape(4.dp))
             .background(Color(0xFF2A2A2A))
             .padding(horizontal = 5.dp, vertical = 1.dp),
     ) {
@@ -911,20 +945,17 @@ private fun GameListCard(
             .fillMaxWidth()
             .padding(bottom = 8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        shape = RoundedCornerShape(12.dp),
+        shape = deckShape(12.dp),
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
             Row(
-                modifier = Modifier.clickable {
-                    if (expanded) onClick()
-                    else expanded = true
-                },
+                modifier = Modifier.clickable { onClick() },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
                     modifier = Modifier
                         .size(60.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(deckShape(8.dp))
                     .background(MaterialTheme.colorScheme.surface),
                 ) {
                     val imageUrl = if (game.artCover.isNotEmpty()) game.artCover else game.artSquare
@@ -1023,7 +1054,7 @@ private fun GameListCard(
                         else MaterialTheme.colorScheme.primary,
                     ),
                     modifier = Modifier.fillMaxWidth().height(40.dp).padding(top = 8.dp),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = deckShape(8.dp),
                 ) {
                     Text(
                         when {
@@ -1055,12 +1086,10 @@ private fun GameGridTile(
 
     Column(
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(deckShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
-            .clickable {
-                showAction = if (showAction) false else true
-            },
+            .border(1.dp, MaterialTheme.colorScheme.outline, deckShape(12.dp))
+            .clickable { onClick() },
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             Box(
@@ -1139,7 +1168,7 @@ private fun GameGridTile(
                         else MaterialTheme.colorScheme.primary,
                     ),
                     modifier = Modifier.fillMaxWidth().height(32.dp).padding(top = 4.dp),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = deckShape(8.dp),
                     contentPadding = PaddingValues(0.dp),
                 ) {
                     Text(

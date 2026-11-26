@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.winlator.star.container.Container
 import com.winlator.star.core.unpack.ArchiveBrowse
 import com.winlator.star.core.unpack.ArchiveEntry
+import com.winlator.star.netdrive.NetDrive
 import java.io.File
 import java.text.Collator
 import java.text.SimpleDateFormat
@@ -30,12 +31,14 @@ import java.util.Locale
 
 // ── What a pane shows ──
 
-/** A place a pane can show: the Home tiles, a real folder, or a folder inside an archive. */
+/** A place a pane can show: the Home tiles, a real folder, a folder inside an archive, or a folder on a network drive. */
 sealed class FmLoc {
     object Home : FmLoc()
     data class Dir(val dir: File) : FmLoc()
     /** [inner] = "" for the archive's root; "a/b" for a folder inside it. */
     data class InArchive(val archive: File, val inner: String) : FmLoc()
+    /** A folder on a network drive; [path] = "" for where the drive opens. */
+    data class Net(val drive: NetDrive, val path: String) : FmLoc()
 }
 
 /** One row of a listing: a real file or folder, or an entry inside an archive. */
@@ -57,6 +60,11 @@ sealed class FmItem {
         override val size: Long get() = totalSize
         override val modified: Long get() = entry.modified
         override val key: String get() = archive.absolutePath + "!/" + entry.path
+    }
+
+    /** A file or folder on a network drive; [path] is relative to where the drive opens. */
+    class Net(val drive: NetDrive, val path: String, override val name: String, override val isDir: Boolean, override val size: Long, override val modified: Long) : FmItem() {
+        override val key: String get() = "net:" + drive.id + "/" + path
     }
 
     val extension: String get() = name.substringAfterLast('.', "").lowercase()

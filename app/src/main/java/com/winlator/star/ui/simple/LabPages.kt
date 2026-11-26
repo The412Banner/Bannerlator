@@ -71,6 +71,7 @@ import com.winlator.star.ui.screens.ShortcutLaunchDialogs
 import com.winlator.star.ui.screens.ShortcutsViewModel
 import com.winlator.star.ui.screens.rememberShortcutActions
 import com.winlator.star.ui.screens.rememberShortcutLauncher
+import com.winlator.star.ui.theme.AppThemeState
 import kotlinx.coroutines.delay
 
 /**
@@ -96,6 +97,7 @@ internal fun LabLibraryPage(onNavigate: (String) -> Unit, vm: ShortcutsViewModel
     val stores = remember(shortcuts) { LabLibrary.FILTERS.filter { f -> shortcuts.any(f.third) }.map { it.first } }
     val filter = LabLibrary.filter.takeIf { it in stores } ?: ""
     val stats = remember(shortcuts, resumeTick) { readPlayStats(context, shortcuts) }
+    LaunchedEffect(shortcuts) { LabTitles.refresh(context, shortcuts) }
     val games = remember(shortcuts, stats, sort, filter) {
         val shown = LabLibrary.filterOf(filter)?.let { f -> shortcuts.filter(f) } ?: shortcuts
         sortGames(shown, sort) { gameSortKeyOf(it, stats) }
@@ -115,6 +117,10 @@ internal fun LabLibraryPage(onNavigate: (String) -> Unit, vm: ShortcutsViewModel
         games.forEach { LabArt.resolve(context, it) }
         // Games that left the library (removed elsewhere) drop out of the pick.
         if (picked.isNotEmpty()) picked = picked.filter { p -> shortcuts.any { it.file.path == p } }.toSet()
+    }
+    // Touch: the "X Game menu" hint with no card focused opens the menu of the game the art shows.
+    LabHintFallback(android.view.KeyEvent.KEYCODE_BUTTON_X) {
+        (games.firstOrNull { it.file.path == LabArt.selected?.file?.path } ?: games.firstOrNull())?.let { menuFor = it }
     }
     val deckActions = LocalDeckActions.current
     DisposableEffect(deckActions, picking) {
@@ -242,7 +248,7 @@ internal fun LabLibraryPage(onNavigate: (String) -> Unit, vm: ShortcutsViewModel
                 MenuAction(L("Cancel"), {}),
             ),
             onDismiss = { confirmRemove = false },
-            message = if (targets.size == 1) targets.first().name else L("Only the shortcuts go; the games' files stay."),
+            message = if (targets.size == 1) LabTitles.of(targets.first()) else L("Only the shortcuts go; the games' files stay."),
         ) { a -> confirmRemove = false; a.run() }
     }
     menuFor?.let { s ->
@@ -273,7 +279,9 @@ internal fun LabStoresPage(onLaunchStore: (Screen) -> Unit, onBack: () -> Unit, 
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     val signedIn = remember(resumeTick) { DeckStore.entries.associateWith { isSignedIn(context, it) } }
-    val entries = DeckStore.entries.map { st ->
+    // Appearance › Show game stores off: no stores listed (as the Deck's Stores tab).
+    val showStores by AppThemeState.showStores.collectAsState()
+    val entries = if (!showStores) emptyList() else DeckStore.entries.map { st ->
         val owned = shortcuts.count(st.owns)
         val (logo, brand, white) = storeLogo(st)
         MenuEntry(
@@ -291,7 +299,10 @@ internal fun LabStoresPage(onLaunchStore: (Screen) -> Unit, onBack: () -> Unit, 
     SimpleMenuPage(
         overline = L("Stores"),
         title = L("Your stores"),
-        sections = listOf(MenuSection("stores", L("Stores"), Icons.Filled.Storefront, entries)),
+        sections = listOf(MenuSection(
+            "stores", L("Stores"), Icons.Filled.Storefront, entries,
+            empty = L("Game stores are hidden. Turn on Show game stores in Settings › Appearance to list them here."),
+        )),
         onBack = onBack,
     )
 }

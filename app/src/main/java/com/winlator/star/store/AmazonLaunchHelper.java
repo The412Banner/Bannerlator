@@ -246,9 +246,12 @@ public class AmazonLaunchHelper {
         File[] entries = dir.listFiles();
         if (entries == null) return;
         for (File f : entries) {
+            String name = f.getName();
+            // macOS copy leftovers ("._Game.exe" metadata files, __MACOSX folders) are never the game.
+            if (name.startsWith("._")) continue;
             if (f.isDirectory()) {
-                collectExe(f, out);
-            } else if (f.getName().toLowerCase().endsWith(".exe")) {
+                if (!name.equals("__MACOSX")) collectExe(f, out);
+            } else if (name.toLowerCase().endsWith(".exe")) {
                 out.add(f);
             }
         }

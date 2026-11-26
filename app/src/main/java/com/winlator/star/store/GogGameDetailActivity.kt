@@ -24,7 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import com.winlator.star.ui.screens.OutlinedAlertDialog as AlertDialog
 import com.winlator.star.store.compose.AddResultDialog
 import com.winlator.star.store.compose.AddShortcutResult
 import com.winlator.star.store.compose.AddToShortcutsRequest
@@ -34,7 +34,7 @@ import com.winlator.star.store.compose.openShortcutsScreen
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.winlator.star.ui.theme.LabTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -80,6 +80,7 @@ import java.io.File
 import java.net.URL
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.function.Consumer
+import com.winlator.star.ui.deck.deckShape
 
 class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
 
@@ -142,6 +143,8 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
     private var launchVisible by mutableStateOf(false)
     private var installVisible by mutableStateOf(true)
     private var installBtnText by mutableStateOf("Install")
+    /** First install: "Download to" (StoreInstallLocations) before the download starts. */
+    private var locationPickerOpen by mutableStateOf(false)
     private var installBtnColor by mutableIntStateOf(0xFF5533CC.toInt())
     private var setExeVisible by mutableStateOf(false)
     private var uninstallVisible by mutableStateOf(false)
@@ -223,9 +226,7 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
 
         dlcJson = prefs.getString("gog_dlcs_$gameId", null)
         initDlcStates()
-        updateStatusText = prefs.getString("gog_build_$gameId", null)?.let {
-            "Installed build: ${it.substring(0, minOf(12, it.length))}\u2026"
-        } ?: "Build ID not recorded \u2014 tap Check to verify"
+        updateStatusText = installedBuildStatus()
         updatesInstalled = prefs.getString("gog_exe_$gameId", null) != null
         if (!updatesInstalled) updateStatusText = ""
         checkUpdateEnabled = updatesInstalled
@@ -253,6 +254,7 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
         setContent {
             StoreXmbTheme {
                 GogGameDetailScreen(
+                    downloadKey = "${Store.GOG}:$gameId",
                     headerBitmap = headerBitmap,
                     title = title,
                     generation = generation,
@@ -394,6 +396,13 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
                 }
                 GogPrereqDialogs(prereqUi)
                 resultBarMsg?.let { UninstallResultBar(it) { resultBarMsg = null } }
+                if (locationPickerOpen) {
+                    StoreInstallLocationDialog(StoreInstallLocations.Store.GOG, onDismiss = { locationPickerOpen = false }) { loc ->
+                        locationPickerOpen = false
+                        GogInstallPath.setPendingBase(gameId, loc.base)
+                        startInstall()
+                    }
+                }
             }
         }
 
@@ -469,7 +478,8 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
             cancelDownload = null
             return
         }
-        startInstall()
+        // An installed game (an update) stays where it is; a new download asks where to go.
+        if (prefs.contains("gog_dir_$gameId")) startInstall() else locationPickerOpen = true
     }
 
     private fun startInstall(verify: Boolean = false) {
@@ -537,6 +547,8 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
                     progressValue = 100
                     progressVisible = false
                     progressLabelVisible = false
+                    if (verify) updateStatusText = "Files verified \u2713"
+                    else if (updatesInstalled) updateStatusText = installedBuildStatus()
                     setResult(RESULT_REFRESH)
                     refreshActionState()
                 }
@@ -552,6 +564,7 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
                     installBtnColor = 0xFF5533CC.toInt()
                     launchVisible = prefs.getString("gog_exe_$gameId", null) != null
                     setExeVisible = prefs.getString("gog_dir_$gameId", null) != null
+                    if (updatesInstalled) updateStatusText = installedBuildStatus()
                     resultBarMsg = "Error: $msg"
                 }
             }
@@ -566,6 +579,7 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
                     installBtnColor = 0xFF5533CC.toInt()
                     launchVisible = prefs.getString("gog_exe_$gameId", null) != null
                     setExeVisible = prefs.getString("gog_dir_$gameId", null) != null
+                    if (updatesInstalled) updateStatusText = installedBuildStatus()
                 }
             }
             override fun onSelectExe(candidates: MutableList<String>?, onSelected: Consumer<String>?) {
@@ -581,6 +595,11 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
             GogDownloadManager.startDownload(applicationContext, makeGogGame(), cb)
     }
 
+    private fun installedBuildStatus(): String =
+        prefs.getString("gog_build_$gameId", null)?.let {
+            "Installed build: ${it.substring(0, minOf(12, it.length))}\u2026"
+        } ?: "Build ID not recorded \u2014 tap Check to verify"
+
     /**
      * Verify installed files and re-download only those missing or failing MD5 (gen2). Reuses the
      * whole install flow + progress UI; the engine's size+MD5 skip-logic makes the re-run a repair.
@@ -594,7 +613,12 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
         val dlgTitle = title
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Uninstall $dlgTitle?")
-            .setMessage("This will delete all installed game files.")
+            .setMessage(
+                if (prefs.getString("gog_dir_$gameId", null)
+                        ?.let { File(GogInstallPath.getInstallDir(this, it), SteamInstallPaths.ADOPTED_MARKER).exists() } == true)
+                    "Your imported folder and its files stay."
+                else "This will delete all installed game files."
+            )
             .setPositiveButton("Uninstall") { _, _ -> doUninstall() }
             .setNegativeButton("Cancel", null)
             .show()
@@ -604,7 +628,11 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
         val dirName = prefs.getString("gog_dir_$gameId", null) ?: return
         lifecycleScope.launch(Dispatchers.IO) {
             val installPath = GogInstallPath.getInstallDir(this@GogGameDetailActivity, dirName)
-            deleteDir(installPath)
+            // Only a game folder inside a GOG download location (an empty name would point at the whole library).
+            val refused = StoreShortcutCleanup.keptBySafeDelete(applicationContext, StoreInstallLocations.Store.GOG, installPath)
+            val gone = StoreInstallLocations.safeDelete(applicationContext, StoreInstallLocations.Store.GOG, installPath)
+            StoreShortcutCleanup.afterDelete(applicationContext, Store.GOG, gameId, installPath.absolutePath, gone, refused)
+            GogInstallPath.forgetBase(applicationContext, dirName)
             // Purge the FULL native install record via the one canonical helper, and clear the DL
             // manager's registry/library row — so the store list, this page, and the cross-store
             // Download Manager all agree the game is gone. Mirrors AmazonGameDetailActivity.
@@ -760,13 +788,11 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
                     val j = org.json.JSONObject(body)
                     val items = j.optJSONArray("items")
                     if (items != null) {
-                        for (i in 0 until items.length()) {
-                            val item = items.getJSONObject(i)
-                            if ("windows" == item.optString("os")) {
-                                latestBuild = item.optString("build_id")
-                                break
-                            }
-                        }
+                        // The latest build on the installed build's branch (default branch if unknown).
+                        val installedBuild = prefs.getString("gog_build_$gameId", null)
+                        latestBuild = GogDownloadManager.selectWindowsBuild(
+                            items, GogDownloadManager.installedBranch(items, installedBuild),
+                        )?.optString("build_id")
                     }
                 }
 
@@ -898,6 +924,7 @@ private data class DlcRowUi(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun GogGameDetailScreen(
+    downloadKey: String?,
     headerBitmap: Bitmap?,
     title: String,
     generation: Int,
@@ -986,6 +1013,7 @@ private fun GogGameDetailScreen(
         onBack = onBack,
         title = title,
         storeBadge = { StoreBadge(Store.GOG) },
+        downloadKey = downloadKey,
         hero = {
             if (headerBitmap != null) {
                 Image(
@@ -994,8 +1022,6 @@ private fun GogGameDetailScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                 )
-            } else {
-                Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
             }
         },
         subtitle = if (exeNameVisible) {
@@ -1179,7 +1205,7 @@ private fun GogDlcContent(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(6.dp))
+                .background(MaterialTheme.colorScheme.surface, deckShape(6.dp))
                 .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

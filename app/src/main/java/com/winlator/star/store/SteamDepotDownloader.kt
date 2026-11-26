@@ -677,7 +677,9 @@ object SteamDepotDownloader {
                 cancel = control?.let { c -> { c.cancel.run() } },
             ))
         } else {
-            DownloadRegistry.update(dmKey) { it.copy(state = DownloadState.DOWNLOADING) }
+            // An existing row (an installed game being updated, a resumed pause, a retry) has no handles of this run, or those of a dead
+            // one: wire it to the appId-keyed seam so the Download Manager can pause / cancel it.
+            DownloadRegistry.update(dmKey) { SteamDownloadControl.attach(it.copy(state = DownloadState.DOWNLOADING)) }
         }
 
         // Build the progress event: install pair + download pair + ETA(sec) + speed(bytes/s).

@@ -558,6 +558,7 @@ object XServerDialogState {
      * notifications so they match the existing input notifications. Main-thread only.
      */
     fun showInfoToast(title: String, subLabel: String, message: String?) {
+        com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.TOAST)
         _toastToken += 1
         _controllerToast.value = ControllerToastData(title, subLabel, emptyList(), _toastToken, message)
     }
@@ -658,6 +659,7 @@ object XServerDialogState {
      */
     @JvmStatic
     fun showAchievementToast(name: String, description: String?, iconPath: String?) {
+        com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.ACHIEVEMENT)
         _achievementPillId += 1
         _achievementPills.value = _achievementPills.value +
             AchievementPill(_achievementPillId, name, description, iconPath)

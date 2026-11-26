@@ -394,7 +394,7 @@ private fun ProtonBuildsCard() {
  * marked as a gamescope container if there is one, else the first. The entry carries the runtime
  * itself, so it launches into the Linux runtime from either.
  */
-private fun addSteamEntry(context: android.content.Context) {
+internal fun addSteamEntry(context: android.content.Context) {
     runCatching {
         val manager = ContainerManager(context)
         val linux = manager.linuxContainer
@@ -432,7 +432,7 @@ private fun addSteamEntry(context: android.content.Context) {
     }
 }
 
-private fun removeSteamEntry(context: android.content.Context) {
+internal fun removeSteamEntry(context: android.content.Context) {
     runCatching {
         val manager = ContainerManager(context)
         LinuxShortcuts.removeSteamShortcut(manager.linuxContainer)

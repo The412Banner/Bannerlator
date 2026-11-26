@@ -542,7 +542,7 @@ private fun RailDetail(ctl: SimpleController, d: SimpleData, modifier: Modifier)
             }
         }
         Spacer(Modifier.height(16.dp))
-        val title = g?.name ?: item?.title ?: "Add a game"
+        val title = g?.let { LabTitles.of(it) } ?: item?.title ?: "Add a game"
         Text(title, color = Color.White, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = titleSize(title, 26), maxLines = 2, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.height(4.dp))
         Text(
@@ -607,7 +607,7 @@ internal fun SimpleFocusLayout(ctl: SimpleController, d: SimpleData) {
             }
             Text(kicker.uppercase(), color = accent, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 2.sp)
             Spacer(Modifier.height(8.dp))
-            val title = g?.name ?: item?.title ?: if (d.games.isEmpty()) "No games yet" else "Add a game"
+            val title = g?.let { LabTitles.of(it) } ?: item?.title ?: if (d.games.isEmpty()) "No games yet" else "Add a game"
             Text(title, color = Color.White, fontFamily = SoraFamily, fontWeight = FontWeight.ExtraBold, fontSize = titleSize(title, 46), lineHeight = titleSize(title, 50), maxLines = 2, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(10.dp))
             Text(

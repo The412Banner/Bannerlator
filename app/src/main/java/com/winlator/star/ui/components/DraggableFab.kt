@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import com.winlator.star.ui.LocalXmbHintInset
 
 /**
  * An "add" button the user can long-press and slide along the bottom of the screen.
@@ -91,6 +92,9 @@ fun BoxScope.DraggableAddButton(
             .align(Alignment.BottomStart)
             .fillMaxWidth()
             .padding(outerPadding)
+            // XMB mode: the track (and so the button, which only slides along it) sits above the floating Back / Search hints.
+            // It is horizontal-only, so a position the user dragged to stays as it was and is never below the hints. 0 elsewhere.
+            .padding(bottom = LocalXmbHintInset.current)
             .onSizeChanged { trackPx = it.width.toFloat() },
     ) {
         Box(

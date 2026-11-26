@@ -55,7 +55,10 @@ internal class ContainerFormSource(
     override fun shows(def: SettingDef) = def.vm != null && (env.scope != EditorScope.DEFAULTS || def.onDefaults)
     override fun editable(def: SettingDef) = true
     override fun value(def: SettingDef) = def.vm?.get?.invoke(env, vm) ?: ""
-    override fun set(def: SettingDef, value: String) { def.vm?.set?.invoke(env, vm, value) }
+    override fun set(def: SettingDef, value: String) {
+        com.winlator.star.sound.settingSound(this.value(def), value)
+        def.vm?.set?.invoke(env, vm, value)
+    }
 
     override fun baseline(def: SettingDef): String? {
         if (env.scope != EditorScope.CONTAINER || !def.onDefaults) return null
@@ -85,6 +88,9 @@ internal class ContainerFormSource(
             onDone(false)
             return
         }
+        // A new container (CONTAINER scope with no container yet): confirm() calls back whether or not the creation worked (no Wine
+        // version installed, or the creation failed), so success is a container existing afterwards, not the callback itself.
+        val creating = env.scope == EditorScope.CONTAINER && vm.container == null
         vm.confirm(
             resolvedGraphicsDriverConfig = vm.graphicsDriverConfig,
             resolvedDXWrapperConfig = vm.dxWrapperConfig,
@@ -94,8 +100,14 @@ internal class ContainerFormSource(
             resolvedCPUListWoW64 = vm.cpuListWoW64,
             resolvedColorAsString = desktopColor(vm),
         ) {
-            reload()
-            onDone(true)
+            val ok = !creating || vm.container != null
+            // A refusal for a missing Wine version has been toasted by confirm() itself; a creation that failed has not.
+            if (!ok && vm.selectedWineVersion.isNotBlank()) {
+                Toast.makeText(env.context, "Could not create the container.", Toast.LENGTH_LONG).show()
+            }
+            // A failed creation keeps the form as it is, so the user can try again.
+            if (ok) reload()
+            onDone(ok)
         }
     }
 
@@ -153,6 +165,7 @@ internal class GameSource(
 
     override fun set(def: SettingDef, value: String) {
         val g = def.game ?: return
+        com.winlator.star.sound.settingSound(this.value(def), value)
         // Picking the value the game already follows is not a change: it keeps following the container.
         if (g.inherit != Inherit.NONE && g.read(extras) == null && value == inherited(def)) return
         g.write(extras, value)
@@ -229,6 +242,7 @@ internal class AppSource(env: SettingsEnv) : SettingsSource(env) {
         return def.app?.get?.invoke(env.context) ?: ""
     }
     override fun set(def: SettingDef, value: String) {
+        com.winlator.star.sound.settingSound(this.value(def), value)
         def.app?.set?.invoke(env.context, value)
         version++
     }

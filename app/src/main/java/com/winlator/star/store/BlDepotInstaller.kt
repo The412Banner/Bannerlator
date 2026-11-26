@@ -40,7 +40,8 @@ import java.util.concurrent.atomic.AtomicLong
  *    toggle) or the internal `imagefs/steam_games` default).
  *  - Depot selection = the `depot_manifests` rows the library sync wrote (Windows/English content
  *    depots incl. the DLC depots grouped positionally in Phase 1-A) minus the DLC the user opted out
- *    of and the app's known stale-duplicate depots.
+ *    of and the app's known stale-duplicate depots, after the depots it takes from another app's
+ *    manifest ([SteamSharedDepots]).
  *
  * ## Engine semantics (why the false-complete bug class cannot exist here)
  * The engine ([BlSteamSession.downloadApp]) resolves depot keys + manifest request codes over the
@@ -224,7 +225,7 @@ internal object BlDepotInstaller {
         if (excludedDlc.isNotEmpty() || staleDupes.isNotEmpty()) {
             dlog("Depot filter: excluded DLC=${excludedDlc.joinToString(",")} stale-dupes=${staleDupes.joinToString(",")}")
         }
-        val specs: List<Pair<Int, Long>> = if (selectedBranch == "public") {
+        val ownSpecs: List<Pair<Int, Long>> = if (selectedBranch == "public") {
             keptRows.filter { it.manifestId != 0L }.map { it.depotId to it.manifestId }
         } else {
             val r = resolveBranchManifests(session, appId, selectedBranch, keptRows.map { it.depotId }, db)
@@ -235,9 +236,18 @@ internal object BlDepotInstaller {
             }
             r
         }
-        if (specs.isEmpty()) {
+        if (ownSpecs.isEmpty()) {
             fail(appId, "No manifests resolved for branch \"$selectedBranch\""); return
         }
+        // Depots taken from another app's manifest go first, as Steam installs them: the game's own
+        // depots are then written over any file they share.
+        val borrowed = SteamSharedDepots.resolve(ctx, appId, selectedBranch, excludedDlc + ownSpecs.map { it.first },
+            { id -> try { BlLibraryCrawler(session).fetchApps(listOf(id)).firstOrNull()?.second } catch (_: Throwable) { null } }
+        ) { dlog(it) }
+        if (borrowed.isNotEmpty()) {
+            dlog("Shared depots: " + borrowed.joinToString(" ") { "${it.depotId}@${it.manifestId} (app ${it.sourceAppId} ${it.branch})" })
+        }
+        val specs = borrowed.map { it.depotId to it.manifestId } + ownSpecs
         dlog("Depots (${specs.size}, branch=$selectedBranch): " + specs.joinToString(" ") { "${it.first}@${it.second}" })
 
         // ── Denominators (exclusion-aware, manifest-true when resolved) ────────────────────────
@@ -246,17 +256,18 @@ internal object BlDepotInstaller {
             keptForDenom.sumOf { it.realSizeBytes } else 0L
         val keptPics = keptForDenom.sumOf { it.sizeBytes }
         val realGameSize = try { db.getGameRealSize(appId) } catch (_: Throwable) { 0L }
-        val installTotalSeed = when {
+        val ownInstall = when {
             keptReal > 0L -> keptReal
             keptPics > 0L -> keptPics
             realGameSize > 0L -> realGameSize
             row.sizeBytes > 0L -> row.sizeBytes
-            else -> 1L
+            else -> 0L
         }
+        val installTotalSeed = (ownInstall + borrowed.sumOf { it.size }).coerceAtLeast(1L)
         val keptDownload = if (keptForDenom.isNotEmpty() && keptForDenom.all { it.realDownloadBytes > 0L })
             keptForDenom.sumOf { it.realDownloadBytes } else 0L
         val cachedDownload = if (keptDownload > 0L) keptDownload else repo.getSelectedDownloadSize(appId)
-        val downloadTotalSeed = if (cachedDownload > 0L) cachedDownload else installTotalSeed
+        val downloadTotalSeed = if (cachedDownload > 0L) cachedDownload + borrowed.sumOf { it.download } else installTotalSeed
         dlog("Denominators: install=${fmt(installTotalSeed)} download=${fmt(downloadTotalSeed)}")
 
         if (isFreshSdInstall && installTotalSeed > 1L) {
@@ -308,7 +319,9 @@ internal object BlDepotInstaller {
                 pause = { control.pause.run() }, cancel = { control.cancel.run() },
             ))
         } else {
-            DownloadRegistry.update(dmKey) { it.copy(state = DownloadState.DOWNLOADING) }
+            // An existing row (an installed game being updated, a resumed pause, a retry) has no handles of this run, or those of a dead
+            // one: wire it to the appId-keyed seam so the Download Manager can pause / cancel it.
+            DownloadRegistry.update(dmKey) { SteamDownloadControl.attach(it.copy(state = DownloadState.DOWNLOADING)) }
         }
         fun emitProgress(iDone: Long, iTotal: Long, dDone: Long, dTotal: Long, eta: Long = -1L, bps: Long = 0L) {
             repo.emit("DownloadProgress:$appId:$iDone:$iTotal:$dDone:$dTotal:$eta:$bps")
@@ -342,7 +355,8 @@ internal object BlDepotInstaller {
         val journalBefore: Map<Int, Long> = if (verify) emptyMap() else journalInstalledManifests(installDir)
         val skippedBase = keptForDenom
             .filter { r -> specs.any { it.first == r.depotId && journalBefore[r.depotId] == it.second } }
-            .sumOf { maxOf(it.realSizeBytes, it.sizeBytes) }
+            .sumOf { maxOf(it.realSizeBytes, it.sizeBytes) } +
+            borrowed.filter { journalBefore[it.depotId] == it.manifestId }.sumOf { it.size }
         if (skippedBase > 0L) dlog("Journal: ${journalBefore.size} depot(s) recorded; ~${fmt(skippedBase)} already installed at the requested manifests")
 
         // Per-depot (done,total) as reported by the engine; skipped depots never report.
@@ -435,7 +449,9 @@ internal object BlDepotInstaller {
         try {
             session.downloadApp(
                 appId, specs.map { it.first }.toIntArray(), specs.map { it.second }.toLongArray(),
-                selectedBranch, installDir.absolutePath, verify, caPath, maxWorkers, maxDecompress, listener,
+                (borrowed.map { it.codeAppId } + ownSpecs.map { appId }).toIntArray(),
+                (borrowed.map { it.branch } + ownSpecs.map { selectedBranch }).toTypedArray(),
+                installDir.absolutePath, verify, caPath, maxWorkers, maxDecompress, listener,
             )
             done.await()
             dlog("downloadApp finished: success=$success error='${error}' written=${fmt(bytesWritten)} " +

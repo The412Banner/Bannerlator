@@ -33,6 +33,13 @@ object SteamInstallPaths {
     /** Dropped into a game folder this app created inside a shared `steamapps/common` (see [claimIfNew]). */
     const val OWNED_MARKER = ".bannerlator_owned"
 
+    /**
+     * Written into a game folder the user brought ("+ Import game library", "Use a folder I already have"):
+     * the folder is the user's, so no cancel, reset or uninstall may delete it — only the game's own files
+     * are repaired by the install. Content: the app id.
+     */
+    const val ADOPTED_MARKER = ".bannerlator_adopted"
+
     private const val LEGACY_PREFIX = "steam_games/"
     private const val STEAM_PREFIX = "steamapps/common/"
 
@@ -262,7 +269,7 @@ object SteamInstallPaths {
     /** True when deleting the whole [installDir] can only remove what this app put there. */
     @JvmStatic
     fun mayDeleteWholeFolder(installDir: File): Boolean =
-        !isLibraryContainer(installDir) &&
+        !isLibraryContainer(installDir) && !File(installDir, ADOPTED_MARKER).exists() &&
             (steamappsOfInstallDir(installDir) == null || File(installDir, OWNED_MARKER).exists())
 
     /**

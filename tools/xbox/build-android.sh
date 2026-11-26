@@ -2,9 +2,9 @@
 # Build the Xbox backend (Xodus CLI + account service) for Android (aarch64-linux-android, bionic),
 # so it runs as a plain child process of the app: no Linux runtime, no proot.
 #
-# Source recipe, pinned revisions and patches are DroidDeck's (tools/xbox from Droid-Deck/DroidDeck,
-# GPL-3.0): prepare.py fetches Xodus + Xodus Nexus at the locked commits, verifies every patch's
-# sha256 and applies them plus DroidDeck's credential / launch-view / library patches.
+# Source recipe and patches started from DroidDeck's (tools/xbox from Droid-Deck/DroidDeck, GPL-3.0):
+# prepare.py fetches the Nexus backend (domsvoboda/nexus-backend, a fork of Xodus) at the locked commit
+# and applies the local credential / launch-view / library / Android patches.
 #
 # Output ($1, default build-xbox/out):
 #   bin/libxodus_cli.so, bin/libxodus_service.so   the two executables, named lib*.so so they ship in

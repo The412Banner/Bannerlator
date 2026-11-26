@@ -163,7 +163,7 @@ internal fun DeckOnboarding(
     onLaunchStore: (Screen) -> Unit,
     onFinish: (addGame: Boolean) -> Unit,
 ) {
-    DeckTheme {
+    DeckTheme(fit = true) {
         DeckOnboardingContent(installing, installProgress, installDone, onInstallContinue, onLaunchStore, onFinish)
     }
 }

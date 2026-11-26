@@ -157,10 +157,11 @@ class XboxGameDetailActivity : ComponentActivity() {
                     onBack = { finish() },
                     title = game.title,
                     storeBadge = { StoreBadge(Store.XBOX) },
+                    downloadKey = "${Store.XBOX}:${game.id}",
+                    cover = listOfNotNull(game.heroUrl),
                     hero = {
                         val art = listOfNotNull(game.heroUrl, game.posterUrl)
                         if (art.isNotEmpty()) CatalogArt(candidates = art, title = game.title, modifier = Modifier.fillMaxSize(), aspectRatio = null)
-                        else Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
                     },
                     subtitle = {
                         Spacer(Modifier.height(4.dp))
@@ -274,7 +275,7 @@ class XboxGameDetailActivity : ComponentActivity() {
     private fun confirmUninstall() {
         AlertDialog.Builder(this, R.style.StoreAlertDialogDark)
             .setTitle("Uninstall ${game.title}?")
-            .setMessage("The game's files are deleted. Shortcuts that point to it stop working until you install it again.")
+            .setMessage("The game's files and its shortcuts are deleted.")
             .setPositiveButton("Uninstall") { _, _ ->
                 lifecycleScope.launch {
                     val r = withContext(Dispatchers.IO) { runCatching { XboxDownloads.uninstall(applicationContext, game.id) } }

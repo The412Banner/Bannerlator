@@ -434,7 +434,7 @@ internal fun SimpleSettingsEditor(
         else {
             val value = source.value(def)
             ChecklistDialog(
-                title = control.title,
+                control = control,
                 all = items,
                 off = value.split(',').filter { it.isNotEmpty() }.toSet(),
                 onDismiss = { checklistFor = null },
@@ -845,15 +845,20 @@ internal fun SimplePicker(
     onDismiss: () -> Unit,
     onPick: (String) -> Unit,
     onCustom: () -> Unit,
+    /** Shown as the last line, "+ Download from source", when set. */
+    onDownload: (() -> Unit)? = null,
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val start = options.indexOfFirst { it.value == current }.coerceAtLeast(0)
-    val requesters = remember(options.size) { List(options.size + 1) { FocusRequester() } }
+    val requesters = remember(options.size) { List(options.size + 2) { FocusRequester() } }
+    // No options: the line under them takes the focus.
+    val first = if (options.isNotEmpty()) start else if (customLabel != null) options.size else options.size + 1
     LaunchedEffect(Unit) {
         delay(60)
-        runCatching { requesters[start].requestFocus() }
+        runCatching { requesters[first].requestFocus() }
     }
     Dialog(onDismissRequest = onDismiss) {
+        com.winlator.star.sound.DialogSound()
         Column(
             modifier = Modifier
                 .widthIn(min = 320.dp, max = 560.dp)
@@ -874,7 +879,7 @@ internal fun SimplePicker(
                             .fillMaxWidth()
                             .heightIn(min = 46.dp)
                             .focusRequester(requesters[i])
-                            .onFocusChanged { f = it.isFocused }
+                            .onFocusChanged { if (it.isFocused && !f) com.winlator.star.sound.UiSounds.focusGained(); f = it.isFocused }
                             .then(if (f) Modifier.background(accent.copy(alpha = 0.3f), SimpleShape).drawBehind { drawRect(accent, size = Size(3.dp.toPx(), size.height)) } else Modifier)
                             .clickable(enabled = enabled) { onPick(o.value) }
                             .padding(horizontal = 14.dp, vertical = 6.dp),
@@ -895,18 +900,34 @@ internal fun SimplePicker(
                                 .fillMaxWidth()
                                 .heightIn(min = 46.dp)
                                 .focusRequester(requesters[options.size])
-                                .onFocusChanged { f = it.isFocused }
+                                .onFocusChanged { if (it.isFocused && !f) com.winlator.star.sound.UiSounds.focusGained(); f = it.isFocused }
                                 .then(if (f) Modifier.background(accent.copy(alpha = 0.3f), SimpleShape) else Modifier)
                                 .clickable { onCustom() }
                                 .padding(horizontal = 14.dp, vertical = 6.dp),
                         ) { Text(customLabel, color = SimpleInk, fontSize = 15.sp) }
                     }
                 }
+                if (onDownload != null) {
+                    item {
+                        var f by remember { mutableStateOf(false) }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 46.dp)
+                                .focusRequester(requesters[options.size + 1])
+                                .onFocusChanged { if (it.isFocused && !f) com.winlator.star.sound.UiSounds.focusGained(); f = it.isFocused }
+                                .then(if (f) Modifier.background(accent.copy(alpha = 0.3f), SimpleShape).drawBehind { drawRect(accent, size = Size(3.dp.toPx(), size.height)) } else Modifier)
+                                .clickable { onDownload() }
+                                .padding(horizontal = 14.dp, vertical = 6.dp),
+                        ) { Text(L("+ Download from source"), color = accent, fontSize = 15.sp, fontWeight = FontWeight.SemiBold) }
+                    }
+                }
             }
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                SimpleGlyph("A"); Spacer(Modifier.width(4.dp)); Text("Pick", color = SimpleMuted, fontSize = 12.sp)
-                Spacer(Modifier.width(14.dp))
-                SimpleGlyph("B"); Spacer(Modifier.width(4.dp)); Text("Close", color = SimpleMuted, fontSize = 12.sp)
+                com.winlator.star.ui.simple.LabHint("A", "Pick")
+                Spacer(Modifier.width(8.dp))
+                com.winlator.star.ui.simple.LabHint("B", "Close")
             }
         }
     }

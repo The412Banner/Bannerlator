@@ -15,7 +15,9 @@
      XServerDrawerState.frameGenShortReal; FgFitAdvice (Classic, multiplier + Max FPS) + LabPerfFgFitAdvice: "Frame
      generation keeps up with N of the game's C frames a second ..." + button to the highest even fit <= N
      (fgShortRealPick: Auto on -> supported rate / mult, off -> cap x mult divides the screen rate).
-- CI: build-artifacts 45743981785 (headSha cf1dd3c7 asserted), running.
+- CI: build-artifacts 45743981785 (headSha cf1dd3c7 asserted) GREEN x4 (21:50 EST), pubg log: BUILD SUCCESSFUL, no warnings in
+  changed files. Staged /sdcard/Download/Bannerlator-fg-pace-real-cf1dd3c7.apk (pubg, sha256 4a69fad3, host == device).
+  Install awaits the user's yes (FIT has 3.2.2 vc109).
 - Device test (next): DiRT Showdown WFG 2x @72 scaling off (the run that dropped to 107): expect unshown near 0, real
   closer to 72, perf "frame-gen pacing" counts, hint "keeps up with N of 72" + fit button; A/B with BANNER_WAYLAND_FG_PACE=0.
   Not merged, not device-tested. Resume: worktree above, branch pushed.

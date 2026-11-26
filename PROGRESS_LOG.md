@@ -1,5 +1,25 @@
 # Star-Compose — Progress Log
 
+## 2026-11-25 — Frame gen: pace the game to native FG + measured fit advice (feat/fg-pace-real, CI running)
+- Why: user 21:15 EST "when framegen is enabled base fps drops (40 -> 30) so 2x doesn't work"; logs (DiRT Showdown,
+  Pocket FIT, BL 3.2.2 Wayland): the game keeps the cap, native FG cannot take every frame and skips them (WFG 2x @72:
+  game 70-72, real 67 -> 50, up to 207 frames/10 s replaced unshown, screen 133 -> 107). lsfg-vk / in-game Win-FG never
+  had this (they live in the game's present); native engines run in the compositor, only the limiter paced the game.
+  User 21:3x EST: "do A and B".
+- Built cf1dd3c7 (off main 96ce4f52, worktree /root/src/Bannerlator-wt/fg-pace-real):
+  B) compositor.c: while native FG generates, a replaced buffer also waits for a newer frame of its surface to be shown
+     (credit per new frame shown, max 2 banked; surfaces not shown in 100 ms not paced; 100 ms stall guard);
+     perf line "frame-gen pacing: N held, M let go after 100 ms"; switch BANNER_WAYLAND_FG_PACE=0 (app env -> JNI
+     nativeSetFgPace). Host syntax check (aarch64-android target, Termux headers) clean.
+  A) XServerDisplayActivity noteFgRealRate: 8 s average of the readout's real frames; when < cap - max(2, 5 %) ->
+     XServerDrawerState.frameGenShortReal; FgFitAdvice (Classic, multiplier + Max FPS) + LabPerfFgFitAdvice: "Frame
+     generation keeps up with N of the game's C frames a second ..." + button to the highest even fit <= N
+     (fgShortRealPick: Auto on -> supported rate / mult, off -> cap x mult divides the screen rate).
+- CI: build-artifacts 45743981785 (headSha cf1dd3c7 asserted), running.
+- Device test (next): DiRT Showdown WFG 2x @72 scaling off (the run that dropped to 107): expect unshown near 0, real
+  closer to 72, perf "frame-gen pacing" counts, hint "keeps up with N of 72" + fit button; A/B with BANNER_WAYLAND_FG_PACE=0.
+  Not merged, not device-tested. Resume: worktree above, branch pushed.
+
 ## 2026-11-25 — 3.2.2 STABLE RELEASED + VERIFIED (main a0839915, Latest)
 - release.yml 45548732395 SUCCESS (notes, 4 builds, 4 patch jobs, release), published 00:11:31 EST. Tag 3.2.2 ->
   a0839915 == main == built commit. "Bannerlator 3.2.2", not draft/prerelease, Latest. Assets: 4 APKs (~603.0 MB each)

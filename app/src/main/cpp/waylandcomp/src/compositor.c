@@ -280,6 +280,8 @@ struct surface {
     int dmabuf_shown;                       /* the current dmabuf has been in a scene on screen */
     int64_t next_release_ns;                /* FPS limiter: when this surface's last buffer goes back */
     int releases_pending;                   /* FPS limiter: buffers of this surface still to be released */
+    int fg_credits;                         /* frame-gen pacing: new frames shown that no held buffer answered yet */
+    int64_t fg_shown_ns;                    /* frame-gen pacing: when frame generation last showed a new frame */
 
     enum surface_role role;
     struct wl_resource *xdg_surface, *xdg_toplevel;
@@ -394,6 +396,8 @@ struct pending_release {
     struct surface *surface;                /* NULL once the surface is gone */
     int64_t at_ns;
     int64_t since_ns;                       /* when the compositor let go of it (the perf line) */
+    int fg_wait;                            /* also waits for frame generation to show a newer frame */
+    int64_t fg_deadline_ns;                 /* ... or until this time (frame-gen pacing stall guard) */
     struct wl_list link;
 };
 static struct wl_list g_pending_releases;
@@ -417,6 +421,8 @@ static struct {
     unsigned refresh_paced;                  /* releases put on the refresh cadence without a limit (gamescope) */
     int layer_in_flight_max;                 /* display-layer transactions SurfaceFlinger had not answered yet */
     unsigned late_frames;                    /* copy-path frames whose GPU work took over 1.5 refresh intervals */
+    unsigned fg_held;                        /* releases that waited for frame generation to show a newer frame */
+    unsigned fg_timeouts;                    /* ... of them let go by the stall guard instead */
 } g_perf;
 
 static void schedule_render(void);
@@ -461,12 +467,40 @@ static void on_pending_release_buffer_destroyed(struct wl_listener *l, void *dat
     pending_release_free(pr);
 }
 
+/* ---- frame-gen pacing --------------------------------------------------------------------
+ * Native frame generation runs here, in the compositor, after the game has presented. The limiter
+ * alone hands buffers back on its cadence whether or not frame generation could use the frame, so
+ * when generation cannot keep up the game still renders at the limit and the frames generation
+ * skips are thrown away ("replaced unshown"), costing GPU time generation needs (DiRT Showdown,
+ * Pocket FIT 2026-11-25, WFG 2x at 72: game 72 fps, 50-67 reached the screen, up to 207 frames
+ * per 10 s thrown away). While frame generation is generating, a replaced buffer also waits until
+ * a newer frame of its surface has been shown: one buffer back per frame shown, so the game renders
+ * what generation takes and no more - as lsfg-vk / in-game Win-FG did by living in the game's
+ * present. A surface generation has not shown for FG_PACE_STALL_NS is not paced, and a held buffer
+ * goes back after FG_PACE_STALL_NS whatever happens. BANNER_WAYLAND_FG_PACE=0 turns it off. */
+#define FG_PACE_STALL_NS 100000000LL
+#define FG_PACE_MAX_CREDITS 2
+static volatile int g_fg_pace_on = 1;
+void banner_set_fg_pace(int on) { g_fg_pace_on = on ? 1 : 0; }
+
+static int fg_pace_applies(const struct surface *s, int64_t now) {
+    return g_fg_pace_on && s && s->fg_shown_ns && now - s->fg_shown_ns < FG_PACE_STALL_NS
+           && vkp_framegen_active();
+}
+
+static int64_t pending_release_due(const struct pending_release *pr) {
+    if (!pr->fg_wait) return pr->at_ns;
+    return pr->at_ns > pr->fg_deadline_ns ? pr->at_ns : pr->fg_deadline_ns;
+}
+
 static void arm_release_timer(void) {
     struct pending_release *pr;
     int64_t earliest = 0;
     if (g_release_timer_fd < 0) return;
-    wl_list_for_each(pr, &g_pending_releases, link)
-        if (!earliest || pr->at_ns < earliest) earliest = pr->at_ns;
+    wl_list_for_each(pr, &g_pending_releases, link) {
+        const int64_t due = pending_release_due(pr);
+        if (!earliest || due < earliest) earliest = due;
+    }
     struct itimerspec its = {0};
     if (earliest) { its.it_value.tv_sec = earliest / 1000000000LL; its.it_value.tv_nsec = earliest % 1000000000LL; }
     timerfd_settime(g_release_timer_fd, TFD_TIMER_ABSTIME, &its, NULL);
@@ -478,7 +512,8 @@ static int on_release_timer(int fd, uint32_t mask, void *data) {
     int64_t now = now_ns() + 300000; /* anything due within 0.3 ms goes now */
     if (read(fd, &expirations, sizeof(expirations)) < 0 && errno != EAGAIN) return 0;
     wl_list_for_each_safe(pr, tmp, &g_pending_releases, link) {
-        if (pr->at_ns <= now) {
+        if (pending_release_due(pr) <= now) {
+            if (pr->fg_wait) g_perf.fg_timeouts++;
             wl_buffer_send_release(pr->buffer);
             perf_note_release(pr->since_ns);
             pending_release_free(pr);
@@ -510,9 +545,11 @@ static void release_buffer(struct surface *s, struct wl_resource *buffer, int64_
      * With a limit set the cadence is the limit's, exactly as before. */
     struct client_info *ci = limit > 0 ? NULL : client_info_of(wl_resource_get_client(s->resource));
     const int64_t interval = limit > 0 ? 1000000000LL / limit : (ci && ci->refresh_paced ? g_refresh_ns : 0);
-    if (interval <= 0 || g_release_timer_fd < 0) { wl_buffer_send_release(buffer); perf_note_release(since_ns); return; }
-    if (limit <= 0) g_perf.refresh_paced++;
     int64_t now = now_ns();
+    int fg_wait = fg_pace_applies(s, now);
+    if (fg_wait && s->fg_credits > 0) { s->fg_credits--; fg_wait = 0; }
+    if ((interval <= 0 && !fg_wait) || g_release_timer_fd < 0) { wl_buffer_send_release(buffer); perf_note_release(since_ns); return; }
+    if (limit <= 0 && interval > 0) g_perf.refresh_paced++;
     int64_t at = s->next_release_ns + interval;
     int64_t latest = now + interval * (int64_t)(s->releases_pending + 1);
     if (at < now) at = now;
@@ -524,11 +561,36 @@ static void release_buffer(struct surface *s, struct wl_resource *buffer, int64_
     pr->surface = s;
     pr->at_ns = at;
     pr->since_ns = since_ns;
+    pr->fg_wait = fg_wait;
+    pr->fg_deadline_ns = now + FG_PACE_STALL_NS;
+    if (fg_wait) g_perf.fg_held++;
     pr->destroy.notify = on_pending_release_buffer_destroyed;
     wl_resource_add_destroy_listener(buffer, &pr->destroy);
     wl_list_insert(g_pending_releases.prev, &pr->link);
     s->releases_pending++;
     arm_release_timer();
+}
+
+/* Frame generation showed a new frame of s (render_scene): the oldest buffer of s held for frame-gen
+ * pacing may go (on its limiter slot), or, with none held, the next one to be replaced need not wait. */
+static void fg_pace_shown(struct surface *s, int64_t t) {
+    static int said;
+    struct pending_release *pr;
+    s->fg_shown_ns = t;
+    if (!g_fg_pace_on) return;
+    if (!said) {
+        said = 1;
+        banner_log("framegen", "game paced to frame generation: a replaced buffer goes back once a newer frame "
+                   "is on screen (BANNER_WAYLAND_FG_PACE=0 turns this off)");
+    }
+    wl_list_for_each(pr, &g_pending_releases, link) {
+        if (pr->surface == s && pr->fg_wait) {
+            pr->fg_wait = 0;
+            arm_release_timer();
+            return;
+        }
+    }
+    if (s->fg_credits < FG_PACE_MAX_CREDITS) s->fg_credits++;
 }
 
 /* ------------------------------------------------------------------ seat state */
@@ -3089,7 +3151,11 @@ static void render_scene(void) {
         const uint64_t seq = copy ? vkp_last_frame_seq() : 0;
         if (seq) frame_register(seq, t);
         wl_list_for_each(s, &g_surfaces, link) {
-            if (s->drawn) { if (!seq) feedback_present_all(&s->feedback, t); s->dmabuf_shown = 1; }
+            if (s->drawn) {
+                if (!seq) feedback_present_all(&s->feedback, t);
+                if (framegen && s->dmabuf && !s->dmabuf_shown) fg_pace_shown(s, t);
+                s->dmabuf_shown = 1;
+            }
             else feedback_discard_all(&s->feedback);
         }
         fire_all_frames();
@@ -4415,7 +4481,8 @@ static int on_stats_timer(void *data) {
                        "release %.2f/%.2f ms (%u, %u held) | %u pool drops | "
                        "%u replaced unshown, %u refresh-paced | layer in flight max %d | "
                        "present interval p99 %.2f ms, max %.2f ms | slot wait %.2f/%.2f ms (%u) | "
-                       "%u late frames, %d in flight | copy path %s | zero-copy fences: client %u, exported %u, none %u%s",
+                       "%u late frames, %d in flight | copy path %s | zero-copy fences: client %u, exported %u, none %u%s | "
+                       "frame-gen pacing: %u held, %u let go after 100 ms",
                        g_perf.ticks, g_perf.scenes, g_stat_frames, g_perf.copy_scenes, zero_copy, layer_frames,
                        PERF_MS(g_perf.scene_ns, g_perf.scenes), (double)g_perf.scene_max_ns / 1e6,
                        vp.base_kept, vp.base_presents,
@@ -4428,7 +4495,8 @@ static int on_stats_timer(void *data) {
                        present_interval_p99_ms(), (double)g_pi_max_ns / 1e6,
                        PERF_MS(vp.slot_wait_ns, vp.slot_waits), (double)vp.slot_wait_max_ns / 1e6, vp.slot_waits,
                        g_perf.late_frames, wl_list_length(&g_frames_in_flight),
-                       vkp_async_copy() ? "async" : "sync", zf_client, zf_exported, zf_none, zf_ign);
+                       vkp_async_copy() ? "async" : "sync", zf_client, zf_exported, zf_none, zf_ign,
+                       g_perf.fg_held, g_perf.fg_timeouts);
 #undef PERF_MS
         present_interval_reset();
         memset(&g_perf, 0, sizeof(g_perf));

@@ -18,6 +18,8 @@
  *   BANNER_WAYLAND_ASYNC_COPY=0|false|off  synchronous copy path (default: asynchronous, 2 frames in flight).
  *   BANNER_WAYLAND_ZC_CLIENT_FENCE=0|false|off  ignore the render fences a banner_ahb_v1 version 3 driver attaches
  *                                        (default on; this file's sibling ahb_swapchain.c).
+ *   BANNER_WAYLAND_FG_PACE=0|false|off   while native frame generation generates, replaced buffers go back on the
+ *                                        limiter's cadence only, not also once a newer frame is shown (default on).
  *   BANNER_WAYLAND_AUTO_ACTIVATE=0|false|off|click  how a self-focused window is made Wine's foreground window
  *                                        (default: winhandler bring-to-front; Wine sessions only).
  *   BANNER_WAYLAND_NO_RENDER_NODE=1|true|on  advertise no DRM device in the dma-buf feedback (debug).

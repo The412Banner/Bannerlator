@@ -152,6 +152,7 @@ internal fun LabFrameGenPanel(state: XServerDrawerState) {
 
             // Fit advice while LSFG Native / Win-FG Native generate (Classic FgFitAdvice under the multiplier).
             if (nativeFgLocks && !waylandFgBlocked) {
+                val shortReal by state.frameGenShortReal.collectAsState()
                 LabPerfFgFitAdvice(
                     cap = fpsCap,
                     mult = fgMult,
@@ -159,6 +160,7 @@ internal fun LabFrameGenPanel(state: XServerDrawerState) {
                     supported = supportedRates,
                     autoOn = matchRefresh && vrrOk,
                     canChangeMult = engine == "lsfg-native",
+                    shortReal = shortReal,
                 ) { fix ->
                     state.setFpsLimit(fix)
                     state.onFpsLimitChange?.run()
@@ -263,12 +265,34 @@ private fun LabPerfFgFitAdvice(
     supported: List<Int>,
     autoOn: Boolean,
     canChangeMult: Boolean,
+    shortReal: Int = 0,
     onSetCap: (Int) -> Unit,
 ) {
     if (cap <= 0 || mult < 2 || screen.hz <= 0) return
     val made = cap * mult
     if (made > screen.hz) {
         LabPerfFgOverLimitWarning(cap, mult, screen, canChangeMult, onSetCap)
+        return
+    }
+    // Classic FgFitAdvice: measured shortfall of real frames -> the highest even fit it keeps up with.
+    if (shortReal in 1 until cap) {
+        val pick = com.winlator.star.ui.fgShortRealPick(shortReal, mult, supported, autoOn, screen.hz)
+        Column(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            IgNote(
+                L(
+                    "Frame generation keeps up with %1\$s of the game's %2\$s frames a second, so you see about %3\$s, not %4\$s.",
+                    shortReal, cap, shortReal * mult, made,
+                ) + if (pick != null) " " + L("For an even picture:") else ""
+            )
+            if (pick != null) {
+                LabPerfFixLine(
+                    label = if (pick.second > 0) L("Set frame rate limit to %1\$s → %2\$s Hz", pick.first, pick.second)
+                        else L("Set frame rate limit to %1\$s", pick.first),
+                    danger = false,
+                    alt = null,
+                ) { onSetCap(pick.first) }
+            }
+        }
         return
     }
     if (!autoOn || screen.held || made == screen.hz) return

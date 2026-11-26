@@ -2078,11 +2078,12 @@ internal fun FrameGenSection(state: XServerDrawerState) {
         // (The sub-controls below only exist for a multiplier the user can pick, so none of them
         // render while the Wayland gate holds.)
         if (nativeFgLocks && !waylandFgBlocked) {
+            val shortReal by state.frameGenShortReal.collectAsState()
             FgFitAdvice(
                 cap = fpsCap, mult = fgMult,
                 screen = rememberFgScreen(displayTargetHz, supportedRates, liveRate),
                 supported = supportedRates, autoOn = matchRefresh && vrrOk,
-                canChangeMult = engine == "lsfg-native"
+                canChangeMult = engine == "lsfg-native", shortReal = shortReal
             ) { fix ->
                 state.setFpsLimit(fix)
                 state.onFpsLimitChange?.run()
@@ -2247,12 +2248,34 @@ private fun FgFixButton(label: String, color: Color, onClick: () -> Unit) {
 @Composable
 private fun FgFitAdvice(
     cap: Int, mult: Int, screen: FgScreen, supported: List<Int>, autoOn: Boolean,
-    canChangeMult: Boolean, onSetCap: (Int) -> Unit
+    canChangeMult: Boolean, shortReal: Int = 0, onSetCap: (Int) -> Unit
 ) {
     if (cap <= 0 || mult < 2 || screen.hz <= 0) return
     val made = cap * mult
     if (made > screen.hz) {
         FgOverLimitWarning(cap, mult, screen, canChangeMult, onSetCap)
+        return
+    }
+    // Measured: frame generation has been getting clearly fewer real frames than the cap. Offer the
+    // highest cap it can keep up with that still fits the display evenly.
+    if (shortReal in 1 until cap) {
+        val pick = fgShortRealPick(shortReal, mult, supported, autoOn, screen.hz)
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                "Frame generation keeps up with $shortReal of the game's $cap frames a second, so you see " +
+                    "about ${shortReal * mult}, not $made." + if (pick != null) " For an even picture:" else "",
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                fontSize = 11.sp
+            )
+            if (pick != null) {
+                val label = if (pick.second > 0) "Set Max FPS to ${pick.first} → ${pick.second} Hz"
+                    else "Set Max FPS to ${pick.first}"
+                FgFixButton(label, MaterialTheme.colorScheme.primary) { onSetCap(pick.first) }
+            }
+        }
         return
     }
     if (!autoOn || screen.held || made == screen.hz) return
@@ -2286,6 +2309,30 @@ private fun FgFitAdvice(
             }
         }
     }
+}
+
+/**
+ * The cap to offer when native frame generation keeps up with only [shortReal] real frames a second:
+ * the highest cap at or below it that fits the display evenly. With Auto (match FPS) the display
+ * follows cap x multiplier, so any display rate divisible by the multiplier is a fit (cap, rate).
+ * Without it the display stays at [screenHz], so cap x multiplier must divide it (cap, 0 = no change
+ * of rate to name). null = nothing of 10 fps or more fits.
+ */
+internal fun fgShortRealPick(shortReal: Int, mult: Int, supported: List<Int>, autoOn: Boolean, screenHz: Int): Pair<Int, Int>? {
+    if (shortReal < 10 || mult < 2) return null
+    if (autoOn) {
+        return supported.filter { it % mult == 0 && it / mult >= 10 }
+            .map { (it / mult) to it }
+            .sortedBy { it.first }
+            .lastOrNull { it.first <= shortReal }
+    }
+    if (screenHz <= 0) return null
+    var k = 1
+    while (screenHz / (mult * k) >= 10) {
+        if (screenHz % (mult * k) == 0 && screenHz / (mult * k) <= shortReal) return (screenHz / (mult * k)) to 0
+        k++
+    }
+    return null
 }
 
 // Shown while LSFG Native or Win-FG Native is generating and the game's real frames (the FPS cap)
@@ -3705,12 +3752,15 @@ internal fun HudContent(state: XServerDrawerState, embedded: Boolean = false) {
                 modifier = Modifier.padding(start = 4.dp, top = 2.dp)
             )
             if (nativeFgLocks) {
-                // limitVal tracks the slider while dragging, so the advice updates live.
+                // limitVal tracks the slider while dragging, so the advice updates live. The measured
+                // shortfall belongs to the applied cap, so it only shows while the slider sits there.
+                val shortReal by state.frameGenShortReal.collectAsState()
                 FgFitAdvice(
                     cap = limitVal, mult = fgMult,
                     screen = rememberFgScreen(displayTargetHz, supportedRefreshRates, currentRefreshRate),
                     supported = supportedRefreshRates, autoOn = matchRefreshOn && vrrSupported,
-                    canChangeMult = fgEngine == "lsfg-native"
+                    canChangeMult = fgEngine == "lsfg-native",
+                    shortReal = if (limitVal == initFpsLimit) shortReal else 0
                 ) { fix -> limitVal = fix; applyLimiter() }
             }
         }

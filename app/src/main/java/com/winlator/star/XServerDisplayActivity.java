@@ -4615,6 +4615,34 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private android.os.Handler lsfgStatsHandler;
     private Runnable lsfgStatsTick;
 
+    // Real frames a second frame generation got, last FG_SHORT_WINDOW readouts (one a second), for the
+    // drawer's "keeps up with N of the cap" advice. Restarted when the cap or the multiplier changes.
+    private static final int FG_SHORT_WINDOW = 8;
+    private final float[] fgShortRing = new float[FG_SHORT_WINDOW];
+    private int fgShortCount, fgShortNext, fgShortCap = -1, fgShortMult = -1;
+
+    /** Feed one readout; publishes the 8 s average when it is clearly below the cap, else 0. */
+    private void noteFgRealRate(float realFps) {
+        XServerDrawerState s = XServerDrawerState.INSTANCE;
+        Integer capObj = s.getFpsLimiterEnabled().getValue() ? s.getFpsLimit().getValue() : Integer.valueOf(0);
+        int cap = capObj != null ? capObj : 0;
+        Integer multObj = s.getFrameGenMultiplier().getValue();
+        int mult = multObj != null ? multObj : 0;
+        if (cap != fgShortCap || mult != fgShortMult) {
+            fgShortCap = cap; fgShortMult = mult; fgShortCount = 0; fgShortNext = 0;
+        }
+        if (cap <= 0 || mult < 2 || !(realFps > 0f)) { s.setFrameGenShortReal(0); return; }
+        fgShortRing[fgShortNext] = realFps;
+        fgShortNext = (fgShortNext + 1) % FG_SHORT_WINDOW;
+        if (fgShortCount < FG_SHORT_WINDOW) fgShortCount++;
+        if (fgShortCount < FG_SHORT_WINDOW) { s.setFrameGenShortReal(0); return; }
+        float sum = 0f;
+        for (float v : fgShortRing) sum += v;
+        float avg = sum / FG_SHORT_WINDOW;
+        boolean shortOfCap = avg < cap - Math.max(2f, cap * 0.05f);
+        s.setFrameGenShortReal(shortOfCap ? (int) Math.floor(avg) : 0);
+    }
+
     /**
      * Poll the renderer for what frame generation is actually achieving and
      * push it to the drawer. Worth showing because the multiplier is a ceiling
@@ -4671,6 +4699,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                             text += String.format(java.util.Locale.US, "  %.1f ms/frame GPU", st[5]);
                     }
                     if (haveEngineRates) XServerDrawerState.INSTANCE.setFrameGenReadout(text);
+                    noteFgRealRate(haveEngineRates && shownFps > 0f ? realFps : 0f);
                     // Also feed the in-game HUD. Its own counter ticks once per
                     // GUEST frame and therefore cannot see anything added after
                     // the game - it read 30 while the panel was showing 118,
@@ -4690,6 +4719,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     private void stopLsfgStatsReadout() {
+        XServerDrawerState.INSTANCE.setFrameGenShortReal(0);
+        fgShortCount = 0; fgShortNext = 0; fgShortCap = -1; fgShortMult = -1;
         // 0 puts both HUDs back to plain guest-rate reporting.
         if (frameRating != null) frameRating.setPresentedFps(0f);
         if (frameRatingHorizontal != null) frameRatingHorizontal.setPresentedFps(0f);
@@ -10847,6 +10878,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
             boolean asyncCopy = !Boolean.FALSE.equals(adapterCfg.asyncCopy);
             com.winlator.star.wayland.WaylandCompositor.nativeSetAsyncCopy(asyncCopy);
             if (!asyncCopy) Log.i("XServerDisplayActivity", "wayland: asynchronous copy path disabled");
+            // Frame-gen pacing: while native frame generation generates, the game gets a buffer back only once
+            // a newer frame is on screen (compositor.c), so it renders what generation can take. Default on;
+            // BANNER_WAYLAND_FG_PACE=0/false/off for an A/B.
+            String fgPaceEnv = env != null ? env.get("BANNER_WAYLAND_FG_PACE") : null;
+            boolean fgPace = fgPaceEnv == null || fgPaceEnv.isEmpty()
+                    || !("0".equals(fgPaceEnv.trim()) || "false".equalsIgnoreCase(fgPaceEnv.trim()) || "off".equalsIgnoreCase(fgPaceEnv.trim()));
+            com.winlator.star.wayland.WaylandCompositor.nativeSetFgPace(fgPace);
+            if (!fgPace) Log.i("XServerDisplayActivity", "wayland: frame-gen pacing disabled");
             // Zero-copy acquire fences the game's driver attaches itself (banner_ahb_v1 version 3), default on;
             // off makes the compositor ignore them.
             boolean clientFence = !Boolean.FALSE.equals(adapterCfg.clientFence);

@@ -281,6 +281,11 @@ object XServerDrawerState {
     private val _frameGenReadout = MutableStateFlow("")
     val frameGenReadout: StateFlow<String> = _frameGenReadout
 
+    // Native frame gen: the real frames a second it has been getting over the last 8 s when that is
+    // clearly below the FPS cap (it cannot keep up with every game frame); 0 = keeping up or not measured.
+    private val _frameGenShortReal = MutableStateFlow(0)
+    val frameGenShortReal: StateFlow<Int> = _frameGenShortReal
+
     private val _lsfgPerformanceMode = MutableStateFlow(false)
     val lsfgPerformanceMode: StateFlow<Boolean> = _lsfgPerformanceMode
 
@@ -688,6 +693,7 @@ object XServerDrawerState {
     fun setFrameGenPerfPreset(v: Int)      { _frameGenPerfPreset.value = v.coerceIn(0, 2) }
     fun setFrameGenEngine(v: String)       { _frameGenEngine.value = v }
     fun setFrameGenReadout(v: String)      { _frameGenReadout.value = v }
+    fun setFrameGenShortReal(v: Int)       { _frameGenShortReal.value = v }
     fun setLsfgPerformanceMode(v: Boolean) { _lsfgPerformanceMode.value = v }
     fun setFgCaptureResolution(v: String)  { _fgCaptureResolution.value = v.ifEmpty { "panel" } }
     fun setFgPanelHeight(v: Int)           { _fgPanelHeight.value = v }

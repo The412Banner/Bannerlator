@@ -272,6 +272,9 @@ public final class WaylandCompositor {
      *  and paced every game to that wait). Default on; BANNER_WAYLAND_ASYNC_COPY=0 in the container's
      *  environment variables restores the synchronous path (A/B). Set before the compositor starts. */
     public static native void nativeSetAsyncCopy(boolean on);
+    /** While native frame generation generates, give the game a buffer back only once a newer frame is on
+     *  screen, so it renders what generation takes (default on; BANNER_WAYLAND_FG_PACE=0 = off). */
+    public static native void nativeSetFgPace(boolean on);
 
     /** Zero-copy acquire fences the game's driver attaches itself (banner_ahb_v1 version 3): on kernels without
      *  the dma-buf sync_file ioctls the compositor cannot export a fence from the game's buffer and the display

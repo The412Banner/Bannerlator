@@ -30,6 +30,7 @@ extern int  banner_cursor_snapshot(int *out, int cap);
 extern void banner_wayland_send_scene_input(int type, int a, int b);
 extern void banner_wayland_vsync(int64_t frame_time_ns);
 extern volatile int g_fps_limit;
+extern void banner_set_fg_pace(int on);
 extern volatile int g_hide_shell;
 extern volatile int g_zero_copy;
 extern volatile unsigned g_zero_copy_last;
@@ -398,6 +399,14 @@ JNIEXPORT void JNICALL
 Java_com_winlator_star_wayland_WaylandCompositor_nativeSetAsyncCopy(JNIEnv *env, jclass clazz, jboolean on) {
     vkp_set_async_copy(on ? 1 : 0);
     __android_log_print(ANDROID_LOG_INFO, TAG, "asynchronous copy path %s", on ? "on" : "off");
+}
+
+/* Frame-gen pacing (compositor.c): while native frame generation generates, a replaced buffer goes back
+ * once a newer frame of its surface is on screen. Default on; BANNER_WAYLAND_FG_PACE=0 = off. */
+JNIEXPORT void JNICALL
+Java_com_winlator_star_wayland_WaylandCompositor_nativeSetFgPace(JNIEnv *env, jclass clazz, jboolean on) {
+    banner_set_fg_pace(on ? 1 : 0);
+    __android_log_print(ANDROID_LOG_INFO, TAG, "frame-gen pacing %s", on ? "on" : "off");
 }
 
 /* How a window the compositor focuses by itself is made Wine's foreground window: 1 = winhandler.exe

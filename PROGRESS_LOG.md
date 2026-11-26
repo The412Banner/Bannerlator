@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-25 — Frame gen: pace the game to native FG + measured fit advice (feat/fg-pace-real, CI running)
+## 2026-11-25 — Frame gen: pace the game to native FG + measured fit advice (feat/fg-pace-real, INSTALLED FIT, device test next)
 - Why: user 21:15 EST "when framegen is enabled base fps drops (40 -> 30) so 2x doesn't work"; logs (DiRT Showdown,
   Pocket FIT, BL 3.2.2 Wayland): the game keeps the cap, native FG cannot take every frame and skips them (WFG 2x @72:
   game 70-72, real 67 -> 50, up to 207 frames/10 s replaced unshown, screen 133 -> 107). lsfg-vk / in-game Win-FG never
@@ -18,6 +18,14 @@
 - CI: build-artifacts 45743981785 (headSha cf1dd3c7 asserted) GREEN x4 (21:50 EST), pubg log: BUILD SUCCESSFUL, no warnings in
   changed files. Staged /sdcard/Download/Bannerlator-fg-pace-real-cf1dd3c7.apk (pubg, sha256 4a69fad3, host == device).
   Install awaits the user's yes (FIT has 3.2.2 vc109).
+- 11-26 11:22 EST INSTALLED on the FIT (user "yes install it"): pm install -r Success, installed base.apk sha256 4a69fad3
+  == staged (versionName 3.2.2 vc109 kept, lastUpdateTime 11:22:00). No game was running (only the app process, killed by
+  the install). Crash buffer: one older entry 11-25 20:58 EST = DroidDeck :xcloudnative SIGSEGV in vkp_framegen_run ->
+  Adreno vkUpdateDescriptorSets (DD pr-3232 test build, not Bannerlator).
+- RESUME POINT: FIT runs fg-pace-real cf1dd3c7. Next launch = user runs DiRT Showdown, scaling Off, WFG 2x, limit 72,
+  screen recording on. Then read <game>/wayland/wayland-2026-11-26_*.log (perf 'frame-gen pacing', unshown, GPU frames
+  from games vs scenes; tabulator scratchpad fgdrop/t.py) + the video (drawer hint + fit button) + logcat crash buffer.
+  No background jobs. Undo = reinstall 3.2.2 release APK.
 - Device test (next): DiRT Showdown WFG 2x @72 scaling off (the run that dropped to 107): expect unshown near 0, real
   closer to 72, perf "frame-gen pacing" counts, hint "keeps up with N of 72" + fit button; A/B with BANNER_WAYLAND_FG_PACE=0.
   Not merged, not device-tested. Resume: worktree above, branch pushed.

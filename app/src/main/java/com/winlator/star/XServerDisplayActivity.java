@@ -341,6 +341,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // real-Steam session (set right after realSteamPlan is armed, cleared by releaseRealSteamSession).
     // Separate from realSteamPlan so the release is idempotent across exit() and onDestroy().
     private volatile boolean realSteamSessionHeld = false;
+    /** Container desktop: Steam sign-in env for steam:// launches through the SteamLite agent (see maybeArmDesktopSteam). */
+    private Map<String, String> desktopSteamEnv = null;
     // App Steam (Option B) launch plan. Non-null ONLY for a genuine-Steam shortcut with launchMode=AppSteam
     // whose prerequisites resolved AND whose session host (bl-steam-host, the app's own genuine Steam
     // session) started — built by maybeStageAppSteam() on the launch worker. The game exe runs DIRECTLY
@@ -6586,6 +6588,114 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
     }
 
+    /** Spec keys the desktop session supplies itself (sign-in, agent channel) or the agent derives (app, spec). */
+    private static final java.util.Set<String> DESKTOP_STEAM_SESSION_KEYS = new java.util.HashSet<>(java.util.Arrays.asList(
+            "WN_STEAM_TOKEN", "WN_STEAM_USERNAME", "WN_STEAM_STEAMID", "WN_STEAM_APPID", "WN_STEAM_GAMEEXE_FILE",
+            "PROTON_DISABLE_LSTEAMCLIENT", "BL_AGENT_PORT", "BL_STEAM_REGION", "WN_STEAM_CMLIST"));
+
+    /**
+     * Container desktop (no shortcut): a Steam game started from inside the container goes through the
+     * SteamLite agent like a shortcut launch. EA Desktop's Play button on a Steam-owned game opens
+     * {@code steam://run/<appid>}, whose handler is the agent's steam.exe; without Bannerlator's launch env
+     * it has no Steam sign-in and no game, and quits. Here every Steam shortcut of this container is staged
+     * the way a SteamLite launch stages it (steamapps link, app manifest, spec C:\<appid>.spec) and its
+     * per-game settings are appended to the spec as KEY=VALUE lines (the agent applies them for a steam://
+     * launch); the session gets the Steam sign-in, and a reconnecting agent channel pauses the app's own
+     * Steam session while an agent is signed in (one session per account). Runs on the launch worker.
+     * Any failure leaves the desktop session unchanged.
+     */
+    private void maybeArmDesktopSteam() {
+        if (shortcut != null || container == null) return;
+        try {
+            SteamRepository repo = SteamRepository.getInstance();
+            String token = repo.getRefreshToken();
+            File steamLiteDir = SteamLiteComponent.INSTANCE.installDir(this);
+            if (token == null || token.isEmpty() || steamLiteDir == null
+                    || !new File(steamLiteDir, RealSteamLauncher.STEAM_EXE_NAME).isFile()) return;
+            File driveC = new File(container.getRootDir(), ".wine/drive_c");
+            File[] files = container.getDesktopDir().listFiles();
+            if (files == null) return;
+            Map<String, String> sessionEnv = null;
+            int staged = 0;
+            for (File f : files) {
+                if (!f.getName().endsWith(".desktop")) continue;
+                try {
+                    Shortcut sc = new Shortcut(container, f);
+                    String storeSource = sc.getExtra("storeSource", "");
+                    int tagged;
+                    try { tagged = Integer.parseInt(sc.getExtra("steamAppId", "0").trim()); } catch (Exception e) { tagged = 0; }
+                    if (!"steam".equals(storeSource) && tagged <= 0) continue;
+                    SteamAppRef ref = resolveSteamAppRefFrom(sc.path, storeSource, tagged);
+                    if (ref == null) continue;
+                    SteamDatabase.GameRow row = repo.getDatabase().getGame(ref.appId);
+                    String displayName = (row != null && row.name != null) ? row.name : sc.name;
+                    com.winlator.star.store.EaSupport.Profile ea =
+                            com.winlator.star.store.EaSupport.detect(new File(ref.installDir));
+                    RealSteamLauncher.Plan plan = RealSteamLauncher.prepare(this, driveC, steamLiteDir, sc, ref.appId,
+                            displayName, ref.installDir, false, 0, row != null ? row.installDir : null,
+                            ea != null && ea.getEaChain(), staged == 0);
+                    if (plan == null) continue;
+                    StringBuilder extra = new StringBuilder();
+                    for (Map.Entry<String, String> e : plan.env.entrySet()) {
+                        if (DESKTOP_STEAM_SESSION_KEYS.contains(e.getKey()) || e.getValue() == null
+                                || e.getValue().indexOf('\n') >= 0) continue;
+                        extra.append(e.getKey()).append('=').append(e.getValue()).append('\n');
+                    }
+                    File spec = new File(driveC, ref.appId + ".spec");
+                    String head = FileUtils.readString(spec);
+                    if (head != null && extra.length() > 0) FileUtils.writeString(spec, head + extra);
+                    if (sessionEnv == null) {
+                        sessionEnv = new java.util.LinkedHashMap<>();
+                        for (String k : new String[] {"WN_STEAM_TOKEN", "WN_STEAM_USERNAME", "WN_STEAM_STEAMID",
+                                "BL_STEAM_REGION", "WN_STEAM_CMLIST"}) {
+                            String v = plan.env.get(k);
+                            if (v != null) sessionEnv.put(k, v);
+                        }
+                    }
+                    staged++;
+                } catch (Throwable t) {
+                    Log.w("BH_REALSTEAM", "desktop Steam: staging " + f.getName() + " failed", t);
+                }
+            }
+            if (sessionEnv == null) return;
+            int port = com.winlator.star.store.SteamSessionManager.INSTANCE.openAgentChannel(desktopAgentListener, true);
+            if (port > 0) sessionEnv.put("BL_AGENT_PORT", String.valueOf(port));
+            desktopSteamEnv = sessionEnv;
+            Log.i("BH_REALSTEAM", "desktop Steam armed: " + staged + " Steam game(s) staged for steam:// launches"
+                    + (port > 0 ? ", agent channel port " + port : ", no agent channel"));
+        } catch (Throwable t) {
+            desktopSteamEnv = null;
+            Log.w("BH_REALSTEAM", "desktop Steam setup errored — desktop session unchanged", t);
+        }
+    }
+
+    /** Container desktop agent events: the app's Steam session steps aside while an agent is signed in. */
+    private final com.winlator.star.store.SteamAgentChannel.Listener desktopAgentListener =
+            new com.winlator.star.store.SteamAgentChannel.Listener() {
+        @Override public void onAgentEvent(String ev, org.json.JSONObject obj) {
+            if ("started".equals(ev) && !realSteamSessionHeld) {
+                try {
+                    SteamRepository.getInstance().suspendForRealSteam();
+                    realSteamSessionHeld = true;
+                    Log.i("BH_REALSTEAM", "desktop Steam: agent started (app " + obj.optInt("appid", 0)
+                            + "), app Steam session paused");
+                } catch (Throwable t) {
+                    Log.w("BH_REALSTEAM", "desktop Steam: could not pause the app's Steam session", t);
+                }
+            }
+        }
+        @Override public void onAgentDisconnected() {
+            if (!realSteamSessionHeld) return;
+            realSteamSessionHeld = false;
+            try {
+                boolean online = SteamRepository.getInstance().resumeAfterRealSteam(0);
+                Log.i("BH_REALSTEAM", "desktop Steam: agent gone, app Steam session resumed (loggedIn=" + online + ")");
+            } catch (Throwable t) {
+                Log.w("BH_REALSTEAM", "desktop Steam: resume of the app's Steam session errored", t);
+            }
+        }
+    };
+
     /**
      * App Steam (Option B): if this is a genuine-Steam shortcut explicitly set to {@code launchMode=AppSteam},
      * seed the prefix (genuine PE client DLLs from the SteamLite package when present + the
@@ -12179,6 +12289,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // App Steam (Option B): mutually exclusive with the above by launchMode. Starts the app's
             // genuine Steam session host now so its sign-in overlaps the rest of the launch setup.
             maybeStageAppSteam();
+            // Container desktop: Steam games started from inside the container (steam://) through SteamLite.
+            maybeArmDesktopSteam();
             // Tell the drawer's Friends tab which source to wait for: the agent relay when the plan is
             // armed, else the app's own session (a fallback to the normal launch never pauses it).
             try { com.winlator.star.store.InGameFriendsSource.INSTANCE.setRealSteamLaunch(realSteamPlan != null); }
@@ -12441,6 +12553,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 for (Map.Entry<String, String> e : appSteamPlan.env.entrySet())
                     envVars.put(e.getKey(), e.getValue());
                 Log.i("BH_APPSTEAM", "guest env merged (" + appSteamPlan.env.size() + " keys; PROTON_DISABLE_LSTEAMCLIENT unset)");
+            }
+            if (desktopSteamEnv != null) {
+                for (Map.Entry<String, String> e : desktopSteamEnv.entrySet())
+                    envVars.put(e.getKey(), e.getValue());
             }
             if (realSteamPlan != null) {
                 for (Map.Entry<String, String> e : realSteamPlan.env.entrySet())

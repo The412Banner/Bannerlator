@@ -165,6 +165,26 @@ public final class RealSteamLauncher {
                                int agentPort,
                                String picsInstallDir,
                                boolean eaChain) {
+        return prepare(ctx, driveC, steamLiteInstallDir, shortcut, appId, displayName, hostInstallDir,
+                controllerPassthrough, agentPort, picsInstallDir, eaChain, true);
+    }
+
+    /**
+     * As above; {@code stageClient = false} skips copying the SteamLite package into the prefix (the
+     * container desktop stages several games in a row and copies the client once, for the first).
+     */
+    public static Plan prepare(Context ctx,
+                               File driveC,
+                               File steamLiteInstallDir,
+                               Shortcut shortcut,
+                               int appId,
+                               String displayName,
+                               String hostInstallDir,
+                               boolean controllerPassthrough,
+                               int agentPort,
+                               String picsInstallDir,
+                               boolean eaChain,
+                               boolean stageClient) {
         try {
             // ── 0. Validate prerequisites ────────────────────────────────────────────────────────
             if (driveC == null) { Log.w(TAG, "prepare: null driveC - fallback"); return null; }
@@ -224,7 +244,8 @@ public final class RealSteamLauncher {
             File spec = new File(driveC, appId + ".spec");
 
             // ── 3a. Stage SteamLite client + agent into the prefix ───────────────────────────────
-            if (!stageSteamLite(steamLiteInstallDir, steamDir, commonFilesSteamDir)) {
+            if (stageClient ? !stageSteamLite(steamLiteInstallDir, steamDir, commonFilesSteamDir)
+                            : !new File(steamDir, STEAM_EXE_NAME).isFile()) {
                 Log.w(TAG, "prepare: SteamLite staging failed - fallback");
                 return null;
             }

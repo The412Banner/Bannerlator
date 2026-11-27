@@ -48,6 +48,8 @@ class SteamAgentChannel private constructor(private val server: ServerSocket) {
     val port: Int get() = server.localPort
 
     @Volatile private var listener: Listener? = null
+    /** Keep accepting after an agent goes away (container desktop: one agent per steam:// launch). */
+    @Volatile private var persistent = false
     @Volatile private var client: Socket? = null
     @Volatile private var writer: OutputStreamWriter? = null
     private val closed = AtomicBoolean(false)
@@ -103,9 +105,17 @@ class SteamAgentChannel private constructor(private val server: ServerSocket) {
     }
 
     private fun acceptLoop() {
+        while (serveOne() && persistent && !closed.get()) { /* next agent */ }
+        close()
+    }
+
+    /** Serve one agent connection; false when accepting failed (stop instead of spinning). */
+    private fun serveOne(): Boolean {
+        var accepted = false
         try {
             val s = server.accept()
-            if (closed.get()) { s.close(); return }
+            accepted = true
+            if (closed.get()) { s.close(); return false }
             s.tcpNoDelay = true
             s.soTimeout = 0
             client = s
@@ -130,8 +140,8 @@ class SteamAgentChannel private constructor(private val server: ServerSocket) {
                 Log.i(TAG, "agent disconnected")
                 try { listener?.onAgentDisconnected() } catch (t: Throwable) { Log.w(TAG, "listener threw", t) }
             }
-            close()
         }
+        return accepted
     }
 
     private fun handleLine(line: String) {
@@ -187,8 +197,12 @@ class SteamAgentChannel private constructor(private val server: ServerSocket) {
         /** Agent p3 friends-relay events (see [SteamAgentFriendsBridge]); never logged verbatim. */
         private val FRIENDS_EVENTS = setOf("friends", "persona", "chat_in", "chat_typing", "chat_sent")
 
-        /** Bind an ephemeral loopback port and start accepting (one client). Null on failure. */
-        fun open(listener: Listener?): SteamAgentChannel? {
+        /**
+         * Bind an ephemeral loopback port and start accepting: one client, or one after another when
+         * [persistent]. Null on failure.
+         */
+        @JvmOverloads
+        fun open(listener: Listener?, persistent: Boolean = false): SteamAgentChannel? {
             return try {
                 // Bind the IPv4 loopback explicitly: on Android getLoopbackAddress() is ::1, and the
                 // agent (Wine winsock, AF_INET) connects to 127.0.0.1 — an IPv6-only listener answers
@@ -196,6 +210,7 @@ class SteamAgentChannel private constructor(private val server: ServerSocket) {
                 val server = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))
                 val ch = SteamAgentChannel(server)
                 ch.listener = listener
+                ch.persistent = persistent
                 Thread({ ch.acceptLoop() }, "steam-agent-channel").apply { isDaemon = true }.start()
                 Log.i(TAG, "listening on ${server.inetAddress.hostAddress}:${ch.port}")
                 ch

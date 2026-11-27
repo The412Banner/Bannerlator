@@ -412,9 +412,10 @@ object SteamSessionManager {
      * activity BEFORE the guest boots; the returned port goes into the plan env as `BL_AGENT_PORT`.
      * Any previous channel is closed first (one launch at a time). 0 when it could not be opened.
      */
-    fun openAgentChannel(listener: SteamAgentChannel.Listener?): Int {
+    @JvmOverloads
+    fun openAgentChannel(listener: SteamAgentChannel.Listener?, persistent: Boolean = false): Int {
         closeAgentChannel()
-        val ch = SteamAgentChannel.open(listener) ?: return 0
+        val ch = SteamAgentChannel.open(listener, persistent) ?: return 0
         agentChannel = ch
         // Friends/chat relay (agent p3): the bridge consumes the channel's friends events while the
         // app session is paused for the game.

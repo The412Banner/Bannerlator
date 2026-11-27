@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-27 — feat/ea-desktop-play MERGED to main (fast-forward)
+- 09:0x EST user: "1 merge". main was 8e18588f5 (= branch base) -> FAST-FORWARD to dad60775e. Backup ref
+  refs/backup/20261127/main-before-ea-desktop-play = 8e18588f5 (pushed). Code since the device-tested APK 372ab429 =
+  tools/steamlite-agent/main.cpp only (ef526833 + 967c2bc4, both device-tested as agent 1a9ba492) + PROGRESS_LOG.
+- Ships: container desktop stages the container's Steam games for steam:// launches (EA app Play), SteamLite agent
+  steam:// URL launch, 60 s hold, process exit after logoff. SteamLite v11 package = this agent (published separately).
+- Branch feat/ea-desktop-play kept (delete only on user word). No release.
+
 ## 2026-11-27 — EA Desktop Play in the container desktop WORKS (feat/ea-desktop-play 967c2bc4, device-proven FIT, not merged)
 - 07:55 EST APK 372ab429 installed on the FIT (pubg, sha256 24411dda == staged; user: "install it ... device is yours").
 - Container 1 desktop (Wayland): "desktop Steam armed: 6 Steam game(s) staged". EA app -> Library -> NFS Most Wanted -> Play:

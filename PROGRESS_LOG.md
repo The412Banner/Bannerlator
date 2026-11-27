@@ -1,5 +1,23 @@
 # Star-Compose — Progress Log
 
+## 2026-11-27 — EA Desktop Play in the container desktop (feat/ea-desktop-play, building/testing)
+- Why: user 11-27 "true EA Desktop support to run and launch games via Steam EA shortcuts and manually from EA Desktop
+  launches in container"; 07:1x "resume the EA desktop work" (root-a9's session was lost to an lmkd kill of Termux 06:50).
+- Problem: EA Desktop's Play on a Steam-owned game opens steam://run/<appid>; HKCR\steam = SteamLite agent steam.exe
+  "-- %1"; in a container desktop the agent had no Steam sign-in, no spec and lsteamclient on -> crash, nothing starts.
+- Built: 5283a0e3 agent: steam://run|rungameid|launch/<id> -> C:\<id>.spec + its KEY=VALUE env lines, self-relaunch with
+  PROTON_DISABLE_LSTEAMCLIENT=1, message box when no sign-in/spec (agent CI 45992285049, steam.exe sha256 160a89f4).
+  e7995435 app: desktop session stages every Steam shortcut (prepare, client copied once), session env WN_STEAM_* +
+  BL_AGENT_PORT, persistent agent channel pauses/resumes the app Steam session. 372ab429 compile fix (Java listener
+  missing onAgentConnected; APK CI 45992320813 had failed x4). APK CI 45996402130 (372ab429) GREEN x4.
+- Already proven (method 2, SteamLite shortcut, layer = proton-wine ea-cef128 34308f42): NFS MW in-game (05:27/05:30),
+  NFS Payback main menu 79 fps (06:46-07:12; OOA 200; EA "connection lost" dialog after 15 min in the background).
+- Device: agent 160a89f4 swapped into files/imagefs/opt/steamlite + xuser-1 prefix (backups Download/ea-fix-backup/
+  steam.exe.v10-*); APK staged Download/Bannerlator-ea-desktop-play-372ab429.apk sha256 24411dda (host == device);
+  old APK backed up Download/Bannerlator-backup/com.tencent.ig-before-ea-desktop-play-20261127.apk (96638746).
+  User 07:55: "install it ... device is yours".
+- Resume point: install 372ab429, container 1 desktop (Wayland) -> EA -> Play NFS MW, then Payback. NOT device-tested yet.
+
 ## 2026-11-26 — yserver r2-pre1 MERGED to main (fast-forward, from feat/yserver-r2)
 - 23:1x EST user: "merge yserver to main". main was still 96ce4f52 (= branch base), so FAST-FORWARD to this commit.
   Backup ref refs/backup/20261126/main-before-yserver-r2 = 96ce4f52 (pushed). Code tree == tested build d2591e61

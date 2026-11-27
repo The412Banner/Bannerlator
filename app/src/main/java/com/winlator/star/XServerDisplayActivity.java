@@ -6672,6 +6672,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     /** Container desktop agent events: the app's Steam session steps aside while an agent is signed in. */
     private final com.winlator.star.store.SteamAgentChannel.Listener desktopAgentListener =
             new com.winlator.star.store.SteamAgentChannel.Listener() {
+        @Override public void onAgentConnected() {}
         @Override public void onAgentEvent(String ev, org.json.JSONObject obj) {
             if ("started".equals(ev) && !realSteamSessionHeld) {
                 try {

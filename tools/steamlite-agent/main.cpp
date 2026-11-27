@@ -668,6 +668,45 @@ static void load_launch_chain() {
         } else cur.push_back(*p);
     }
 }
+// EA titles (launcher chain): EA's cached game licence (ProgramData\Electronic Arts\EA Services\License\
+// <contentId>.dlf) runs out within about half an hour. The game's activation (OOA 4.2, e.g. NFS Most Wanted)
+// then renews it with the token EA hands it, and a Steam-linked EA app hands its long JWS token, of which
+// OOA reads 256 characters -> "unable to connect to EA servers to activate". With no licence file EA
+// fetches a fresh licence through a short opaque token, which works. So before an EA-chain launch, drop
+// licence files older than WN_EA_LICENCE_MAX_AGE_S (default 600 s; negative turns it off). Younger ones
+// stay, so a quick relaunch still works offline.
+static void ea_drop_stale_licences() {
+    int maxAge = 600;
+    if (const char* e = getenv("WN_EA_LICENCE_MAX_AGE_S")) maxAge = atoi(e);
+    if (maxAge < 0) return;
+    static const char dir[] = "C:\\ProgramData\\Electronic Arts\\EA Services\\License\\";
+    char pat[MAX_PATH];
+    snprintf(pat, sizeof(pat), "%s*.dlf", dir);
+    WIN32_FIND_DATAA fd;
+    HANDLE h = FindFirstFileA(pat, &fd);
+    if (h == INVALID_HANDLE_VALUE) return;
+    FILETIME nowFt; GetSystemTimeAsFileTime(&nowFt);
+    ULARGE_INTEGER now; now.LowPart = nowFt.dwLowDateTime; now.HighPart = nowFt.dwHighDateTime;
+    int dropped = 0, kept = 0;
+    do {
+        if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+        if (strstr(fd.cFileName, "_cached")) continue;
+        ULARGE_INTEGER t; t.LowPart = fd.ftLastWriteTime.dwLowDateTime; t.HighPart = fd.ftLastWriteTime.dwHighDateTime;
+        long long ageS = now.QuadPart > t.QuadPart ? (long long) ((now.QuadPart - t.QuadPart) / 10000000ULL) : 0;
+        if (ageS < maxAge) { kept++; continue; }
+        char path[MAX_PATH];
+        snprintf(path, sizeof(path), "%s%s", dir, fd.cFileName);
+        if (DeleteFileA(path)) {
+            dropped++;
+            log_line("[wn-launcher] EA licence %s dropped (%lld s old) - EA fetches a fresh one", fd.cFileName, ageS);
+        } else {
+            log_line("[wn-launcher] EA licence %s: delete failed GLE=%lu", fd.cFileName, GetLastError());
+        }
+    } while (FindNextFileA(h, &fd));
+    FindClose(h);
+    log_line("[wn-launcher] EA licences: %d dropped, %d kept (younger than %d s)", dropped, kept, maxAge);
+}
+
 static int count_chain_processes() {
     if (g_launchChain.empty()) return 0;
     HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -2094,8 +2133,10 @@ static int agent_main(int argc, char** argv) {
     // Absent or anything else (=1) keeps the full secure window — a wrong "0" on a VAC title would
     // cost the secure launch, so the app only sends 0 for titles its app-info marks as non-VAC.
     load_launch_chain();
-    if (!g_launchChain.empty())
+    if (!g_launchChain.empty()) {
         log_line("[wn-launcher] launcher chain configured: %zu exe name(s) (WN_STEAM_LAUNCH_CHAIN)", g_launchChain.size());
+        ea_drop_stale_licences();
+    }
     const char* vacEnv = getenv("WN_STEAM_VAC");
     const bool vacRequired = !(vacEnv && vacEnv[0] == '0' && vacEnv[1] == '\0');
     log_line("[wn-launcher] secure-launch policy: WN_STEAM_VAC=%s -> %s",

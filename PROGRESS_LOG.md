@@ -1,5 +1,20 @@
 # Star-Compose — Progress Log
 
+## 2026-11-27 — EA licence refresh: agent drops EA licences older than 10 min (fix/ea-licence-refresh 123d9a94, device-proven FIT, not merged)
+- Why: after the container-desktop work, NFS Most Wanted failed EA activation again at 09:05/09:09 EST (EA app Play) and
+  at 09:17 from its SteamLite shortcut, with the 08:33 licence that worked at 08:49. EA's licence for it runs out within
+  ~16-32 min; OOA 4.2 renews it with the token the Steam-linked EA app hands it (JWS, ~4090 chars, tokenFormat [JWS],
+  flow ExternalLogin) and reads 256 chars -> "unable to connect to EA servers to activate". With no licence file EA logs
+  "Requesting opaque token for license fetching during preload" and activation works (proven 05:27 and 08:33).
+- Fix 123d9a94: before an EA-chain launch (WN_STEAM_LAUNCH_CHAIN set; shortcut and steam:// launches) the agent deletes
+  ProgramData\Electronic Arts\EA Services\License\*.dlf (not *_cached) older than WN_EA_LICENCE_MAX_AGE_S (600 s;
+  negative = off). Agent CI 46015043546, steam.exe sha256 44b1ec78 (md5 051d7d82). App unchanged.
+- Device (FIT): 09:22 MW shortcut: "EA licence 71530.dlf dropped (2925 s old)", fresh licence, title screen 60 fps.
+  With proton-wine parent proton_11.14.1-DroidDeck 85ab3217 (full layer, CI 46013005665) installed: 09:28 MW from EA
+  app Play in the container desktop (licence 6 min old, kept) title 60 fps, agent exited after the game; 09:33 Payback
+  shortcut title ~279 fps. Sessions ended clean.
+- Not done: merge (user decision); SteamLite v12 with this agent (v11 = previous agent, published 09:10 EST).
+
 ## 2026-11-27 — feat/ea-desktop-play MERGED to main (fast-forward)
 - 09:0x EST user: "1 merge". main was 8e18588f5 (= branch base) -> FAST-FORWARD to dad60775e. Backup ref
   refs/backup/20261127/main-before-ea-desktop-play = 8e18588f5 (pushed). Code since the device-tested APK 372ab429 =

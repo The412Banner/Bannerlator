@@ -1,5 +1,24 @@
 # Star-Compose — Progress Log
 
+## 2026-11-27 — EA Desktop Play in the container desktop WORKS (feat/ea-desktop-play 967c2bc4, device-proven FIT, not merged)
+- 07:55 EST APK 372ab429 installed on the FIT (pubg, sha256 24411dda == staged; user: "install it ... device is yours").
+- Container 1 desktop (Wayland): "desktop Steam armed: 6 Steam game(s) staged". EA app -> Library -> NFS Most Wanted -> Play:
+  EA redirects to steam://run/1262560 -> agent "steam:// launch for app 1262560, spec C:\1262560.spec" -> LaunchApp ->
+  NFS13.exe -> EA Link2EA -> OOA activation. Chain works; activation first failed (OOA licence stale, see the Wine log:
+  Android's per-network random Wi-Fi MAC; fixed in proton-wine 83b31019).
+- ef526833 agent: steam:// launches hold the Steam session 60 s after the game (was 900 s; the open EA app kept the
+  launcher chain alive and a second Play started a second agent). Agent CI 46005613732.
+- 967c2bc4 agent: end the process after a steam:// launch's clean logoff (it stayed ~230 MB after "Steam Launcher
+  shutdown": steamclient64 DLL detach hang). Agent CI 46008665043 (steam.exe sha256 1a9ba492).
+- Device results (agent 967c2bc4 swapped into files/imagefs/opt/steamlite + prefix, layer = ea-cef128 + nsiproxy 83b31019):
+  08:33 EST EA app Play -> NFS MW title screen 60 fps (activation OK); 08:45 EA app Play -> NFS Payback title ~281 fps
+  (activation OK after its pre-fix licence was cleared); agent exits < 80 s after the game, app Steam session resumed;
+  08:49 MW SteamLite shortcut and 08:53 Payback shortcut also OK (no regression). Desktop session exit via drawer clean.
+- Not done / open: SteamLite v11 package with the new agent (FIT has a hand-swapped steam.exe, backups in
+  Download/ea-fix-backup/steam.exe.v10-*); merge to main = user decision; Payback Alt+F4 shows the game's DirectX
+  ResizeTarget error box (both methods); NFS Heat black screen; existing OOA licences go stale once when the MAC fix
+  lands (BL could clear EA Services\License\*.dlf once). Other devices NOT tested.
+
 ## 2026-11-27 — EA Desktop Play in the container desktop (feat/ea-desktop-play, building/testing)
 - Why: user 11-27 "true EA Desktop support to run and launch games via Steam EA shortcuts and manually from EA Desktop
   launches in container"; 07:1x "resume the EA desktop work" (root-a9's session was lost to an lmkd kill of Termux 06:50).

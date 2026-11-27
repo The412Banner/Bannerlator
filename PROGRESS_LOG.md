@@ -1,5 +1,21 @@
 # Star-Compose — Progress Log
 
+## 2026-11-27 — New neon BL app icon + drawn neon exit screen MERGED to main (fast-forward)
+- User 17:1x EST: two images in Download (app icon 1254 px; exit screen 511x253 with a bar) -> "do it", bar like the top
+  image of their screenshot (outlined pill track, glowing pink-to-cyan fill). 18:2x EST: "merge it".
+  main was 4e42eda9f -> fast-forward to ae6ebb3c5 + this log. Backup ref refs/backup/20261127/main-before-icon-exit-screen.
+- Icon: every mipmap from the artwork; adaptive foreground keeps the whole neon frame inside the 66 dp safe circle on
+  black (no launcher mask clips it); monochrome layer now referenced by both adaptive icons; legacy round icon with
+  alpha; fastlane icon 512 px.
+- Exit screen: ui/ExitScreen.kt draws the card in code (sharp at any size, ~3/4 of the screen): neon frame + corner
+  brackets, gamepad mark, "Bannerlator" (Sora ExtraBold, pink-to-blue), "Exiting..." (new string exit_screen_exiting),
+  pill bar with glowing gradient fill (runs to ~90 %, creeps until the session closes). PreloaderState.showExit +
+  PreloaderUi.exitSince; XServerDisplayActivity's game exit uses it (gamescope/Linux Steam closing page and the shared
+  status screen unchanged).
+- CI 46075832484 GREEN (4 flavors). Device (FIT, pubg APK sha256 46b96a835fdc9c9d), 18:11-18:12 EST: Octopi launcher
+  tile shows the new icon, frame not clipped; real Exit game shows the exit screen sharp at 1920x1080, bar filling
+  (~55 % in a ~1 s exit). No release.
+
 ## 2026-11-27 — "Open links in the Android browser" ON by default MERGED to main (fast-forward)
 - User 14:0x EST "2 yes" (default on), 15:0x EST "merge it". main was 995c5df3c -> fast-forward to e8fba71ee + this log.
   Backup ref refs/backup/20261127/main-before-browser-default-on = 995c5df3c.

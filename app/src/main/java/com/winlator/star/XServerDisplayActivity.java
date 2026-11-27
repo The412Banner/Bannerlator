@@ -3602,6 +3602,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     if (!gamescopeMode) {
                         preloaderDialog.step(2, "Preparing Wine & graphics driver…");
                         setWineDisplayDriver();   // BEFORE setupWineSystemFiles starts the first wineserver
+                        setContainerLinkBrowser(); // same: system.reg is only safe to edit with no wineserver
                         // Controller input log (Log Manager, default off): this launch's recorder, before
                         // the controller setup below starts filling it. Wine sessions only.
                         com.winlator.star.core.ControllerLog.begin(preferences);
@@ -18444,6 +18445,31 @@ return true;
         restoreHudPosition(pill, "epicPillPos");
         rootView.addView(pill);
         pill.bringToFront();
+    }
+
+    // Windows programs open web links through HKCR\http(s)\shell\open\command. Wine's default there is
+    // winebrowser, which on Android finds no system browser and falls back to Wine's Internet Explorer -
+    // no Gecko in our containers, so sign-in and account-link pages stayed blank (Epic "Link your Ubisoft
+    // account" -> epicgames.com/id/link/..., 2026-11-27). Every container carries Pale Moon
+    // (container_pattern_common.tzst, drive_c/PaleMoon since 2026-08-05): make it the link handler while
+    // the value is still Wine's default, so a browser the user picked stays. Re-applied each launch because
+    // a prefix update rewrites wine.inf's winebrowser entry.
+    private void setContainerLinkBrowser() {
+        File prefix = new File(imageFs.getRootDir(), ImageFs.WINEPREFIX);
+        if (!new File(prefix, "drive_c/PaleMoon/palemoon.exe").isFile()) return;
+        File systemReg = new File(prefix, "system.reg");
+        if (!systemReg.isFile()) return;
+        final String command = "\"C:\\PaleMoon\\palemoon.exe\" \"%1\"";
+        try (WineRegistryEditor reg = new WineRegistryEditor(systemReg)) {
+            for (String protocol : new String[] {"http", "https"}) {
+                String key = "Software\\Classes\\" + protocol + "\\shell\\open\\command";
+                String current = reg.getStringValue(key, null, "").toLowerCase(java.util.Locale.ROOT);
+                if (current.isEmpty() || current.contains("winebrowser") || current.contains("iexplore"))
+                    reg.setStringValue(key, null, command);
+            }
+        } catch (Throwable t) {
+            Log.w("XServerDisplayActivity", "link browser: could not set Pale Moon as the http(s) handler", t);
+        }
     }
 
     // Force the Wine graphics driver via the prefix registry. Wayland selects winewayland.drv

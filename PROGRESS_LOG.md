@@ -1,6 +1,12 @@
 # Star-Compose — Progress Log
 
-## 2026-11-26 — yserver r2-pre1 bundled (feat/yserver-r2, INSTALLED FIT, launch check PASSED, merge = user word)
+## 2026-11-26 — yserver r2-pre1 MERGED to main (fast-forward, from feat/yserver-r2)
+- 23:1x EST user: "merge yserver to main". main was still 96ce4f52 (= branch base), so FAST-FORWARD to this commit.
+  Backup ref refs/backup/20261126/main-before-yserver-r2 = 96ce4f52 (pushed). Code tree == tested build d2591e61
+  (git diff d2591e61..main = PROGRESS_LOG.md only). No release; next release picks it up. Main build = workflow_dispatch
+  (head commit is [skip ci]), run ID below once green.
+
+## 2026-11-26 — yserver r2-pre1 bundled (feat/yserver-r2, INSTALLED FIT, launch check PASSED, merged)
 - Why: user 11-26 ~18:3x EST "rebuild it on the latest upstream, if they are worth adding and will not cause issues,
   regression or compatibility problems"; after the device A/B + hand test: "everything worked fine, publish it and
   build bannerlator on a new branch off main".

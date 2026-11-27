@@ -7,11 +7,12 @@ The X server Bannerlator runs instead of its Java X server when a game sets BANN
 windows are shown through Bannerlator's Wayland compositor. Off unless that variable is set.
 
 File in this APK (app/src/main/jniLibs/arm64-v8a/, fetched by CI from ci/yserver.json)
-  libyserver.so   yserver for Android, release r1-pre1, aarch64 Android (bionic) executable.
-                  11,761,400 bytes, sha256 cdb1aac0f1dd4b272c7e8386231c2037782ab659f70167388cf45d6d75b97872
-  Built by https://github.com/The412Banner/yserver-android-spike (release r1-pre1, commit 77446386) from:
-    - yserver by Jos Dehaes, https://github.com/joske/yserver, commit 031ec58d (MIT)
+  libyserver.so   yserver for Android, release r2-pre1, aarch64 Android (bionic) executable.
+                  11,936,768 bytes, sha256 871b63dca3941be172bb0d31a9b75b9ca69943fcd221bb326cd1ed333d7ffb87
+  Built by https://github.com/The412Banner/yserver-android-spike (release r2-pre1, commit b5ce4907) from:
+    - yserver by Jos Dehaes, https://github.com/joske/yserver, commit 8247002b (MIT)
     - the rootless Wayland host by SetZero, https://github.com/joske/yserver/pull/349, commit 6f3c46ff
+      (merged on 8247002b as patch 0000)
     - Android patches 0001-0029 from yserver-android-spike (MIT, Copyright (c) 2026 The412Banner)
 
 Licences

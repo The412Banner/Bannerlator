@@ -1,5 +1,24 @@
 # Star-Compose — Progress Log
 
+## 2026-11-26 — yserver r2-pre1 bundled (feat/yserver-r2, CI running)
+- Why: user 11-26 ~18:3x EST "rebuild it on the latest upstream, if they are worth adding and will not cause issues,
+  regression or compatibility problems"; after the device A/B + hand test: "everything worked fine, publish it and
+  build bannerlator on a new branch off main".
+- yserver-android-spike r2-pre1 PUBLISHED 20:35 EST (prerelease, tag -> b5ce4907 = CI 45912513511 build commit,
+  5 assets, public download sha256 871b63dc verified): upstream joske/yserver 031ec58d -> 8247002b (23 commits: Xorg-like
+  pointer grabs/click routing, XTest device motion, Present future-target async fix, libz-sys 1.1.33; access control
+  inactive by default), SetZero PR #349 6f3c46ff merged on it as patch 0000 (1 conflict in selection.rs, resolved),
+  patches 0001-0029 unchanged (0008 Cargo.toml re-made). Spike main 2b73090 (backup main-before-r2 = 0a87aef).
+- Device proof of r2 BEFORE bundling (staged files/yserver/yserver on the FIT): probes 15/15 + 10/10; ABAB vs r1
+  (container 1, BANNER_YSERVER=1, limiter off, fan max): AIO vk 1987.7/1970.8, dx11 2682.1/2675.5, DiRT 96.37/96.35
+  (min 64.7/69.3) = same; 12 sessions 0 fatal/crash, yserver logs 0 ERROR/panic. User hand test 19:28-19:41 EST
+  (Windows Steam client): user "everything worked fine"; log shows Android -> Steam paste (17 bytes), clean exit; a
+  Steam -> Android copy did not appear in that log.
+- Built d2591e61 (off main 96ce4f52): ci/yserver.json -> r2-pre1 (sha256 871b63dc), NOTICE_YSERVER.txt + assets copy.
+  Local check: pinned URL downloads, sha256 OK. CI build-artifacts 45923509979 (headSha d2591e61) running.
+- Next: CI green -> stage APK in Download (hash host + device) -> ASK before install -> remove the staged
+  files/yserver/yserver so the bundled r2 is what runs -> yserver launch check -> merge on the user's word.
+
 ## 2026-11-25 — 3.2.2 STABLE RELEASED + VERIFIED (main a0839915, Latest)
 - release.yml 45548732395 SUCCESS (notes, 4 builds, 4 patch jobs, release), published 00:11:31 EST. Tag 3.2.2 ->
   a0839915 == main == built commit. "Bannerlator 3.2.2", not draft/prerelease, Latest. Assets: 4 APKs (~603.0 MB each)

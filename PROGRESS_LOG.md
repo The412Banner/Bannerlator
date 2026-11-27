@@ -1,5 +1,26 @@
 # Star-Compose — Progress Log
 
+## 2026-11-27 — three container fixes MERGED to main (--no-ff): Android browser links, second desktop, .NET 9 detector
+- 14:0x EST user: "1 yes" (merge). main was f01f0fad8 -> --no-ff merges fb4095b8a (fix/android-browser-links 33008e2ed),
+  1d79ccb15 (fix/wayland-second-desktop f854de4aa), 092cbd2ad (fix/dotnet9-addon 8006f336c) + this log. Merged tree ==
+  the device-tested build testbuild/fit-1127-combo 6270eb23a (git diff empty; CI 46048478749, APK pubg sha256
+  4224a35de6348c6b installed on the FIT). Backup ref refs/backup/20261127/main-before-fit-1127-fixes = f01f0fad8.
+- Why / what:
+  - Links: the "Open links in the Android browser" setting set WINE_OPEN_WITH_ANDROID_BROWSER=1 and Wine's winebrowser
+    sends OPEN_URL to 127.0.0.1:20000, but WineRequestHandler was never created (Epic -> Ubisoft account link stuck in
+    Wine's browser). Now created when that setting or clipboard sharing is on; binds 127.0.0.1 only (was every
+    interface), closes each connection, http/https/mailto only, logs scheme + host only.
+  - Second desktop: Vortex starts a second explorer.exe that opens a desktop for ~2 s; the compositor tracked one
+    desktop pointer, so its close left "no desktop" and the largest window was scaled to the screen (Vortex + whole
+    desktop shifted, black band). Now falls back to the newest desktop still open.
+  - .NET 9: DependencyDetector label/order/regex for dotnetcoredesktop9 (catalog row live, winlator-contents 027f1308).
+- Device (FIT, container 1, Wayland, layer proton_11.14.1-DroidDeck gog-galaxy 98328296), 13:38-13:48 EST: Vortex centred
+  ("a second desktop closed; back to the desktop of explorer.exe"); start https://www.example.com -> "WineRequestHandler:
+  OPEN_URL https://www.example.com" -> Chrome in front; Galaxy, EA app, AIO GL 2363 / D3D11 2577 avg normal. Detector
+  suggestion itself not device-tested. Epic -> Ubisoft link not re-run yet.
+- Next: "Open links in the Android browser" default ON (user "2 yes") on its own branch; old fix/container-browser-links
+  (Pale Moon registry approach, superseded) deleted after a backup ref (user "3 yes"). No release.
+
 ## 2026-11-27 — fix/ea-licence-refresh MERGED to main (fast-forward)
 - 09:4x EST user: "1 merge it". main was c2c85e49e (= branch base) -> FAST-FORWARD to fdb3f68cc. Backup ref
   refs/backup/20261127/main-before-ea-licence-refresh = c2c85e49e (pushed). Change = tools/steamlite-agent/main.cpp

@@ -2460,6 +2460,10 @@ static int agent_main(int argc, char** argv) {
         int relaunches = 0;          // times the exe came back after vanishing
         bool gameGone = false;
         int chainHoldCapS = 900;
+        // steam:// launch from a launcher that is already open and signed in (EA app in a container
+        // desktop): the launcher stays open after the game, so the long first-sign-in wait would keep
+        // the Steam session for 15 minutes after a quit. The hand-off there takes seconds.
+        if (urlAppId) chainHoldCapS = 60;
         if (const char* cw = getenv("WN_STEAM_CHAIN_WAIT_S")) { int v = atoi(cw); if (v > 0) chainHoldCapS = v; }
         // p6: a chain title can hand off MORE than once - EA restarts the game a second time
         // after a first-ever activation (licence written by ActivationUI, then EA Desktop

@@ -76,7 +76,7 @@ object DependencyDetector {
         "dotnet46" to ".NET Framework 4.6", "dotnet472" to ".NET Framework 4.7.2",
         "dotnet48" to ".NET Framework 4.8", "dotnet35" to ".NET Framework 3.5",
         "dotnetcoredesktop6" to ".NET Desktop 6", "dotnetcoredesktop7" to ".NET Desktop 7",
-        "dotnetcoredesktop8" to ".NET Desktop 8",
+        "dotnetcoredesktop8" to ".NET Desktop 8", "dotnetcoredesktop9" to ".NET Desktop 9",
         "d3dcompiler_42" to "DirectX shader compiler 42", "d3dcompiler_43" to "DirectX shader compiler 43",
         "xaudio2.7" to "XAudio 2.7", "mfc42" to "MFC 4.2", "vbrun6" to "Visual Basic 6 runtime",
         "dotnet20" to ".NET Framework 2.0",
@@ -87,7 +87,7 @@ object DependencyDetector {
         "vcredist2005", "vcredist2008", "vcredist2010", "vcredist2012", "vcredist2013",
         "vcredist2015", "vcredist2019", "vcredist2022",
         "dotnet35", "dotnet40", "dotnet45", "dotnet452", "dotnet46", "dotnet472", "dotnet48",
-        "dotnetcoredesktop6", "dotnetcoredesktop7", "dotnetcoredesktop8",
+        "dotnetcoredesktop6", "dotnetcoredesktop7", "dotnetcoredesktop8", "dotnetcoredesktop9",
         "mfc42", "vbrun6", "dotnet20",
         "d3dx9", "d3dx11", "d3dcompiler_42", "d3dcompiler_43", "xact", "xact_x64", "xaudio2.7",
         "xna31", "xna40", "physx", "oalinst", "XLiveRedist",
@@ -277,6 +277,7 @@ object DependencyDetector {
 
     /** Resolve a .NET component from installer/path text, or null when no version is discernible. */
     private fun dotnetComponent(s: String): String? = when {
+        s.contains("desktop-runtime-9") || Regex("""\b9\.\d""").containsMatchIn(s) -> "dotnetcoredesktop9"
         s.contains("desktop-runtime-8") || Regex("""\b8\.\d""").containsMatchIn(s) -> "dotnetcoredesktop8"
         s.contains("desktop-runtime-7") || Regex("""\b7\.\d""").containsMatchIn(s) -> "dotnetcoredesktop7"
         s.contains("desktop-runtime-6") || Regex("""\b6\.\d""").containsMatchIn(s) -> "dotnetcoredesktop6"

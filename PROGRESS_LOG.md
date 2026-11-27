@@ -1,5 +1,17 @@
 # Star-Compose — Progress Log
 
+## 2026-11-27 — "Open links in the Android browser" ON by default MERGED to main (fast-forward)
+- User 14:0x EST "2 yes" (default on), 15:0x EST "merge it". main was 995c5df3c -> fast-forward to e8fba71ee + this log.
+  Backup ref refs/backup/20261127/main-before-browser-default-on = 995c5df3c.
+- Change: the five reads of open_with_android_browser default to true (SettingsFragment, SettingsScreen,
+  AppSettingsRegistry, XServerDisplayActivity, GuestProgramLauncherComponent); a saved "off" stays off. Clipboard
+  sharing stays off by default.
+- CI 46053436947 GREEN. Device (FIT, APK pubg sha256 84c88293776d6287), 14:51 EST: saved value removed (backup
+  files/prefs.before-default-on-test-20261127.xml) -> explorer.exe env WINE_OPEN_WITH_ANDROID_BROWSER=1, "listening on
+  127.0.0.1:20000", start https://www.example.com -> OPEN_URL -> Chrome in front.
+- Same session: Wine proton_11.14.1-DroidDeck ncrypt fix (EOS DPoP key) -> Epic launcher "EOS Auth Login succeeded".
+  No release.
+
 ## 2026-11-27 — three container fixes MERGED to main (--no-ff): Android browser links, second desktop, .NET 9 detector
 - 14:0x EST user: "1 yes" (merge). main was f01f0fad8 -> --no-ff merges fb4095b8a (fix/android-browser-links 33008e2ed),
   1d79ccb15 (fix/wayland-second-desktop f854de4aa), 092cbd2ad (fix/dotnet9-addon 8006f336c) + this log. Merged tree ==

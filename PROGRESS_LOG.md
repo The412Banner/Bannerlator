@@ -1,5 +1,16 @@
 # Star-Compose — Progress Log
 
+## 2026-11-27 — BL status-bar icon for the session notification MERGED to main (fast-forward)
+- User 18:3x EST: the Winlator window icon showed in the status bar while the app/games run -> preview HTML
+  (Download/Bannerlator-icon-preview.html, options A letters / B framed); user picked "1 B" (app icon: "leave it alone").
+  18:5x EST "merge it". main was 377b3cd12 -> fast-forward to fbde2aba0 + this log. Backup ref
+  refs/backup/20261127/main-before-status-bar-icon.
+- ic_stat_bannerlator (all densities, 24 dp, 1 dp padding): bold slanted "BL" (Sora ExtraBold, like the logo) in a
+  soft-corner frame, white on transparent. GameSessionForegroundService uses it; unused ic_stat_ab_gear_0011 removed.
+- CI 46084224601 GREEN. Device (FIT, pubg APK sha256 790913cbe7f45b64), 18:57 EST: notification shade shows the
+  session notification with the new icon (user screenshot + mine). The notification text still says "Winlator"
+  (title + "Winlator is running...") - unchanged here. No release.
+
 ## 2026-11-27 — New neon BL app icon + drawn neon exit screen MERGED to main (fast-forward)
 - User 17:1x EST: two images in Download (app icon 1254 px; exit screen 511x253 with a bar) -> "do it", bar like the top
   image of their screenshot (outlined pill track, glowing pink-to-cyan fill). 18:2x EST: "merge it".

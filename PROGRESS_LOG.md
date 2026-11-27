@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-27 — fix/ea-licence-refresh MERGED to main (fast-forward)
+- 09:4x EST user: "1 merge it". main was c2c85e49e (= branch base) -> FAST-FORWARD to fdb3f68cc. Backup ref
+  refs/backup/20261127/main-before-ea-licence-refresh = c2c85e49e (pushed). Change = tools/steamlite-agent/main.cpp
+  (agent drops EA licences older than 10 min before an EA-chain launch; device-tested as agent 123d9a94 = sha256 44b1ec78)
+  + PROGRESS_LOG. App code unchanged.
+- SteamLite package still v11 (previous agent); a v12 with this agent is NOT published (needs the user's word).
+- Branch fix/ea-licence-refresh kept. No release.
+
 ## 2026-11-27 — EA licence refresh: agent drops EA licences older than 10 min (fix/ea-licence-refresh 123d9a94, device-proven FIT, not merged)
 - Why: after the container-desktop work, NFS Most Wanted failed EA activation again at 09:05/09:09 EST (EA app Play) and
   at 09:17 from its SteamLite shortcut, with the 08:33 licence that worked at 08:49. EA's licence for it runs out within

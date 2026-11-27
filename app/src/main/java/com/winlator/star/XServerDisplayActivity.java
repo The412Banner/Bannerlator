@@ -2248,6 +2248,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         boolean isOpenWithAndroidBrowser = preferences.getBoolean("open_with_android_browser", false);
         boolean isShareAndroidClipboard = preferences.getBoolean("share_android_clipboard", false);
+        // Both settings make Wine send requests to 127.0.0.1:20000 (winebrowser's OPEN_URL, the
+        // clipboard); started with the session below, stopped in exit().
+        if (isOpenWithAndroidBrowser || isShareAndroidClipboard) wineRequestHandler = new WineRequestHandler(this);
 
 
 

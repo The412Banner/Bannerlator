@@ -89,7 +89,7 @@ public class GameSessionForegroundService extends Service {
                 ? label + " is running — do not swipe this notification"
                 : "Winlator is running, do not kill or swipe this notification";
         return new NotificationCompat.Builder(this, XServerDisplayActivity.NOTIFICATION_CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_stat_ab_gear_0011)
+                .setSmallIcon(R.drawable.ic_stat_bannerlator)
                 .setContentTitle("Winlator")
                 .setContentText(text)
                 .setPriority(NotificationCompat.PRIORITY_LOW)

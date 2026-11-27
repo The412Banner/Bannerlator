@@ -2595,5 +2595,12 @@ static int agent_main(int argc, char** argv) {
 int main(int argc, char** argv) {
     int rc = agent_main(argc, argv);
     ac::emit_shutdown(NULL, rc);
+    // steam:// launch inside a container desktop: no session teardown follows, and returning runs
+    // steamclient64's DLL detach, which hangs with its threads alive (the process stayed after
+    // "Steam Launcher shutdown"). The logoff is already done, so end the process here.
+    if (steam_url_appid(argc, argv)) {
+        if (g_logFile) fflush(g_logFile);
+        TerminateProcess(GetCurrentProcess(), (UINT) rc);
+    }
     return rc;
 }

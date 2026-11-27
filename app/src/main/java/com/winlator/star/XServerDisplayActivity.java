@@ -2246,7 +2246,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // Check for Dark Mode
         isDarkMode = preferences.getBoolean("dark_mode", false);
 
-        boolean isOpenWithAndroidBrowser = preferences.getBoolean("open_with_android_browser", false);
+        boolean isOpenWithAndroidBrowser = preferences.getBoolean("open_with_android_browser", true);
         boolean isShareAndroidClipboard = preferences.getBoolean("share_android_clipboard", false);
         // Both settings make Wine send requests to 127.0.0.1:20000 (winebrowser's OPEN_URL, the
         // clipboard); started with the session below, stopped in exit().

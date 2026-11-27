@@ -356,7 +356,7 @@ internal object AppSettingsRegistry {
 
         toggle("app.advanced.fileProvider", "app.advanced", T("Experimental"), T("Share files with other apps (File Provider)"), ADVANCED, "enable_file_provider", true,
             hint = T("Takes effect after the app restarts.")),
-        toggle("app.advanced.androidBrowser", "app.advanced", T("Experimental"), T("Open links in the Android browser"), ADVANCED, "open_with_android_browser", false),
+        toggle("app.advanced.androidBrowser", "app.advanced", T("Experimental"), T("Open links in the Android browser"), ADVANCED, "open_with_android_browser", true),
         toggle("app.advanced.clipboard", "app.advanced", T("Experimental"), T("Share the Android clipboard with games"), ADVANCED, "share_android_clipboard", false),
         app(
             "app.advanced.contentsUrl", "app.advanced", T("Experimental"), T("Components catalog URL"), EXPERT,

@@ -158,7 +158,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         UpdateManager.check(context) { info -> activity?.runOnUiThread { updateInfo = info } }
     }
     var enableFileProvider by remember { mutableStateOf(prefs.getBoolean("enable_file_provider", true)) }
-    var openWithBrowser by remember { mutableStateOf(prefs.getBoolean("open_with_android_browser", false)) }
+    var openWithBrowser by remember { mutableStateOf(prefs.getBoolean("open_with_android_browser", true)) }
     var shareClipboard by remember { mutableStateOf(prefs.getBoolean("share_android_clipboard", false)) }
     var downloadableContentsURL by remember { mutableStateOf(prefs.getString("downloadable_contents_url", ContentsManager.REMOTE_PROFILES) ?: ContentsManager.REMOTE_PROFILES) }
     // win-fg training capture (global opt-in; consent-gated). Enabling opens the consent dialog.

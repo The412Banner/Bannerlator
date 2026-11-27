@@ -301,7 +301,7 @@ public class SettingsFragment extends Fragment {
         btHelpFileProvider.setOnClickListener(v -> AppUtils.showHelpBox(context, v, R.string.help_file_provider));
 
         final CheckBox cbOpenInBrowser = view.findViewById(R.id.CBOpenWithAndroidBrowser);
-        cbOpenInBrowser.setChecked(preferences.getBoolean("open_with_android_browser", false));
+        cbOpenInBrowser.setChecked(preferences.getBoolean("open_with_android_browser", true));
 
         final CheckBox cbShareClipboard = view.findViewById(R.id.CBShareAndroidClipboard);
         cbShareClipboard.setChecked(preferences.getBoolean("share_android_clipboard", false));

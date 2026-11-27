@@ -512,7 +512,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
 
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         boolean enableBox64Logs = preferences.getBoolean("enable_box64_logs", false);
-        boolean openWithAndroidBrowser = preferences.getBoolean("open_with_android_browser", false);
+        boolean openWithAndroidBrowser = preferences.getBoolean("open_with_android_browser", true);
         boolean shareAndroidClipboard = preferences.getBoolean("share_android_clipboard", false);
 
         if (openWithAndroidBrowser)

@@ -4,7 +4,9 @@
 - 23:1x EST user: "merge yserver to main". main was still 96ce4f52 (= branch base), so FAST-FORWARD to this commit.
   Backup ref refs/backup/20261126/main-before-yserver-r2 = 96ce4f52 (pushed). Code tree == tested build d2591e61
   (git diff d2591e61..main = PROGRESS_LOG.md only). No release; next release picks it up. Main build = workflow_dispatch
-  (head commit is [skip ci]), run ID below once green.
+  (head commit is [skip ci]): build-artifacts 45939200208 (dispatch, headSha 8dd24e82) GREEN x4 (standard/pubg/
+  antutu/ludashi), finished 23:29 EST; pubg log "libyserver.so: OK" + "yserver r2-pre1 bundled", BUILD SUCCESSFUL.
+  feat/yserver-r2 kept (delete only on user word).
 
 ## 2026-11-26 — yserver r2-pre1 bundled (feat/yserver-r2, INSTALLED FIT, launch check PASSED, merged)
 - Why: user 11-26 ~18:3x EST "rebuild it on the latest upstream, if they are worth adding and will not cause issues,

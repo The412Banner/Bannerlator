@@ -92,7 +92,9 @@ fun PreloaderOverlay() {
     // Centered status/shutdown screen — calm logo + message + slim indeterminate bar.
     if (ui.centered) {
         val message = ui.tailLabel.ifEmpty { ui.title }
-        if (ui.linuxSteam) {
+        if (ui.exitSince > 0L) {
+            ExitScreen(message, ui.exitSince)
+        } else if (ui.linuxSteam) {
             val elapsed = if (ui.closingSince > 0L) closingClock(ui.closingSince) else ui.elapsed
             LinuxSteamStatus(message, ui.hint, elapsed, ui.percent)
         } else {

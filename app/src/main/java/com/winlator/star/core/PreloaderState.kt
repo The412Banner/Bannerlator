@@ -45,6 +45,7 @@ data class PreloaderUi(
     val elapsed: String? = null,       // centered screen: the clock line, so a quiet log still shows time moving
     val linuxSteam: Boolean = false,   // centered screen: the Linux Steam session's black page with the entry's art
     val closingSince: Long = 0L,       // Linux page: elapsedRealtime when the close began; > 0 = closing, the page runs its own clock
+    val exitSince: Long = 0L,          // game exit screen (neon card + filling bar): elapsedRealtime when the exit began; > 0 = exiting
 )
 
 /**
@@ -111,6 +112,12 @@ object PreloaderState {
             linuxSteam = true, hint = hint, closingSince = SystemClock.elapsedRealtime())
     }
 
+    /** The game session's exit screen (ExitScreen): [title] under the name, a bar filling from now. */
+    @JvmStatic fun showExit(title: String?) {
+        _ui.value = PreloaderUi(title = "", tailLabel = title ?: "", phase = Phase.GUEST, centered = true,
+            exitSince = SystemClock.elapsedRealtime())
+    }
+
     /** Advance the determinate bar to [index]/stepTotal with [label]. */
     @JvmStatic fun step(index: Int, label: String) {
         val cur = _ui.value ?: PreloaderUi(title = "")
@@ -132,7 +139,7 @@ object PreloaderState {
     @JvmStatic fun linuxProgress(step: String, percent: Int, elapsed: String?, hint: String?) {
         // A compare-and-set, because the watcher calls this from its own thread and a plain read-then-write could land a startup line over a close that began in between.
         _ui.update { cur ->
-            if (cur == null || !cur.centered || cur.closingSince > 0L) cur
+            if (cur == null || !cur.centered || cur.closingSince > 0L || cur.exitSince > 0L) cur
             else cur.copy(tailLabel = step, percent = percent, elapsed = elapsed, hint = hint)
         }
     }

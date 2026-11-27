@@ -5960,7 +5960,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             com.winlator.star.core.PreloaderState.showLinuxSteamClosing(
                     getString(R.string.linux_steam_closing), getString(R.string.linux_steam_closing_hint));
         } else {
-            preloaderDialog.showOnUiThread(R.string.shutdown);
+            com.winlator.star.core.PreloaderState.showExit(getString(R.string.exit_screen_exiting));
         }
         final Runnable teardown = new Runnable() {
             @Override

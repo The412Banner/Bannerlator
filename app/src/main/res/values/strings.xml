@@ -1721,6 +1721,7 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="renderer_driver_system">System</string>
     <string name="renderer_driver_turnip">Turnip</string>
     <string name="shutdown">Shutting down…</string>
+    <string name="exit_screen_exiting">Exiting…</string>
     <string name="xbox_saving_on_exit">Saving and uploading your Xbox save…</string>
     <string name="saving_on_exit">Backing up your saves…</string>
     <string name="ubisoft_diag_saving">Saving the Ubisoft diagnostics…</string>

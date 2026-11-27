@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-26 — yserver r2-pre1 bundled (feat/yserver-r2, INSTALLED FIT, launch check next)
+## 2026-11-26 — yserver r2-pre1 bundled (feat/yserver-r2, INSTALLED FIT, launch check PASSED, merge = user word)
 - Why: user 11-26 ~18:3x EST "rebuild it on the latest upstream, if they are worth adding and will not cause issues,
   regression or compatibility problems"; after the device A/B + hand test: "everything worked fine, publish it and
   build bannerlator on a new branch off main".
@@ -23,7 +23,13 @@
 - 21:31 EST INSTALLED on the FIT (user "yes install it"): base.apk sha256 96638746 == staged; installed
   lib/arm64/libyserver.so sha256 871b63dc (= r2-pre1); hand-staged files/yserver/yserver removed, so the bundled r2 runs;
   crash buffer 0. fg-pace-real build replaced (its APK stays in Download).
-- RESUME: user launches a yserver game (Windows Steam Client x64 / DiRT Showdown, container 1) -> read newest
+- Launch check (checked 22:59 EST): a yserver session ran 21:38:40-21:40 EST on the installed build. Newest log
+  files/yserver/logs/yserver-20261126-213840.log line 1 "yserver 1.9.0 (8247002b7fe2-dirty)" (same string as the
+  staged r2 at 19:28; -dirty = patches on top); files/yserver/yserver absent (only old yserver.staged-0029), so the
+  app-lib copy ran. Log: 0 ERROR/panic/fatal, clients connected, DRI3 AHB pixmaps OK. Crash buffer 21:3x-22:5x empty,
+  FATAL 21:38-21:49 = 0. Which game the user ran is not in logcat. Proof: device-proven (bundled r2 starts + serves).
+- RESUME: merge feat/yserver-r2 to main on the user's word (backup ref main-before-yserver-r2 first, merged tree ==
+  d2591e61 tree). Old RESUME kept for history: user launches a yserver game -> read newest
   files/yserver/logs log (startup line must say 8247002b, binary from the app's lib dir), crash buffer, FATAL. Then merge
   feat/yserver-r2 to main on the user's word (backup ref first).
 - Next: CI green -> stage APK in Download (hash host + device) -> ASK before install -> remove the staged

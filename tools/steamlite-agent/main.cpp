@@ -1429,9 +1429,46 @@ static void wn_fire_achievements(void* engine, int hUser, int pipe, uint32_t app
     log_line("[wn-launcher] achievement: fire complete, sentinel removed");
 }
 
+// steam:// protocol launch: a launcher inside the container (EA Desktop's Play button on a Steam-owned
+// game opens steam://run/<appid>) starts this agent with the URL instead of a spec. Returns the app id
+// from steam://run/<id>, steam://rungameid/<id> or steam://launch/<id>, 0 when argv has no such URL.
+static uint32_t steam_url_appid(int argc, char** argv) {
+    static const char* verbs[] = { "rungameid/", "run/", "launch/" };
+    for (int i = 1; i < argc; i++) {
+        const char* a = argv[i];
+        if (!a || _strnicmp(a, "steam://", 8)) continue;
+        for (const char* v : verbs) {
+            size_t n = strlen(v);
+            if (_strnicmp(a + 8, v, n)) continue;
+            unsigned long long id = strtoull(a + 8 + n, NULL, 10);
+            if (id && id <= 0xffffffffull) return (uint32_t) id;
+        }
+    }
+    return 0;
+}
+
+// Valve's Windows steamclient64.dll only loads with Proton's lsteamclient redirect off. A shortcut
+// launch gets PROTON_DISABLE_LSTEAMCLIENT from Bannerlator; a steam:// launch from inside the container
+// does not, and Wine reads it at process start, so start a copy of this agent with it set.
+static bool relaunch_with_lsteamclient_off(void) {
+    if (GetEnvironmentVariableA("PROTON_DISABLE_LSTEAMCLIENT", NULL, 0)) return false;
+    SetEnvironmentVariableA("PROTON_DISABLE_LSTEAMCLIENT", "1");
+    wchar_t* cl = _wcsdup(GetCommandLineW());
+    STARTUPINFOW si = { sizeof(si) };
+    PROCESS_INFORMATION pi;
+    BOOL ok = cl && CreateProcessW(NULL, cl, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
+    free(cl);
+    if (!ok) return false;
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
+    return true;
+}
+
 static int agent_main(int argc, char** argv) {
     setbuf(stderr, NULL);
     setbuf(stdout, NULL);
+    const uint32_t urlAppId = steam_url_appid(argc, argv);
+    if (urlAppId && relaunch_with_lsteamclient_off()) return 0;
     open_log();
     // Optional app event channel: pure no-op unless BL_AGENT_PORT is set + connects.
     ac::init_from_env(log_line);
@@ -1453,7 +1490,16 @@ static int agent_main(int argc, char** argv) {
     // Per-shortcut spec: argv[1] may be a spec FILE (line1=exe path, line2=optional appId
     // override) so each game's shortcut is self-contained; falls back to env
     // WN_STEAM_GAMEEXE_FILE when no argv. A non-file argv[1] is treated as the exe path directly.
-    const char* specSrc = (argc > 1) ? argv[1] : getenv("WN_STEAM_GAMEEXE_FILE");
+    // steam:// launch: the app comes from the URL and the game from Bannerlator's per-game spec
+    // C:\<appid>.spec; its KEY=VALUE lines after the app id carry the per-game settings a shortcut launch
+    // gets from Bannerlator's environment (launcher chain, language, arguments...).
+    static char urlSpecPath[64];
+    if (urlAppId) {
+        snprintf(urlSpecPath, sizeof(urlSpecPath), "C:\\%u.spec", urlAppId);
+        appId = urlAppId;
+        log_line("[wn-launcher] steam:// launch for app %u, spec %s", urlAppId, urlSpecPath);
+    }
+    const char* specSrc = urlAppId ? urlSpecPath : (argc > 1) ? argv[1] : getenv("WN_STEAM_GAMEEXE_FILE");
     bool argIsSpecFile = false;
     if (specSrc) {
         FILE* gf = fopen(specSrc, "r");
@@ -1468,10 +1514,23 @@ static int agent_main(int argc, char** argv) {
                 uint32_t a = (uint32_t) strtoul(specAppBuf, NULL, 10);
                 if (a) appId = a;   // per-game appId overrides the shared container env
             }
+            if (urlAppId) {
+                char line[4096];
+                while (fgets(line, sizeof(line), gf)) {
+                    size_t n = strlen(line);
+                    while (n && (line[n-1] == '\n' || line[n-1] == '\r')) line[--n] = 0;
+                    char* eq = strchr(line, '=');
+                    if (!eq || eq == line) continue;
+                    *eq = 0;
+                    _putenv_s(line, eq + 1);
+                    SetEnvironmentVariableA(line, eq + 1);
+                    log_line("[wn-launcher] spec env %s", line);
+                }
+            }
             fclose(gf);
         }
     }
-    if (!gameExe && argc > 1 && !argIsSpecFile) gameExe = argv[1];
+    if (!gameExe && argc > 1 && !argIsSpecFile && !urlAppId) gameExe = argv[1];
 
     log_line("[wn-launcher] env appId=%u steamId=%llu user=%s exe=%s",
              appId,
@@ -1488,6 +1547,15 @@ static int agent_main(int argc, char** argv) {
         log_token_claims(token);
     } else {
         log_line("[wn-launcher] token missing");
+    }
+    if (urlAppId && (!token || !*token || !gameExe || !*gameExe)) {
+        log_line("[wn-launcher] steam:// launch without %s - not starting",
+                 (!token || !*token) ? "Steam sign-in in this session" : "a spec for the app");
+        MessageBoxA(NULL, (!token || !*token)
+                        ? "Steam is not signed in for this session. Start the game from Bannerlator."
+                        : "This game has no Steam launch info in this container yet. Start it once from Bannerlator.",
+                    "SteamLite", MB_OK | MB_ICONWARNING);
+        return 3;
     }
     bool loginOnly = (!gameExe || !*gameExe);  // gameExe may come from argv[1] OR WN_STEAM_GAMEEXE_FILE
     if (loginOnly) {

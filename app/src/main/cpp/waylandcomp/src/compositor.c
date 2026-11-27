@@ -1550,7 +1550,20 @@ static void surface_resource_destroy(struct wl_resource *r) {
     if (g_ime_click == s) g_ime_click = NULL;
     auto_activate_surface_gone(s);
     banner_text_input_surface_gone(r);
-    if (g_desktop == s) { g_desktop = NULL; banner_log("desktop", "the desktop closed"); }
+    if (g_desktop == s) {
+        /* A second explorer.exe can open a desktop for a moment and take over (Vortex starts one at
+         * launch); when it goes, the desktop that is still open is the desktop again instead of
+         * "no desktop" (which scales the largest window to the screen). Newest first. */
+        struct surface *o, *back = NULL;
+        wl_list_for_each(o, &g_surfaces, link)
+            if (o != s && o->role == ROLE_DESKTOP && o->resource) { back = o; break; }
+        g_desktop = back;
+        if (back) {
+            banner_log("desktop", "a second desktop closed; back to the desktop of %s",
+                       client_name(wl_resource_get_client(back->resource)));
+            schedule_render();
+        } else banner_log("desktop", "the desktop closed");
+    }
     if (g_hud_surface == s) { g_hud_surface = NULL; banner_on_game_surface(NULL, NULL); }
     constraints_surface_gone(s);
     popups_parent_gone(s);

@@ -23,6 +23,8 @@ public abstract class WineThemeManager {
     public enum BackgroundScope {GLOBAL, CONTAINER}
     // New containers start with the dark Windows colours; a container keeps the theme it has saved.
     public static final String DEFAULT_DESKTOP_THEME = Theme.DARK+","+BackgroundType.IMAGE+",#0277bd";
+    // Raise when apply() writes something new: containers apply the theme again once at launch.
+    public static final int REVISION = 2;
     private static final String AKELPAD_OPTIONS = "Software\\Akelsoft\\AkelPad\\Options";
     // AECOLORS as AkelPad saves it: all flags, then caret, text, page, selection text/page, current
     // line text/page, URL, column, column marker, URL hover, URL visited, current line border,
@@ -130,7 +132,7 @@ public abstract class WineThemeManager {
                 registryEditor.setStringValue("Control Panel\\Colors", "InactiveTitle", "33 33 33");
                 registryEditor.setStringValue("Control Panel\\Colors", "InactiveTitleText", "117 117 117");
                 registryEditor.setStringValue("Control Panel\\Colors", "InfoText", "255 255 255");
-                registryEditor.setStringValue("Control Panel\\Colors", "InfoWindow", "255 255 255");
+                registryEditor.setStringValue("Control Panel\\Colors", "InfoWindow", "43 43 43");
                 registryEditor.setStringValue("Control Panel\\Colors", "Menu", "33 33 33");
                 registryEditor.setStringValue("Control Panel\\Colors", "MenuBar", "48 48 48");
                 registryEditor.setStringValue("Control Panel\\Colors", "MenuHilight", "2 136 209");

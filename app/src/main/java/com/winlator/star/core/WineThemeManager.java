@@ -23,6 +23,13 @@ public abstract class WineThemeManager {
     public enum BackgroundScope {GLOBAL, CONTAINER}
     // New containers start with the dark Windows colours; a container keeps the theme it has saved.
     public static final String DEFAULT_DESKTOP_THEME = Theme.DARK+","+BackgroundType.IMAGE+",#0277bd";
+    private static final String AKELPAD_OPTIONS = "Software\\Akelsoft\\AkelPad\\Options";
+    // AECOLORS as AkelPad saves it: all flags, then caret, text, page, selection text/page, current
+    // line text/page, URL, column, column marker, URL hover, URL visited, current line border,
+    // alternate line text/page/border; the dark colours above, current line = page
+    private static final String AKELPAD_DARK_COLORS =
+        "feff0100"+"00000000"+"ffffff00"+"30303000"+"ffffff00"+"0288d100"+"ffffff00"+"30303000"+
+        "0288d100"+"75757500"+"21212100"+"0288d100"+"0288d100"+"30303000"+"ffffff00"+"61616100"+"a3a3a300";
 
     public static class ThemeInfo {
         public final Theme theme;
@@ -134,6 +141,12 @@ public abstract class WineThemeManager {
                 registryEditor.setStringValue("Control Panel\\Colors", "WindowFrame", "0 0 0");
                 registryEditor.setStringValue("Control Panel\\Colors", "WindowText", "255 255 255");
             }
+
+            // AkelPad (the container's Notepad) works its current-line colour out for a white page,
+            // a light bar on the dark colours: Dark gives it its colours with that line in the window
+            // colour, Light removes them so it follows the Windows colours.
+            if (themeInfo.theme == Theme.DARK) registryEditor.setHexValue(AKELPAD_OPTIONS, "Colors", AKELPAD_DARK_COLORS);
+            else registryEditor.removeValue(AKELPAD_OPTIONS, "Colors");
         }
     }
 

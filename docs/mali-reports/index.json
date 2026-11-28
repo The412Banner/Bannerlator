@@ -1,5 +1,15 @@
 [
   {
+    "id": "2026-11-28T15-02-55-520985",
+    "created": "2026-11-28T15:02:55.214Z",
+    "reporter": "",
+    "device": "Tecno pova 5g",
+    "gpu": "Mali g68 MC4",
+    "game": "God of war lll lite version",
+    "symptom": "Crashes / closes to home",
+    "logs": 0
+  },
+  {
     "id": "2026-11-22T16-12-55-1774b9",
     "created": "2026-11-22T16:12:55.393Z",
     "reporter": "",

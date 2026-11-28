@@ -172,7 +172,11 @@ public class DRI3Extension implements Extension {
         else if (modifiers == 1274) {
             Log.d("Dri3", "Creating pixmap from dmabuf filedescriptor"); 
             pixmapFromFd(client, pixmapId, width, height, stride, offset, depth, fd, size);
-        }    
+        }
+        else if (modifiers == 0) {
+            Log.d("Dri3", "Linear modifier from freedreno kgsl, using AHB import path");
+            pixmapFromHardwareBuffer(client, pixmapId, width, height, depth, fd);
+        }
     }
     
     private void pixmapFromHardwareBuffer(XClient client, int pixmapId, short width, short height, byte depth, int fd) throws IOException, XRequestError {

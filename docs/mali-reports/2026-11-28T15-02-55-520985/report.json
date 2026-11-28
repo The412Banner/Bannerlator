@@ -1,0 +1,31 @@
+{
+  "id": "2026-11-28T15-02-55-520985",
+  "created": "2026-11-28T15:02:55.214Z",
+  "ip_hash": "Y4RQYHapGh",
+  "fields": {
+    "reporter_name": "",
+    "device_model": "Tecno pova 5g",
+    "soc": "dimensity 900",
+    "gpu": "Mali g68 MC4",
+    "android": "Android 11",
+    "ram": "8GB 3GB",
+    "app_version": "2.8.2",
+    "install_source": "",
+    "game_name": "God of war lll lite version",
+    "steam_appid": "",
+    "store": "",
+    "exe": "",
+    "symptom": "Crashes / closes to home",
+    "when": "",
+    "graphics_driver": "",
+    "dx_wrapper": "",
+    "dxvk": "",
+    "proton": "",
+    "box64": "",
+    "resolution": "",
+    "framegen": "",
+    "repro": "",
+    "tried": ""
+  },
+  "logs": []
+}

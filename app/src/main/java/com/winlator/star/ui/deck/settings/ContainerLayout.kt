@@ -30,7 +30,7 @@ import com.winlator.star.ui.simple.T
  *   hud.* (show, style, size, locked, scale, ..., metric.*, temp.*)      tab.performance    1
  *   hud.enabled                                                          hidden (merged into hud.show)
  *   input.* (controlsProfile ... gyro.*, xr.*, slotOverrides)            tab.controls       0
- *   windows.locale, closeOnExit, runAsAdmin, theme, desktopBackground,
+ *   windows.locale, closeOnExit, openFileManager, runAsAdmin, theme, desktopBackground,
  *               desktopColor, wallpaperScope                             tab.windows        0
  *   components.* (direct3d ... vcrun2010), windows.codecBackend,
  *               windows.softwareDecoding                                 tab.wincomp        0

@@ -1460,6 +1460,17 @@ private fun TopLevelFields(
         }
         Spacer(Modifier.height(8.dp))
 
+        // Open wfm.exe when the container starts without a game (default OFF).
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Switch(
+                checked = viewModel.openFileManager,
+                onCheckedChange = { viewModel.openFileManager = it }
+            )
+            Spacer(Modifier.width(8.dp))
+            Text("Open the file manager at start")
+        }
+        Spacer(Modifier.height(8.dp))
+
         // Audio Driver
         // DirectAudio only loads on the four arm64ec Proton builds its .drv is built for; off those
         // layers it does nothing / breaks audio. Grey the option out (keyed on the selected layer so it

@@ -247,6 +247,7 @@ private fun containerLayout(defaults: Boolean): List<CTab> = listOf(
             CExtra("windows", L("Wallpaper Image"), { it.startsWith("windows-wallpaper") }),
             CRow("windows.desktopColor", L("Background Color")),
             CRow("input.mouseWarp", L("Mouse Warp Override")),
+            CRow("windows.openFileManager", L("Open the file manager at start")),
             CRow("windows.runAsAdmin", L("Run as administrator")),
         ),
         leftovers = setOf("game", "launch", "display", "graphics", "audio", "hud", "windows", "linux"),

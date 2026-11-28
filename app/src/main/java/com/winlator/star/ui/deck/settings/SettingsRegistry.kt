@@ -1604,6 +1604,13 @@ internal object SettingsRegistry {
             game = key10("autoCloseOnExit"),
         ),
         SettingDef(
+            id = "windows.openFileManager", category = "windows", group = T("System"), level = ADVANCED,
+            label = T("Open the file manager at start"), tech = T("Open the file manager at start"),
+            control = { _, _ -> Control.Toggle },
+            vm = vmBool({ it.openFileManager }, { vm, v -> vm.openFileManager = v }),
+            showInGame = false,
+        ),
+        SettingDef(
             id = "windows.runAsAdmin", category = "windows", group = T("System"), level = ADVANCED,
             label = T("Run programs as administrator"), hint = T("Avoids permission prompts inside Windows (turns UAC off)."), tech = T("Run as administrator (EnableLUA)"),
             control = { _, _ -> Control.Toggle },

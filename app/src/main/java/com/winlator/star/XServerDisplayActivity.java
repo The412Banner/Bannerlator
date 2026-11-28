@@ -16765,8 +16765,13 @@ return true;
             if (envVars.has("EXTRA_EXEC_ARGS")) {
                 args += " " + envVars.get("EXTRA_EXEC_ARGS");
                 envVars.remove("EXTRA_EXEC_ARGS"); // Remove the key after use
-            } else {
+            } else if ("1".equals(container.getExtra("openFileManager", "0"))) {
                 args += "\"wfm.exe\"";
+            } else {
+                // The container's "Open the file manager at start" is off (the default): winhandler.exe
+                // still needs a program, and starts wfm.exe when it gets none, so it gets rundll32.exe,
+                // which exits at once without a window when it has no arguments.
+                args += "\"rundll32.exe\"";
             }
         }
         // Epic Online Services (EOS) Phase 1: for Epic-origin shortcuts with EOS auth

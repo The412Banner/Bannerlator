@@ -250,6 +250,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     // Render scale (supersampling) — stored via the "renderScale" extra (no DB field). "1.0" = Off.
     var renderScale         by mutableStateOf("1.0")
     var autoCloseOnExit     by mutableStateOf(true)
+    var openFileManager     by mutableStateOf(false)
 
     var dxWrapperEntries by mutableStateOf(emptyList<String>()); private set
     var selectedDXWrapper by mutableStateOf(Container.DEFAULT_DXWRAPPER)
@@ -700,6 +701,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         glVsyncOff               = seed?.isGlVsyncOff() ?: false
         renderScale              = seed?.getExtra("renderScale", "1.0") ?: "1.0"
         autoCloseOnExit          = (seed?.getExtra("autoCloseOnExit", "1") ?: "1") == "1"
+        openFileManager          = (seed?.getExtra("openFileManager", "0") ?: "0") == "1"
         selectedDXWrapper        = identifierToDisplay(seed?.getDXWrapper() ?: Container.DEFAULT_DXWRAPPER, dxWrapperEntries)
         dxWrapperConfig          = seed?.getDXWrapperConfig() ?: Container.DEFAULT_DXWRAPPERCONFIG
         // No profile for this arch: lay its "Set as default" picks over the built-in defaults.
@@ -1477,6 +1479,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         c.setGlVsyncOff(glVsyncOff)
         c.putExtra("renderScale", if (renderScale == "1.0") null else renderScale)
         c.putExtra("autoCloseOnExit", if (autoCloseOnExit) null else "0")  // default ON
+        c.putExtra("openFileManager", if (openFileManager) "1" else null)  // default OFF
         c.setStartupSelection(selectedStartupSelection.toByte())
         // Persist the Custom enabled set regardless of the active selection, so toggling to another
         // preset and back restores the picks. Launch only reads it when the selection is Custom.

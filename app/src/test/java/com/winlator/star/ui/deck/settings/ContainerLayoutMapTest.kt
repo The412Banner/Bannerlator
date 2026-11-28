@@ -79,7 +79,7 @@ class ContainerLayoutMapTest {
 
     @Test
     fun windowsHoldsTheSessionAndDesktopRowsButNotTheComponents() {
-        for (id in listOf("windows.locale", "windows.closeOnExit", "windows.runAsAdmin", "windows.theme", "windows.desktopBackground", "windows.desktopColor", "windows.wallpaperScope")) {
+        for (id in listOf("windows.locale", "windows.closeOnExit", "windows.openFileManager", "windows.runAsAdmin", "windows.theme", "windows.desktopBackground", "windows.desktopColor", "windows.wallpaperScope")) {
             assertEquals(id, EditorTabs.WINDOWS, tab(id, "windows"))
         }
     }

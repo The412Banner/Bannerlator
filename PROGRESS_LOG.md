@@ -1,5 +1,18 @@
 # Star-Compose — Progress Log
 
+## 2026-11-27 — Session notification says "Bannerlator" instead of "Winlator" MERGED to main (fast-forward)
+- User 19:0x EST "yes change to bannerlator", 19:4x EST "merge". main was c9a5c40f2 -> fast-forward to d8e0e6c10 + this
+  log. Backup ref refs/backup/20261127/main-before-notification-text.
+- 3942cc815: notification title "Bannerlator", text "Bannerlator is running, do not kill or swipe this notification",
+  channel name/description "Bannerlator" / "Bannerlator game session" (GameSessionForegroundService + the unused
+  XServerDisplayActivity.createNotifcationChannel). Channel ID stays "Winlator" (no second channel left behind).
+- d8e0e6c10: createChannel created the channel only when missing, so existing installs kept the name "Winlator" in
+  Android's notification settings; it now always calls createNotificationChannel (Android then updates name and
+  description only, user settings stay).
+- CI 46087037159 + 46088130313 GREEN. Device (FIT): 3942cc81 (sha256 50de45ff75d95d69) 19:28 EST: shade shows
+  "Bannerlator - Bannerlator is running..." with the BL icon; channel still mName=Winlator -> d8e0e6c1. d8e0e6c1
+  (sha256 2065b239325aba6f) INSTALLED, channel rename NOT yet checked on the device (needs a session start). No release.
+
 ## 2026-11-27 — BL status-bar icon for the session notification MERGED to main (fast-forward)
 - User 18:3x EST: the Winlator window icon showed in the status bar while the app/games run -> preview HTML
   (Download/Bannerlator-icon-preview.html, options A letters / B framed); user picked "1 B" (app icon: "leave it alone").

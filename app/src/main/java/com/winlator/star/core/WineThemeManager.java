@@ -21,7 +21,8 @@ public abstract class WineThemeManager {
     public enum Theme {LIGHT, DARK}
     public enum BackgroundType {IMAGE, COLOR}
     public enum BackgroundScope {GLOBAL, CONTAINER}
-    public static final String DEFAULT_DESKTOP_THEME = Theme.LIGHT+","+BackgroundType.IMAGE+",#0277bd";
+    // New containers start with the dark Windows colours; a container keeps the theme it has saved.
+    public static final String DEFAULT_DESKTOP_THEME = Theme.DARK+","+BackgroundType.IMAGE+",#0277bd";
 
     public static class ThemeInfo {
         public final Theme theme;

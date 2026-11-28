@@ -73,9 +73,9 @@ public class GameSessionForegroundService extends Service {
         }
         if (existing == null) {
             NotificationChannel channel = new NotificationChannel(
-                    XServerDisplayActivity.NOTIFICATION_CHANNEL_ID, "Winlator",
+                    XServerDisplayActivity.NOTIFICATION_CHANNEL_ID, "Bannerlator",
                     NotificationManager.IMPORTANCE_LOW);
-            channel.setDescription("Winlator XServer Messages");
+            channel.setDescription("Bannerlator game session");
             nm.createNotificationChannel(channel);
         }
     }
@@ -87,10 +87,10 @@ public class GameSessionForegroundService extends Service {
                 PendingIntent.FLAG_IMMUTABLE);
         String text = (label != null && !label.isEmpty())
                 ? label + " is running — do not swipe this notification"
-                : "Winlator is running, do not kill or swipe this notification";
+                : "Bannerlator is running, do not kill or swipe this notification";
         return new NotificationCompat.Builder(this, XServerDisplayActivity.NOTIFICATION_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_bannerlator)
-                .setContentTitle("Winlator")
+                .setContentTitle("Bannerlator")
                 .setContentText(text)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setContentIntent(pendingIntent)

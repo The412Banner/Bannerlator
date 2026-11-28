@@ -11,7 +11,8 @@
   description only, user settings stay).
 - CI 46087037159 + 46088130313 GREEN. Device (FIT): 3942cc81 (sha256 50de45ff75d95d69) 19:28 EST: shade shows
   "Bannerlator - Bannerlator is running..." with the BL icon; channel still mName=Winlator -> d8e0e6c1. d8e0e6c1
-  (sha256 2065b239325aba6f) INSTALLED, channel rename NOT yet checked on the device (needs a session start). No release.
+  (sha256 2065b239325aba6f) INSTALLED; channel rename DEVICE-PROVEN 11-28 02:42 EST (read by session root-81 on BL 6eb05b0b,
+  which contains this change: dumpsys `mId='Winlator', mName=Bannerlator`). No release.
 
 ## 2026-11-27 — BL status-bar icon for the session notification MERGED to main (fast-forward)
 - User 18:3x EST: the Winlator window icon showed in the status bar while the app/games run -> preview HTML

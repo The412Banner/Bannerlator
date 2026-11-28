@@ -71,13 +71,13 @@ public class GameSessionForegroundService extends Service {
             nm.deleteNotificationChannel(XServerDisplayActivity.NOTIFICATION_CHANNEL_ID);
             existing = null;
         }
-        if (existing == null) {
-            NotificationChannel channel = new NotificationChannel(
-                    XServerDisplayActivity.NOTIFICATION_CHANNEL_ID, "Bannerlator",
-                    NotificationManager.IMPORTANCE_LOW);
-            channel.setDescription("Bannerlator game session");
-            nm.createNotificationChannel(channel);
-        }
+        // Always (re)create: for an existing channel Android only updates its name and description, so a
+        // channel an older version created as "Winlator" is renamed; the user's own settings for it stay.
+        NotificationChannel channel = new NotificationChannel(
+                XServerDisplayActivity.NOTIFICATION_CHANNEL_ID, "Bannerlator",
+                NotificationManager.IMPORTANCE_LOW);
+        channel.setDescription("Bannerlator game session");
+        nm.createNotificationChannel(channel);
     }
 
     private Notification buildNotification(@Nullable String label) {
